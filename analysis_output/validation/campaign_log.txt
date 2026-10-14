@@ -1,0 +1,200 @@
+﻿INICIO campana 2026-10-14T11:26:06.2959714-05:00
+=== FASE 1: 30 corridas docker, exclude A14 (tag main) ===
+Campa±a H1: 30 corridas modo=docker exclude=A14
+Salida: analysis_output\validation\main_20261014_162606
+
+[1/30] seed=100001 modo=docker
+  -> 20261014_112606 (118.5s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[2/30] seed=100002 modo=docker
+  -> 20261014_112805 (109.8s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[3/30] seed=100003 modo=docker
+  -> 20261014_112955 (110.0s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[4/30] seed=100004 modo=docker
+  -> 20261014_113145 (108.8s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[5/30] seed=100005 modo=docker
+  -> 20261014_113334 (109.1s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[6/30] seed=100006 modo=docker
+  -> 20261014_113523 (109.3s): recall=1.000 fp=1 fn=0 inyecciones=64
+
+[7/30] seed=100007 modo=docker
+  -> 20261014_113712 (109.1s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[8/30] seed=100008 modo=docker
+  -> 20261014_113901 (108.9s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[9/30] seed=100009 modo=docker
+  -> 20261014_114050 (109.3s): recall=1.000 fp=1 fn=0 inyecciones=64
+
+[10/30] seed=100010 modo=docker
+  -> 20261014_114239 (109.2s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[11/30] seed=100011 modo=docker
+  -> 20261014_114429 (108.3s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[12/30] seed=100012 modo=docker
+  -> 20261014_114617 (109.1s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[13/30] seed=100013 modo=docker
+  -> 20261014_114806 (109.7s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[14/30] seed=100014 modo=docker
+  -> 20261014_114956 (108.8s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[15/30] seed=100015 modo=docker
+  -> 20261014_115144 (106.9s): recall=1.000 fp=1 fn=0 inyecciones=64
+
+[16/30] seed=100016 modo=docker
+  -> 20261014_115331 (107.3s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[17/30] seed=100017 modo=docker
+  -> 20261014_115519 (109.1s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[18/30] seed=100018 modo=docker
+  -> 20261014_115708 (110.7s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[19/30] seed=100019 modo=docker
+  -> 20261014_115859 (108.7s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[20/30] seed=100020 modo=docker
+  -> 20261014_120047 (108.9s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[21/30] seed=100021 modo=docker
+  -> 20261014_120236 (108.5s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[22/30] seed=100022 modo=docker
+  -> 20261014_120425 (109.0s): recall=1.000 fp=1 fn=0 inyecciones=64
+
+[23/30] seed=100023 modo=docker
+  -> 20261014_120614 (107.7s): recall=1.000 fp=1 fn=0 inyecciones=64
+
+[24/30] seed=100024 modo=docker
+  -> 20261014_120801 (107.5s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[25/30] seed=100025 modo=docker
+  -> 20261014_120949 (107.2s): recall=1.000 fp=1 fn=0 inyecciones=64
+
+[26/30] seed=100026 modo=docker
+  -> 20261014_121136 (108.3s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[27/30] seed=100027 modo=docker
+  -> 20261014_121324 (107.6s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[28/30] seed=100028 modo=docker
+  -> 20261014_121512 (107.0s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+[29/30] seed=100029 modo=docker
+  -> 20261014_121659 (107.6s): recall=1.000 fp=1 fn=0 inyecciones=64
+
+[30/30] seed=100030 modo=docker
+  -> 20261014_121847 (107.2s): recall=1.000 fp=0 fn=0 inyecciones=64
+
+=== CAMPA╤A COMPLETA (30 corridas) ===
+ADR global: 100.0% (IC95 [99.8, 100.0]) precision=99.6% fp=7 fn=0
+Cobertura ADR>=90%: 15/15 escenarios
+Resumen: analysis_output\validation\main_20261014_162606/validation_summary.md
+FASE 1 exit=0 2026-10-14T12:20:34.1837210-05:00
+=== FASE 2: 30 corridas local, solo A14 (tag a14) ===
+Campa±a H1: 30 corridas modo=local exclude=A01,A02,A03,A04,A05,A06,A07,A08,A09,A10,A11,A12,A13,A15,A16
+Salida: analysis_output\validation\a14_20261014_172034
+
+[1/30] seed=100001 modo=local
+  -> 20261014_122034 (199.5s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[2/30] seed=100002 modo=local
+  -> 20261014_122354 (199.5s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[3/30] seed=100003 modo=local
+  -> 20261014_122713 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[4/30] seed=100004 modo=local
+  -> 20261014_123033 (199.3s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[5/30] seed=100005 modo=local
+  -> 20261014_123352 (199.5s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[6/30] seed=100006 modo=local
+  -> 20261014_123711 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[7/30] seed=100007 modo=local
+  -> 20261014_124031 (199.6s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[8/30] seed=100008 modo=local
+  -> 20261014_124350 (199.3s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[9/30] seed=100009 modo=local
+  -> 20261014_124710 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[10/30] seed=100010 modo=local
+  -> 20261014_125029 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[11/30] seed=100011 modo=local
+  -> 20261014_125349 (199.3s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[12/30] seed=100012 modo=local
+  -> 20261014_125708 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[13/30] seed=100013 modo=local
+  -> 20261014_130027 (199.5s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[14/30] seed=100014 modo=local
+  -> 20261014_130347 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[15/30] seed=100015 modo=local
+  -> 20261014_130706 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[16/30] seed=100016 modo=local
+  -> 20261014_131026 (199.5s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[17/30] seed=100017 modo=local
+  -> 20261014_131345 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[18/30] seed=100018 modo=local
+  -> 20261014_131704 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[19/30] seed=100019 modo=local
+  -> 20261014_132024 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[20/30] seed=100020 modo=local
+  -> 20261014_132343 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[21/30] seed=100021 modo=local
+  -> 20261014_132703 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[22/30] seed=100022 modo=local
+  -> 20261014_133022 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[23/30] seed=100023 modo=local
+  -> 20261014_133341 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[24/30] seed=100024 modo=local
+  -> 20261014_133701 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[25/30] seed=100025 modo=local
+  -> 20261014_134020 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[26/30] seed=100026 modo=local
+  -> 20261014_134340 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[27/30] seed=100027 modo=local
+  -> 20261014_134659 (199.6s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[28/30] seed=100028 modo=local
+  -> 20261014_135019 (199.7s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[29/30] seed=100029 modo=local
+  -> 20261014_135338 (199.4s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+[30/30] seed=100030 modo=local
+  -> 20261014_135658 (199.5s): recall=1.000 fp=0 fn=0 inyecciones=3
+
+=== CAMPA╤A COMPLETA (30 corridas) ===
+ADR global: 100.0% (IC95 [95.9, 100.0]) precision=100.0% fp=0 fn=0
+Cobertura ADR>=90%: 1/1 escenarios
+Resumen: analysis_output\validation\a14_20261014_172034/validation_summary.md
+FASE 2 exit=0 2026-10-14T14:00:17.5471264-05:00
+FIN campana 2026-10-14T14:00:17.5555077-05:00 rc1=0 rc2=0

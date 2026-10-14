@@ -1,0 +1,482 @@
+# Configuración del laboratorio de detección de anomalías HL7/MLLP
+# Basado exclusivamente en evidencia observada: captura WATO STANDBY 25-08-2026
+# Valores marcados como OBSERVADO, INFERIDO, DOCUMENTADO o NO_VERIFICADO
+
+laboratory:
+  name: "WATO_HL7_Anomaly_Detection_Lab"
+  description: "Entorno experimental aislado para detección de anomalías en comunicaciones HL7/MLLP de Mindray WATO EX-35"
+  mode: "internal_docker_only"  # localhost | internal_docker_only
+  network:
+    internal: true
+    emulator_service_name: "wato-emulator"
+    receiver_service_name: "mllp-receiver"
+    detector_service_name: "anomaly-detector"
+    pcap_output_dir: "/evidence/pcaps"
+  safety:
+    require_lab_authorized: true
+    require_lab_marker: true
+    lab_marker_path: "C:/Users/OsoGa/OneDrive/Documentos/Wato/Investigacion-de-la-tesis/LAB_ONLY.marker"
+    block_public_ips: true
+    block_hospital_routes: true
+    max_message_rate_per_sec: 10
+    max_message_size_bytes: 65535
+    max_concurrent_connections: 5
+    anomaly_cooldown_seconds: 30
+
+wato_observed_standby:
+  # ===== PARÁMETROS OBSERVADOS EN CAPTURA REAL (STANDBY 25-08-2026) =====
+  source:
+    ip: "192.168.23.250"           # OBSERVADO: IP origen WATO en captura
+    mac: "00:0f:14:35:86:ec"       # OBSERVADO: MAC WATO (Mindray OUI 00:0f:14)
+    port_range: [2069, 2070]       # OBSERVADO: puertos efímeros usados en reintentos
+  
+  destination:
+    ip: "192.168.23.200"           # OBSERVADO: IP destino que WATO busca (servidor HL7)
+    port: 1550                     # OBSERVADO: puerto HL7 configurado en WATO
+    protocol: "TCP"
+  
+  mllp:
+    framing: "standard"            # OBSERVADO: SB (0x0B) + mensaje + EB (0x1C) + CR (0x0D)
+    start_block: 0x0B
+    end_block: 0x1C
+    carriage_return: 0x0D
+    encoding: "UTF-8"              # OBSERVADO: MSH-18 = "UNICODE UTF-8"
+    # NOTA: ackdummy original usaba ISO-8859-1 (INCORRECTO según evidencia)
+    # INFERIDO: umbral de detección del framer = 4× p95 baseline (971 B).
+    # El límite de protocolo documentado es 65535 B; en el laboratorio se
+    # usa 4096 B para detectar mensajes sobredimensionados (A15).
+    max_message_size: 4096
+  
+  hl7:
+    version: "2.6"                 # OBSERVADO: MSH-12 = "2.6"
+    profile: "IHE_PCD_01"          # OBSERVADO: MSH-21 = "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
+    message_type: "ORU^R01^ORU_R01" # OBSERVADO: MSH-9
+    trigger_event: "ORU^R01"       # OBSERVADO
+    structure: "ORU_R01"           # OBSERVADO
+    processing_id: "P"             # OBSERVADO: MSH-11 = "P" (Production)
+    ack_required: "AL"             # OBSERVADO: MSH-16 = "AL" (Application Level ACK)
+    charset: "UNICODE UTF-8"       # OBSERVADO: MSH-18
+    separators: "|^~\\&"           # OBSERVADO: MSH-2 (estándar HL7)
+  
+  msh_fields:
+    sending_application: "MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64"  # OBSERVADO: MSH-3
+    sending_facility: ""           # OBSERVADO: MSH-4 vacío en captura
+    receiving_application: ""      # OBSERVADO: MSH-5 vacío
+    receiving_facility: ""         # OBSERVADO: MSH-6 vacío
+    datetime_format: "%Y%m%d%H%M%S%z"  # OBSERVADO: MSH-7 = "20260825141442-0500"
+    message_control_id_pattern: "sequential"  # OBSERVADO: incrementa 1 por mensaje
+  
+  segments_observed:
+    - "MSH"    # OBSERVADO: siempre presente
+    - "PID"    # OBSERVADO: presente pero vacío en STANDBY
+    - "PV1"    # OBSERVADO: presente mínimo
+    - "OBR"    # OBSERVADO: identifica sistema anestesia (MDC_DEV_SYS_ANESTH)
+    - "OBX"    # OBSERVADO: 4 OBX tipo CWE en STANDBY
+  
+  obx_observed_standby:
+    # OBSERVADO: 4 OBX en STANDBY (tipo CWE = coded with exceptions)
+    - obx_id: 1
+      code: "202886^MDC_EVT_STAT_DEV^MDC"
+      sub_id: "1.1.1.202886"
+      value: "202836^MDC_EVT_STAT_STANDBY^MDC"
+      value_type: "CWE"
+      description: "Estado del dispositivo: STANDBY"
+      status: "OBSERVADO"
+    - obx_id: 2
+      code: "30002^MNDRY_EVT_STAT_MODE_DEV"
+      sub_id: "1.1.1.30002"
+      value: "30003^MNDRY_EVT_STAT_MODE_NORMAL"
+      value_type: "CWE"
+      description: "Modo del dispositivo: NORMAL"
+      status: "OBSERVADO"
+    - obx_id: 3
+      code: "30005^MNDRY_EVT_PATIENT_TYPE"
+      sub_id: "1.1.1.30005"
+      value: "202890^MDC_EVT_STAT_DEV_MODE_ADULT"
+      value_type: "CWE"
+      description: "Tipo de paciente: ADULTO"
+      status: "OBSERVADO"
+    - obx_id: 4
+      code: "30007^MNDRY_EVT_STAT_WARMER_ON_BOOL"
+      sub_id: "1.3.1.30007"
+      value: "30000^MDC_TRUE"
+      value_type: "CWE"
+      description: "Calentador: ENCENDIDO"
+      status: "OBSERVADO"
+  
+  timing:
+    interval_seconds: 10.0         # OBSERVADO: exacto 10.000s entre mensajes
+    session_duration_seconds: 509  # OBSERVADO: captura duró 509s con sesión activa
+    message_count: 43              # OBSERVADO: 43 ciclos ORU^R01 + ACK
+    message_size_bytes:
+      min: 968                     # OBSERVADO
+      max: 972                     # OBSERVADO
+      mode: 971                    # OBSERVADO: 34/43 mensajes
+    ack_size_bytes: [115, 117]     # OBSERVADO
+    clock_offset_seconds: 1030     # OBSERVADO: +17min10s (reloj WATO adelantado)
+  
+  fsm_states_observed:
+    - "SIN_GATEWAY"      # OBSERVADO: reintentos SYN sin respuesta
+    - "HANDSHAKE"        # OBSERVADO: SYN → SYN-ACK → ACK
+    - "SESION_ESTABLECIDA_STANDBY"  # OBSERVADO: ORU^R01 cada 10s + ACK
+
+wato_running_inferred:
+  # ===== PARÁMETROS INFERIDOS PARA MODO RUNNING (NO VERIFICADOS) =====
+  # Basados en documentación A-Series y perfil IHE PCD-01 DEC
+  # DEBEN SER VALIDADOS POR CODIRECTORA CLÍNICA O DOCUMENTACIÓN OFICIAL
+  status: "NO_VERIFICADO"
+  message_type: "ORU^R01"          # INFERIDO: mismo tipo, contenido distinto
+  interval_seconds: 10             # INFERIDO: configurable, 10s típico
+  obx_numeric_parameters:
+    # INFERIDOS: parámetros fisiológicos numéricos (tipo NM o SN)
+    # Códigos MDC/IEEE 11073-10101 probables - REQUIEREN VALIDACIÓN
+    - code: "150020^MDC_VOL_RESP_TIDAL^MDC"
+      description: "Volumen corriente (TV)"
+      unit: "mL"
+      value_type: "NM"
+      range_min: 0
+      range_max: 2000
+      status: "NO_VERIFICADO"
+    - code: "150021^MDC_VOL_RESP_MINUTE^MDC"
+      description: "Volumen minuto (MV)"
+      unit: "L/min"
+      value_type: "NM"
+      range_min: 0
+      range_max: 30
+      status: "NO_VERIFICADO"
+    - code: "150022^MDC_RATE_RESP^MDC"
+      description: "Frecuencia respiratoria (RR)"
+      unit: "/min"
+      value_type: "NM"
+      range_min: 0
+      range_max: 60
+      status: "NO_VERIFICADO"
+    - code: "150005^MDC_PRESS_AWAY_PEAK^MDC"
+      description: "Presión pico de vía aérea (PIP)"
+      unit: "cmH2O"
+      value_type: "NM"
+      range_min: 0
+      range_max: 60
+      status: "NO_VERIFICADO"
+    - code: "150007^MDC_PRESS_AWAY_MEAN^MDC"
+      description: "Presión media de vía aérea"
+      unit: "cmH2O"
+      value_type: "NM"
+      range_min: 0
+      range_max: 30
+      status: "NO_VERIFICADO"
+    - code: "150009^MDC_PRESS_AWAY_PEEP^MDC"
+      description: "PEEP"
+      unit: "cmH2O"
+      value_type: "NM"
+      range_min: 0
+      range_max: 20
+      status: "NO_VERIFICADO"
+    - code: "150456^MDC_CONC_GAS_O2_INSP^MDC"
+      description: "FiO2"
+      unit: "%"
+      value_type: "NM"
+      range_min: 21
+      range_max: 100
+      status: "NO_VERIFICADO"
+    - code: "150457^MDC_CONC_GAS_CO2_ET^MDC"
+      description: "EtCO2"
+      unit: "mmHg"
+      value_type: "NM"
+      range_min: 0
+      range_max: 100
+      status: "NO_VERIFICADO"
+    - code: "150458^MDC_CONC_GAS_N2O_INSP^MDC"
+      description: "FiN2O"
+      unit: "%"
+      value_type: "NM"
+      range_min: 0
+      range_max: 80
+      status: "NO_VERIFICADO"
+    - code: "150459^MDC_CONC_GAS_AG_ET^MDC"
+      description: "Agente anestésico espiratorio"
+      unit: "%"
+      value_type: "NM"
+      range_min: 0
+      range_max: 10
+      status: "NO_VERIFICADO"
+    - code: "150460^MDC_CONC_GAS_MAC^MDC"
+      description: "MAC (Minimum Alveolar Concentration)"
+      unit: "MAC"
+      value_type: "NM"
+      range_min: 0
+      range_max: 5
+      status: "NO_VERIFICADO"
+  
+  alarm_obx_inferred:
+    # INFERIDOS: alarmas como OBX adicionales o mensajes ALR/OUL
+    - code: "202886^MDC_EVT_STAT_DEV^MDC"
+      description: "Estado dispositivo con alarma"
+      value_type: "CWE"
+      status: "NO_VERIFICADO"
+    - code: "30001^MNDRY_EVT_ALARM^MDC"
+      description: "Código de alarma Mindray"
+      value_type: "CWE"
+      status: "NO_VERIFICADO"
+
+detector:
+  engine:
+    type: "deterministic_fsm"
+    rules_file: "rules.yaml"
+    baseline_file: "baseline.yaml"
+    max_buffer_messages: 1000
+    flush_interval_seconds: 60
+  
+  rules_enabled:
+    - "R-ID-001"   # Aplicación emisora no permitida
+    - "R-ID-002"   # Institución emisora no permitida
+    - "R-NET-001"  # Origen de red no permitido
+    - "R-MLLP-001" # Framing inválido
+    - "R-HL7-001"  # Ausencia MSH
+    - "R-HL7-002"  # Tipo mensaje desconocido
+    - "R-HL7-003"  # Secuencia segmentos inválida
+    - "R-SEQ-001"  # Message Control ID duplicado
+    - "R-SEQ-002"  # Replay por hash normalizado
+    - "R-TIME-001" # Timestamp regresivo
+    - "R-TIME-002" # Frecuencia fuera intervalo
+    - "R-OBX-001"  # Identificador OBX no autorizado
+    - "R-OBX-002"  # Unidad no permitida
+    - "R-OBX-003"  # Tipo dato incompatible
+    - "R-STATE-001" # Transición estado no permitida
+  
+  alerting:
+    output_format: "json"
+    syslog_enabled: false
+    syslog_host: "127.0.0.1"
+    syslog_port: 514
+    include_evidence_hash: true
+    include_raw_message: false  # Seguridad: no almacenar PHI
+    anonymize_before_alert: true
+  
+  evidence:
+    preserve_raw_bytes: true
+    rotate_logs_mb: 100
+    max_log_files: 10
+    hash_algorithm: "sha256"
+    timestamp_source: "monotonic_utc"  # No confiar en reloj WATO
+
+emulator:
+  synthetic_prefix: "SYNTHETIC-NOT-FOR-CLINICAL-USE"
+  allowed_message_types: ["ORU^R01"]
+  states:
+    - "STANDBY"
+    - "RUNNING"
+    - "ALARM_SIMULATED"
+    - "SESSION_END"
+  standby:
+    interval_seconds: 10
+    message_template: "standby_orur01.hl7"
+    obx_count: 4
+  running:
+    interval_seconds: 10
+    message_template: "running_orur01.hl7"
+    obx_count: 14  # 4 estados + 10 numéricos inferidos
+  alarm_simulated:
+    interval_seconds: 1
+    message_template: "alarm_orur01.hl7"
+    additional_obx: ["alarm_obx_inferred"]
+  session_end:
+    send_bye: true
+    close_connection: true
+
+anomaly_generator:
+  safety_limits:
+    # Presupuesto por corrida: cubre cobertura completa del experimento
+    # 14 escenarios × 3 inyecciones + A12(20) + A13(5) = 67; margen 70.
+    max_anomalies_per_run: 70
+    max_rate_per_second: 5
+    max_message_size_bytes: 32768
+    cooldown_seconds: 30
+    require_lab_authorized: true
+    require_lab_marker: true
+  
+  scenarios:
+    A01:
+      name: "unknown_logical_source"
+      description: "Fuente lógica desconocida en MSH-3/MSH-4"
+      threat: "Suplantación de identidad (Spoofing)"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 10
+    A02:
+      name: "duplicate_control_id"
+      description: "Message Control ID duplicado"
+      threat: "Replay / Duplicación"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 10
+    A03:
+      name: "replay_synthetic_message"
+      description: "Replay de mensaje sintético previo"
+      threat: "Replay attack"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 10
+    A04:
+      name: "regressive_timestamp"
+      description: "Timestamp regresivo en MSH-7"
+      threat: "Manipulación temporal"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 10
+    A05:
+      name: "missing_final_delimiter"
+      description: "Mensaje MLLP sin delimitador final (0x1C 0x0D)"
+      threat: "Framing inválido / DoS parser"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 5
+    A06:
+      name: "unexpected_bytes_before_start"
+      description: "Bytes inesperados antes del delimitador inicial (0x0B)"
+      threat: "Framing inválido / Evasión parser"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 5
+    A07:
+      name: "missing_msh_segment"
+      description: "Segmento MSH ausente"
+      threat: "Mensaje malformado"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 5
+    A08:
+      name: "invalid_segment_order"
+      description: "Orden de segmentos inválido (ej. OBX antes de MSH)"
+      threat: "Mensaje malformado"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 5
+    A09:
+      name: "unknown_message_type"
+      description: "Tipo de mensaje no en baseline (ej. ADT^A01, ORM^O01)"
+      threat: "Inyección tipo mensaje no autorizado"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 10
+    A10:
+      name: "synthetic_obx_unexpected_datatype"
+      description: "Campo OBX sintético con tipo de dato inesperado (ej. NM en CWE)"
+      threat: "Manipulación datos observación"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 10
+    A11:
+      name: "synthetic_obx_unauthorized_unit"
+      description: "Unidad sintética no autorizada en OBX-6"
+      threat: "Manipulación unidades de medida"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 10
+    A12:
+      name: "frequency_out_of_baseline"
+      description: "Frecuencia fuera de baseline (ráfaga alta)"
+      threat: "DoS / Flooding"
+      mitre_ics: "T0814"
+      enabled: true
+      safety_limit: 20
+      max_burst_messages: 20
+      burst_duration_seconds: 5
+    A13:
+      name: "repeated_reconnections"
+      description: "Reconexiones repetidas (corta sesión y reconecta)"
+      threat: "Connection flooding / Resource exhaustion"
+      mitre_ics: "T0814"
+      enabled: true
+      safety_limit: 5
+      max_reconnects: 5
+      inter_reconnect_seconds: 0.5
+    A14:
+      name: "periodic_silence"
+      description: "Silencio periódico de 45 s (hueco > baseline 15 s) y luego mensaje"
+      threat: "Degradación de canal / DoS parcial"
+      mitre_ics: "T0814"
+      enabled: true
+      safety_limit: 3
+      gap_seconds: 45
+    A15:
+      name: "oversized_message"
+      description: "Mensaje excesivamente grande (límite seguro)"
+      threat: "Buffer overflow / DoS parser"
+      mitre_ics: "T0814"
+      enabled: true
+      safety_limit: 5
+      max_size_bytes: 32768
+    A16:
+      name: "logical_identity_change_mid_session"
+      description: "Cambio de identidad lógica (MSH-3/4) durante sesión"
+      threat: "Suplantación / Session hijacking"
+      mitre_ics: "T1692.002"
+      enabled: true
+      safety_limit: 5
+
+baseline_builder:
+  source_sessions: ["standby_20260825"]  # Solo sesiones normales etiquetadas
+  output_file: "baseline.yaml"
+  schema_version: "1.0"
+  requires_clinical_approval: true
+  clinical_approval_status: "PENDING"
+  statistics:
+    message_types_allowed: ["ORU^R01^ORU_R01"]
+    segment_sequences_allowed:
+      - ["MSH", "PID", "PV1", "OBR", "OBX", "OBX", "OBX", "OBX"]
+    sending_applications_allowed: ["MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64"]
+    sending_facilities_allowed: [""]
+    hl7_versions_allowed: ["2.6"]
+    message_length:
+      min: 968
+      median: 971
+      p95: 972
+      max: 972
+    inter_message_interval_seconds:
+      min: 9.99
+      median: 10.0
+      p95: 10.01
+      max: 10.02
+    messages_per_minute: 6.0
+    obx_identifiers_observed:
+      - "202886^MDC_EVT_STAT_DEV^MDC"
+      - "30002^MNDRY_EVT_STAT_MODE_DEV"
+      - "30005^MNDRY_EVT_PATIENT_TYPE"
+      - "30007^MNDRY_EVT_STAT_WARMER_ON_BOOL"
+    obx_units_observed: []  # STANDBY usa CWE, no unidades
+    obx_value_types_observed: ["CWE"]
+    state_transitions_observed:
+      - ["SIN_GATEWAY", "HANDSHAKE"]
+      - ["HANDSHAKE", "SESION_ESTABLECIDA_STANDBY"]
+      - ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_STANDBY"]
+
+evaluation:
+  metrics:
+    - "true_positives"
+    - "false_positives"
+    - "true_negatives"
+    - "false_negatives"
+    - "recall"
+    - "precision"
+    - "f1_score"
+    - "false_positive_rate"
+    - "detection_latency_p50_us"
+    - "detection_latency_p95_us"
+    - "detection_latency_p99_us"
+    - "messages_per_second"
+    - "message_loss_rate"
+    - "cpu_usage_percent"
+    - "memory_usage_mb"
+    - "evidence_integrity_verified"
+  thresholds:
+    # HIPÓTESIS / CRITERIOS DE ACEPTACIÓN - NO RESULTADOS GARANTIZADOS
+    target_recall: 0.90
+    target_precision: 0.95
+    target_fpr: 0.05
+    target_latency_p99_us: 500000  # 500ms realista para Python; µs requiere C/Rust
+    target_throughput_mps: 100
+  reporting:
+    output_format: "json"
+    include_confusion_matrix: true
+    include_roc_data: false  # Detector determinista, no probabilístico

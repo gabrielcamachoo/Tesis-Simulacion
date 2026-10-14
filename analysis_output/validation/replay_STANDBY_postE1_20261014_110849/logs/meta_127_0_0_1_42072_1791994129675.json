@@ -1,0 +1,22 @@
+{
+  "session_id": "127.0.0.1:42072:1791994129675",
+  "src_ip": "127.0.0.1",
+  "src_port": 42072,
+  "dst_ip": "192.168.23.200",
+  "dst_port": 1550,
+  "start_time": "2026-10-14T16:08:49.677619+00:00",
+  "files": {
+    "raw": "C:\\Users\\OsoGa\\OneDrive\\Documentos\\Wato\\Investigacion-de-la-tesis\\analysis_output\\validation\\replay_STANDBY_postE1_20261014_110849\\raw\\raw_127_0_0_1_42072_1791994129675.bin",
+    "hl7": "C:\\Users\\OsoGa\\OneDrive\\Documentos\\Wato\\Investigacion-de-la-tesis\\analysis_output\\validation\\replay_STANDBY_postE1_20261014_110849\\hl7\\messages_127_0_0_1_42072_1791994129675.hl7",
+    "log": "C:\\Users\\OsoGa\\OneDrive\\Documentos\\Wato\\Investigacion-de-la-tesis\\analysis_output\\validation\\replay_STANDBY_postE1_20261014_110849\\logs\\session_127_0_0_1_42072_1791994129675.log",
+    "alerts": "C:\\Users\\OsoGa\\OneDrive\\Documentos\\Wato\\Investigacion-de-la-tesis\\analysis_output\\validation\\replay_STANDBY_postE1_20261014_110849\\alerts\\alerts_127_0_0_1_42072_1791994129675.jsonl"
+  },
+  "end_time": "2026-10-14T16:08:49.691744+00:00",
+  "hashes": {
+    "raw": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "hl7": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "log": "b52f16115691a76e720dbb1fa658c8c2c4ee5c03f3646e2480113f5150e531ca",
+    "alerts": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "bytes_written": 0
+}

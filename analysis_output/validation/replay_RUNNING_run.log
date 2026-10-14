@@ -1,0 +1,3 @@
+[RUNNING_postE1] LECTURAACK27AGOSTO.pcapng: 1 flujo(s), 99 ORU, intervalos {'n': 98, 'min_s': 9.649, 'max_s': 10.361, 'avg_s': 10.0}
+Enviados: 99/99 | anomalías (FP): 256 {'R-OBX-001': 86, 'R-OBX-002': 86, 'R-OBX-003': 84} | normales: 13
+Manifiesto: analysis_output\validation\replay_RUNNING_postE1_20261014_112359/replay_manifest.json

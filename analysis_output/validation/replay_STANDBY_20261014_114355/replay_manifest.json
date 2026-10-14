@@ -1,0 +1,37 @@
+{
+  "tool": "replay_evidence.py",
+  "label": "STANDBY",
+  "timestamp_utc_inicio": "2026-10-14T16:43:55.978866+00:00",
+  "pcap": "evidence_raw\\pcap\\LECTURACONACK25AGOSTO.pcapng",
+  "pcap_sha256": "41761f0a9d8baa50d216a431298869cefc5361b6e7f2a0b42ded315555febbba",
+  "anonimizado": true,
+  "pipeline": "analyze_evidence (reasamblado TCP + MLLP + anonimización)",
+  "flujos": [
+    "192.168.23.200:1550 -> 192.168.23.250:2070"
+  ],
+  "n_mensajes_oru_extraidos": 43,
+  "n_mensajes_enviados": 43,
+  "n_ack_no_reenviados": "los ACK de la captura no aplican: el receptor es el lado servidor (emisor->:1550 = solo ORU)",
+  "pacing": "delta original de captura / 1.0",
+  "intervalos_s": {
+    "n": 42,
+    "min_s": 9.996,
+    "max_s": 10.004,
+    "avg_s": 10.0
+  },
+  "target": "127.0.0.1:2050",
+  "modo": "observador (receptor --no-ack)",
+  "receiver_spawned": true,
+  "elapsed_s": 422.0,
+  "error": null,
+  "alertas_totales": 0,
+  "alertas_por_regla": {},
+  "eventos_normales": 43,
+  "eventos_totales": 43,
+  "expectativa": "FP = 0 (corpus benigno STANDBY, protocolo §3.2)",
+  "entorno": {
+    "python": "3.11.9",
+    "host_declarado": "PC",
+    "comando": "replay_evidence.py --pcap evidence_raw/pcap/LECTURACONACK25AGOSTO.pcapng --label STANDBY --start-receiver"
+  }
+}

@@ -1,0 +1,3 @@
+[STANDBY] LECTURACONACK25AGOSTO.pcapng: 1 flujo(s), 43 ORU, intervalos {'n': 42, 'min_s': 9.996, 'max_s': 10.004, 'avg_s': 10.0}
+Enviados: 43/43 | alertas (FP): 43 {'NORMAL': 43}
+Manifiesto: analysis_output\validation\replay_STANDBY_20261014_111034/replay_manifest.json

@@ -1,21 +1,35 @@
 {
-  "fase": "9 - validación",
-  "protocolo": "VALIDATION_PROTOCOL.md §2 (artefactos congelados antes de medir)",
-  "fecha_freeze_utc": "2026-10-14T10:21:00Z",
+  "fase": "9 - validacion",
+  "protocolo": "VALIDATION_PROTOCOL.md sec 2 (artefactos congelados antes de medir)",
+  "fecha_freeze_utc": "2026-10-14T16:10:00Z",
   "git": {
-    "head": "025693e1e30a288bcebf4736d0be9119e09aad65",
-    "head_short": "025693e",
-    "mensaje": "Fase 9 (tooling): semillas PRNG por corrida, bench latencia H2 y replay de evidencia H3",
+    "head": "70025c4ad7df2a0f1f4c221205bfc66fe194e724",
+    "head_short": "70025c4",
+    "mensaje": "Enmienda E1: R-OBX-002 CWE+unidad (premisa falsa 43/43 FP en replay STANDBY) + adopcion tooling sesion paralela (run_matrix, encoding fix, wrapper campana venv 3.11.9) + resultados piloto pre-E1 sellados",
     "arbol_limpio": true,
-    "notas_sesion_paralela": "La sesión paralela editó run_experiment.py a las 10:16:30 (versión alternativa de semilla al generador) y revirtió su cambio al pausar; el árbol quedó limpio en este HEAD antes de cualquier medición."
+    "enmienda_e1": {
+      "descripcion": "R-OBX-002 solo alerta si allowed_units no esta vacio y la unidad OBX-6 esta fuera de la lista; baseline obx_units_observed = ['262656^MDC_DIM_DIMLESS^MDC']; eliminada la clausula cwe_with_unit que trataba CWE+unidad como siempre invalido (premisa falsa: el STANDBY real trae DIMLESS en los 4 OBX CWE)",
+      "pre_e1": {
+        "head": "025693e1e30a288bcebf4736d0be9119e09aad65",
+        "artefactos_sha256": {
+          "src/config/settings.yaml": "fb5260b2dcff0171500bfe9dd6ee2a2ccd8c2c4383ea5b7481beaebb07a98f2e",
+          "config/rules.yaml": "dd35891ff5c212c18736efb1d0d20dd7b85e2ffd5b937834bc00bbccd23214a8",
+          "baseline.yaml": "b7b1f109fcb0f61b0aec998be153a48c78843c5b8dcc9cb99109aa7d7a33d8de"
+        },
+        "replays_pre_e1": [
+          "analysis_output/validation/replay_STANDBY_20261014/ (43/43 FP R-OBX-002, sesion asistente 2)",
+          "analysis_output/validation/replay_STANDBY_20261014_103835/ (43/43 FP R-OBX-002, sesion asistente 3, confirmacion independiente)"
+        ]
+      }
+    }
   },
   "artefactos_sha256": {
     "src/config/settings.yaml": "fb5260b2dcff0171500bfe9dd6ee2a2ccd8c2c4383ea5b7481beaebb07a98f2e",
-    "config/rules.yaml": "dd35891ff5c212c18736efb1d0d20dd7b85e2ffd5b937834bc00bbccd23214a8",
-    "baseline.yaml": "b7b1f109fcb0f61b0aec998be153a48c78843c5b8dcc9cb99109aa7d7a33d8de"
+    "config/rules.yaml": "31d958f7876709af6bc260984174528433aec7a5b5706be415f3261386138cd5",
+    "baseline.yaml": "616b7ea2802d25906408f5be19062325f36fe2551e3667c85d16a8de401d561a"
   },
   "semillas": {
-    "politica": "run_experiment --seed N explícito por corrida (campaña A01-A16); si se omite, se genera con SystemRandom y siempre queda registrado en runs/<ts>/seed.txt",
+    "politica": "run_experiment --seed N explicito por corrida (campana A01-A16); si se omite, se genera con SystemRandom y siempre queda registrado en runs/<ts>/seed.txt",
     "derivadas_por_fase": {
       "benign1": "seed_base",
       "anomalies": "seed_base + 1000003",
@@ -23,14 +37,21 @@
     },
     "registro": [
       "runs/<ts>/seed.txt",
-      "runs/<ts>/scenario_order.txt (orden alternado de escenarios, protocolo §6)"
+      "runs/<ts>/scenario_order.txt (orden alternado de escenarios, protocolo sec 6)"
     ]
   },
   "entorno": {
     "host_declarado": "PC (Windows 10.0.26300), NO Raspberry Pi",
-    "python": "3.11.9",
-    "platform": "Windows-10-10.0.26300-SP0",
-    "cargas_paralelas_durante_medicion": "ninguna (secuencial; sesión paralela en pausa por decisión del usuario)",
-    "h2_en_pi": "NO VERIFICADO hasta repetir latency_bench.py en la Raspberry Pi (protocolo §3.3)"
-  }
+    "python": "3.11.9 (venv .venv) para toda validacion de esta tanda: replays, campana (run_campaign.ps1) y latency_bench",
+    "plataforma": "Windows-10-10.0.26300-SP0",
+    "cargas_paralelas_durante_medicion": "ninguna (secuencial; sesion paralela en pausa por decision del usuario; campana piloto pre-E1 abortada y sellada en campaign_log_piloto_preE1.txt)",
+    "h2_en_pi": "NO VERIFICADO hasta repetir latency_bench.py en la Raspberry Pi (protocolo sec 3.3)"
+  },
+  "orden_de_medicion_post_freeze": [
+    "replay STANDBY post-E1 (replay_evidence.py --label STANDBY --start-receiver, esperar FP=0)",
+    "replay RUNNING post-E1 (desacoplado ~17 min)",
+    "campana H1: run_campaign.ps1 (30 corridas docker sin A14 + 30 solo-A14 local, seeds explicitas)",
+    "latency_bench.py --messages 1000 --runs 3 (aislado, host PC)",
+    "RESULTS_20261014.md desde RESULTS_TEMPLATE.md"
+  ]
 }

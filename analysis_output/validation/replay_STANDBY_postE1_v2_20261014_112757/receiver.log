@@ -1,0 +1,80 @@
+2026-10-14 11:27:57 - __main__ - INFO - ============================================================
+2026-10-14 11:27:57 - __main__ - INFO - INICIANDO RECEPTOR MLLP/HL7 MODULAR - WATO EX-35
+2026-10-14 11:27:57 - __main__ - INFO - ============================================================
+2026-10-14 11:27:57 - __main__ - INFO - Cargando configuración: C:\Users\OsoGa\OneDrive\Documentos\Wato\Investigacion-de-la-tesis\analysis_output\validation\replay_STANDBY_postE1_v2_20261014_112757\settings_lab.yaml
+2026-10-14 11:27:57 - src.config.settings - WARNING - Verificar que no hay rutas a red hospitalaria: 10.0.0.0/8
+2026-10-14 11:27:57 - src.config.settings - WARNING - Verificar que no hay rutas a red hospitalaria: 172.16.0.0/12
+2026-10-14 11:27:57 - src.config.settings - WARNING - Verificar que no hay rutas a red hospitalaria: 192.168.0.0/16
+2026-10-14 11:27:57 - src.config.settings - INFO - Validación de seguridad PASÓ: LAB_AUTHORIZED=True, LAB_MARKER=True
+2026-10-14 11:27:57 - __main__ - INFO - Configuración: bind=127.0.0.1:63995
+2026-10-14 11:27:57 - __main__ - INFO - Servidor HL7 esperado: 192.168.23.200:1550
+2026-10-14 11:27:57 - __main__ - INFO - ACK: DESACTIVADO
+2026-10-14 11:27:57 - __main__ - INFO - Evidencia en: C:\Users\OsoGa\OneDrive\Documentos\Wato\Investigacion-de-la-tesis\analysis_output\validation\replay_STANDBY_postE1_v2_20261014_112757
+2026-10-14 11:27:57 - __main__ - INFO - Cargando baseline: baseline.yaml
+2026-10-14 11:27:57 - src.detection.baseline - INFO - Baseline loaded: 1 sessions, 43 messages, 4 OBX codes, clinical_approval=PENDING
+2026-10-14 11:27:57 - __main__ - INFO - Cargando reglas: config/rules.yaml
+2026-10-14 11:27:57 - __main__ - INFO - Reglas habilitadas: ['R-HL7-001', 'R-HL7-002', 'R-HL7-003', 'R-ID-001', 'R-ID-002', 'R-MLLP-001', 'R-NET-001', 'R-OBX-001', 'R-OBX-002', 'R-OBX-003', 'R-SEQ-001', 'R-SEQ-002', 'R-STATE-001', 'R-TIME-001', 'R-TIME-002']
+2026-10-14 11:27:57 - __main__ - INFO - Servidor MLLP ejecutándose. Ctrl+C para detener.
+2026-10-14 11:27:57 - src.mllp.server - INFO - SESSION_START session_id=127.0.0.1:63996:1791995277677 client=127.0.0.1:63996
+2026-10-14 11:27:57 - src.mllp.server - INFO - SESSION_END session_id=127.0.0.1:63996:1791995277677 duration=0.0s messages=0 bytes=0 acks_sent=0 errors=0
+2026-10-14 11:27:57 - src.mllp.server - INFO - SESSION_START session_id=127.0.0.1:63997:1791995277678 client=127.0.0.1:63997
+2026-10-14 11:27:57 - src.evidence.writer - INFO - SESSION_CLOSED session_id=127.0.0.1:63996:1791995277677 hashes={'raw': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'hl7': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'log': 'd0cba3ab8d40f81873a963e8ae3b60baa90e4bbb675781fe14b620d17840d9f4', 'alerts': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+2026-10-14 11:27:57 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=1 type=ORU^R01^ORU_R01 ctrl_id=1 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:28:07 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=2 type=ORU^R01^ORU_R01 ctrl_id=2 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:28:17 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=3 type=ORU^R01^ORU_R01 ctrl_id=3 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:28:27 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=3
+2026-10-14 11:28:27 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=4 type=ORU^R01^ORU_R01 ctrl_id=4 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:28:37 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=5 type=ORU^R01^ORU_R01 ctrl_id=5 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:28:47 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=6 type=ORU^R01^ORU_R01 ctrl_id=6 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:28:57 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=6
+2026-10-14 11:28:57 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=7 type=ORU^R01^ORU_R01 ctrl_id=7 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:29:07 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=8 type=ORU^R01^ORU_R01 ctrl_id=8 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:29:17 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=9 type=ORU^R01^ORU_R01 ctrl_id=9 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 11:29:27 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=9
+2026-10-14 11:29:27 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=10 type=ORU^R01^ORU_R01 ctrl_id=10 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:29:37 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=11 type=ORU^R01^ORU_R01 ctrl_id=11 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:29:47 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=12 type=ORU^R01^ORU_R01 ctrl_id=12 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:29:57 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=12
+2026-10-14 11:29:57 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=13 type=ORU^R01^ORU_R01 ctrl_id=13 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:30:07 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=14 type=ORU^R01^ORU_R01 ctrl_id=14 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:30:17 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=15 type=ORU^R01^ORU_R01 ctrl_id=15 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:30:27 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=15
+2026-10-14 11:30:27 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=16 type=ORU^R01^ORU_R01 ctrl_id=16 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:30:37 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=17 type=ORU^R01^ORU_R01 ctrl_id=17 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:30:47 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=18 type=ORU^R01^ORU_R01 ctrl_id=18 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:30:57 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=18
+2026-10-14 11:30:57 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=19 type=ORU^R01^ORU_R01 ctrl_id=19 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:31:07 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=20 type=ORU^R01^ORU_R01 ctrl_id=20 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:31:17 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=21 type=ORU^R01^ORU_R01 ctrl_id=21 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:31:27 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=21
+2026-10-14 11:31:27 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=22 type=ORU^R01^ORU_R01 ctrl_id=22 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:31:37 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=23 type=ORU^R01^ORU_R01 ctrl_id=23 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:31:47 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=24 type=ORU^R01^ORU_R01 ctrl_id=24 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:31:57 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=24
+2026-10-14 11:31:57 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=25 type=ORU^R01^ORU_R01 ctrl_id=25 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:32:07 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=26 type=ORU^R01^ORU_R01 ctrl_id=26 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:32:17 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=27 type=ORU^R01^ORU_R01 ctrl_id=27 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:32:27 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=27
+2026-10-14 11:32:27 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=28 type=ORU^R01^ORU_R01 ctrl_id=28 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:32:37 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=29 type=ORU^R01^ORU_R01 ctrl_id=29 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:32:47 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=30 type=ORU^R01^ORU_R01 ctrl_id=30 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:32:57 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=30
+2026-10-14 11:32:57 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=31 type=ORU^R01^ORU_R01 ctrl_id=31 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:33:07 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=32 type=ORU^R01^ORU_R01 ctrl_id=32 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:33:17 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=33 type=ORU^R01^ORU_R01 ctrl_id=33 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:33:27 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=33
+2026-10-14 11:33:27 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=34 type=ORU^R01^ORU_R01 ctrl_id=34 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:33:37 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=35 type=ORU^R01^ORU_R01 ctrl_id=35 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:33:47 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=36 type=ORU^R01^ORU_R01 ctrl_id=36 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:33:57 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=36
+2026-10-14 11:33:57 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=37 type=ORU^R01^ORU_R01 ctrl_id=37 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:34:07 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=38 type=ORU^R01^ORU_R01 ctrl_id=38 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:34:17 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=39 type=ORU^R01^ORU_R01 ctrl_id=39 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:34:27 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=39
+2026-10-14 11:34:27 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=40 type=ORU^R01^ORU_R01 ctrl_id=40 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:34:37 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=41 type=ORU^R01^ORU_R01 ctrl_id=41 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:34:47 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=42 type=ORU^R01^ORU_R01 ctrl_id=42 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:34:57 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=42
+2026-10-14 11:34:57 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:63997:1791995277678 msg=43 type=ORU^R01^ORU_R01 ctrl_id=43 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 11:34:57 - src.mllp.server - INFO - SESSION_END session_id=127.0.0.1:63997:1791995277678 duration=420.0s messages=43 bytes=44048 acks_sent=0 errors=0
+2026-10-14 11:34:57 - src.evidence.writer - INFO - SESSION_CLOSED session_id=127.0.0.1:63997:1791995277678 hashes={'raw': '91aa5b8fa5d32ae3c8150963bcc4d4c0045d70de6e639cc0eab47a4bfacaec7d', 'hl7': '72b434be5236c9b5723b40bfb063b6f0142402ba81b7da4c37faecd928120684', 'log': '4f26735173c85bea1a0557e4abd12cc6a565d02b7a0db53a4f290a35d4e69dee', 'alerts': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}

@@ -166,3 +166,36 @@ compartidos (advertencia en §6).
   `RESULTS_YYYYMMDD.md`; (g) hardware Pi (Fase 6) sigue fuera de alcance.
 - Commits de esta sesión: `416b6f1` (run_matrix + tests + fix bench). Fix run_matrix
   UTF-8 pendiente de commit.
+
+## 9. Adenda - sesion asistente 2/4 (2026-10-14, cierre Fase 9)
+
+Continuacion directa de la sesion asistente 2 (ver 5/6/7). El usuario pidio terminar
+todo el plan de validacion. La sesion asistente 3 (paralela) colaboro: reconocio E1,
+aborto su piloto contaminado y lanzo la campana oficial; esta sesion ejecuto replays,
+bench y cierre documental. Estado final: Fase 9 COMPLETA en PC.
+
+- **Commit E1 + tooling conjunto**: 70025c4 (E1 validator/baseline/rules + adopcion
+  run_matrix/run_campaign + resultados piloto pre-E1 sellados).
+- **Freeze manifest v2**: analysis_output/validation/freeze_manifest.json (HEAD 70025c4
+  + hashes pre/post-E1 + orden de medicion). La campana oficial corrio despues en el
+  commit 2017af16 (fix de conteo replay) - sellado en los summaries.
+- **H3 replays (contador corregido, commit 2017af1)**:
+  - STANDBY: FP = 0 confirmado 5x (v2 mio replay_STANDBY_postE1_v2_112757 + 4 de la
+    sesion paralela). Pre-E1: 43/43 FP R-OBX-002 (2 replays historicos).
+  - RUNNING: fp = 256 (R-OBX-001:86, R-OBX-002:86, R-OBX-003:84; 13 NORMAL)
+    confirmado 3x identico (determinismo). Causa: baseline unimodal STANDBY.
+- **Campana H1 (ambas fases exit=0, commit 2017af16)**:
+  - FASE1 main_20261014_162606 (30 docker, exclude A14): ADR 100 % 15/15, Wilson
+    global [99.8,100], precision 99.6 % (7 FP R-TIME-002 benignos por jitter).
+  - FASE2 a14_20261014_172034 (30 local, solo A14): ADR 100 % (90/90), precision 100 %.
+  - H1 ACEPTADA (RESULTS sec 2). Semillas 100001-100030 por fase.
+- **H2 bench (latency_20261014_140421.json)**: 3x1000 peor caso; p95 agregado
+  177.5 us << 500 us -> PASS de referencia en PC; H2 NO VERIFICADO para Pi.
+- **Docs cerradas**: RESULTS_20261014.md (completada con A14 + H2 + decisiones),
+  LIMITATIONS (sec 5 actualizada + sec 9 hallazgos), este HANDOFF, SHA256SUMS.txt
+  de analysis_output/validation/.
+- **Pendiente unico (Fase 6/9 hardware)**: repetir latency_bench en Raspberry Pi
+  (RASPBERRY_PI_SETUP.md) antes de afirmar H2 en la tesis.
+- Leccion de coordinacion: dos sesiones pueden colisionar en replays (puertos auto OK)
+  pero NUNCA en docker (bind-mount vivo = contaminacion). Regla: todo cambio de
+  src/config/baseline exige commit + re-freeze antes de cualquier corrida.

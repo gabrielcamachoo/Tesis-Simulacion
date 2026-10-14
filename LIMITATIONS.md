@@ -46,9 +46,15 @@ tesis como resultado; se declara como limitación. Complementa `THREAT_MODEL.md`
 
 ## 5. Hipótesis pendientes
 
-- **ADR ≥ 90 % (H1) y latencia ≤ 500 µs (H2): NO VERIFICADOS** hasta Fase 9
-  (`VALIDATION_PROTOCOL.md`).
-- FP en RUNNING: sin cuantificar aún.
+- **H1 (ADR ≥ 90 %): VERIFICADA** en Fase 9 (2026-10-14): 16/16 escenarios, ADR 100 %,
+  60 corridas selladas (`RESULTS_20261014.md` §2). Queda pendiente solo el reporte a
+  texto de tesis.
+- **H2 (latencia ≤ 500 µs): NO VERIFICADO para la Raspberry Pi** — PASS de referencia
+  en PC (p95 177.5 µs agregado, peor caso sintético). Repetir el bench en la Pi antes
+  de afirmar H2 (`RESULTS_20261014.md` §3, `RASPBERRY_PI_SETUP.md`).
+- FP en RUNNING: **cuantificado** (256 alertas no-NORMAL sobre 99 ORU de evidencia
+  real, ~2.6/mensaje; reglas R-OBX-001/002/003 sobre códigos fuera de baseline
+  STANDBY). STANDBY: FP = 0 (5 replays independientes).
 
 ## 6. Mapeo MITRE ATT&CK
 
@@ -77,3 +83,22 @@ tesis como resultado; se declara como limitación. Complementa `THREAT_MODEL.md`
   métricas de rendimiento no transferibles hasta medir allí.
 - La otra sesión de desarrollo modifica `src/mllp|hl7|detection` en paralelo: toda corrida de
   validación exige árbol limpio y commit congelado (VALIDATION §6).
+
+
+## 9. Hallazgos de Fase 9 (2026-10-14)
+
+- **FP benigno por jitter de timing (R-TIME-002)**: bajo carga concurrente del
+  emulador+generador, intervalos benignos nominales de 6.0 s bajan esporadicamente a
+  ~4.94 s (< umbral pre-fijado 5.0 s) → 7 FP / 2017 mensajes benignos (0.3 %) en la
+  campaña H1. El umbral NO se ajustó tras medir (protocolo §6); se documenta como
+  fuente de ruido esperable en el despliegue real.
+- **Enmienda E1 (commit 70025c4)**: el corpus STANDBY real trae OBX-6 =
+  `262656^MDC_DIM_DIMLESS^MDC` en los 4 OBX CWE (43/43 mensajes); la premisa
+  "STANDBY CWE sin unidades" del baseline inicial era falsa y producía 43 FP
+  (R-OBX-002) en replay. Corregido y congelado antes de la campaña.
+- **Conteo NORMAL vs anomalía**: `alerts.jsonl` contiene un evento NORMAL (INFO)
+  por mensaje benigno; solo los eventos `rule_id != NORMAL` son alertas. El fix
+  (commit 2017af1) alinea el replay con `evaluate.py`.
+- Coordinación multi-sesión: la campaña piloto pre-E1 quedó contaminada por el
+  bind-mount vivo de `./` en docker (código cambiando a mitad de corrida); la
+  campaña oficial corrió sobre commit congelado y con ambas fases exit=0.

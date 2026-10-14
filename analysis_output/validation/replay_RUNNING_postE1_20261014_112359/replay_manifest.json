@@ -1,0 +1,41 @@
+{
+  "tool": "replay_evidence.py",
+  "label": "RUNNING_postE1",
+  "timestamp_utc_inicio": "2026-10-14T16:24:00.567794+00:00",
+  "pcap": "evidence_raw\\pcap\\LECTURAACK27AGOSTO.pcapng",
+  "pcap_sha256": "67ec6034317e8bb1c1368f2be6005003cd3c2520ea638326bbf80d2f58c6dcd3",
+  "anonimizado": true,
+  "pipeline": "analyze_evidence (reasamblado TCP + MLLP + anonimización)",
+  "flujos": [
+    "192.168.23.200:1550 -> 192.168.23.250:2048"
+  ],
+  "n_mensajes_oru_extraidos": 99,
+  "n_mensajes_enviados": 99,
+  "n_ack_no_reenviados": "los ACK de la captura no aplican: el receptor es el lado servidor (emisor->:1550 = solo ORU)",
+  "pacing": "delta original de captura / 1.0",
+  "intervalos_s": {
+    "n": 98,
+    "min_s": 9.649,
+    "max_s": 10.361,
+    "avg_s": 10.0
+  },
+  "target": "127.0.0.1:36308",
+  "modo": "observador (receptor --no-ack)",
+  "receiver_spawned": true,
+  "elapsed_s": 982.1,
+  "error": null,
+  "alertas_totales": 256,
+  "alertas_por_regla": {
+    "R-OBX-001": 86,
+    "R-OBX-002": 86,
+    "R-OBX-003": 84
+  },
+  "eventos_normales": 13,
+  "eventos_totales": 269,
+  "expectativa": "FP reportados sin umbral (códigos NM/SN NO_VERIFICADOS, protocolo §3.2)",
+  "entorno": {
+    "python": "3.11.9",
+    "host_declarado": "PC",
+    "comando": "replay_evidence.py --pcap evidence_raw\\pcap\\LECTURAACK27AGOSTO.pcapng --label RUNNING_postE1 --start-receiver"
+  }
+}
