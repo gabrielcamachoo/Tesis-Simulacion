@@ -80,7 +80,8 @@ obx_identifier_details:
     - 30000^MDC_TRUE
     value_type: CWE
     status: OBSERVADO
-obx_units_observed: []
+obx_units_observed:
+- 262656^MDC_DIM_DIMLESS^MDC
 obx_value_types_observed:
 - CWE
 state_transitions_observed:

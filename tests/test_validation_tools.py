@@ -94,6 +94,41 @@ class TestLatencyBenchSmoke:
         assert rep["entorno"]["es_raspberry_pi"] is False
 
 
+class TestEnmiendaE1ObxUnit:
+    """Enmienda E1 (2026-10-14): CWE con unidad ya no es inválido per se;
+    R-OBX-002 solo alerta si la unidad está fuera de las observadas."""
+
+    def _baseline(self):
+        from src.detection.baseline import load_baseline
+        return load_baseline(str(ROOT / "baseline.yaml"))
+
+    def _validate(self, text):
+        from src.hl7.parser import parse_hl7_message
+        from src.hl7.validator import validate_obx_constraints
+        msg = parse_hl7_message(text)
+        return validate_obx_constraints(msg, self._baseline())
+
+    def test_stanby_real_cwe_dimless_no_alerta(self):
+        from replay_evidence import extract_oru_flows, flatten
+        flat = flatten(extract_oru_flows(PCAP_STANDBY))
+        content, _ts = flat[0]
+        res = self._validate(content.decode("utf-8", errors="replace"))
+        assert "R-OBX-002" not in res.rule_violations
+
+    def test_unidad_fuera_de_baseline_alerta(self):
+        from anomaly_generator import base_hl7_message, now_hl7_timestamp
+        res = self._validate(base_hl7_message("E1TEST", now_hl7_timestamp(),
+                                              obx_unit="mg/dL"))
+        assert "R-OBX-002" in res.rule_violations
+
+    def test_unidad_observada_no_alerta(self):
+        from anomaly_generator import base_hl7_message, now_hl7_timestamp
+        res = self._validate(base_hl7_message(
+            "E1TEST2", now_hl7_timestamp(),
+            obx_unit="262656^MDC_DIM_DIMLESS^MDC"))
+        assert "R-OBX-002" not in res.rule_violations
+
+
 class TestRunMatrix:
     def test_wilson_ci_perfecto(self):
         from run_matrix import wilson_ci

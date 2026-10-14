@@ -1,0 +1,123 @@
+2026-10-14 10:23:13 - __main__ - INFO - ============================================================
+2026-10-14 10:23:13 - __main__ - INFO - INICIANDO RECEPTOR MLLP/HL7 MODULAR - WATO EX-35
+2026-10-14 10:23:13 - __main__ - INFO - ============================================================
+2026-10-14 10:23:13 - __main__ - INFO - Cargando configuración: C:\Users\OsoGa\OneDrive\Documentos\Wato\Investigacion-de-la-tesis\analysis_output\validation\replay_STANDBY_20261014\settings_lab.yaml
+2026-10-14 10:23:13 - src.config.settings - WARNING - Verificar que no hay rutas a red hospitalaria: 10.0.0.0/8
+2026-10-14 10:23:13 - src.config.settings - WARNING - Verificar que no hay rutas a red hospitalaria: 172.16.0.0/12
+2026-10-14 10:23:13 - src.config.settings - WARNING - Verificar que no hay rutas a red hospitalaria: 192.168.0.0/16
+2026-10-14 10:23:13 - src.config.settings - INFO - Validación de seguridad PASÓ: LAB_AUTHORIZED=True, LAB_MARKER=True
+2026-10-14 10:23:13 - __main__ - INFO - Configuración: bind=127.0.0.1:64339
+2026-10-14 10:23:13 - __main__ - INFO - Servidor HL7 esperado: 192.168.23.200:1550
+2026-10-14 10:23:13 - __main__ - INFO - ACK: DESACTIVADO
+2026-10-14 10:23:13 - __main__ - INFO - Evidencia en: C:\Users\OsoGa\OneDrive\Documentos\Wato\Investigacion-de-la-tesis\analysis_output\validation\replay_STANDBY_20261014
+2026-10-14 10:23:13 - __main__ - INFO - Cargando baseline: baseline.yaml
+2026-10-14 10:23:13 - src.detection.baseline - INFO - Baseline loaded: 1 sessions, 43 messages, 4 OBX codes, clinical_approval=PENDING
+2026-10-14 10:23:13 - __main__ - INFO - Cargando reglas: config/rules.yaml
+2026-10-14 10:23:13 - __main__ - INFO - Reglas habilitadas: ['R-HL7-001', 'R-HL7-002', 'R-HL7-003', 'R-ID-001', 'R-ID-002', 'R-MLLP-001', 'R-NET-001', 'R-OBX-001', 'R-OBX-002', 'R-OBX-003', 'R-SEQ-001', 'R-SEQ-002', 'R-STATE-001', 'R-TIME-001', 'R-TIME-002']
+2026-10-14 10:23:13 - __main__ - INFO - Servidor MLLP ejecutándose. Ctrl+C para detener.
+2026-10-14 10:23:13 - src.mllp.server - INFO - SESSION_START session_id=127.0.0.1:64340:1791991393402 client=127.0.0.1:64340
+2026-10-14 10:23:13 - src.mllp.server - INFO - SESSION_END session_id=127.0.0.1:64340:1791991393402 duration=0.0s messages=0 bytes=0 acks_sent=0 errors=0
+2026-10-14 10:23:13 - src.evidence.writer - INFO - SESSION_CLOSED session_id=127.0.0.1:64340:1791991393402 hashes={'raw': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'hl7': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'log': 'b068ebedf8079f4c6a0bc8905e11468bc5456502920c54c15301fd05ddc62e90', 'alerts': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+2026-10-14 10:23:13 - src.mllp.server - INFO - SESSION_START session_id=127.0.0.1:64343:1791991393418 client=127.0.0.1:64343
+2026-10-14 10:23:13 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=1 type=ORU^R01^ORU_R01 ctrl_id=1 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:23:13 - src.alerting.json_logger - WARNING - ALERT ALERT-000001-1791991393435 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:23:23 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=2 type=ORU^R01^ORU_R01 ctrl_id=2 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:23:23 - src.alerting.json_logger - WARNING - ALERT ALERT-000002-1791991403441 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:23:33 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=3 type=ORU^R01^ORU_R01 ctrl_id=3 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:23:33 - src.alerting.json_logger - WARNING - ALERT ALERT-000003-1791991413439 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:23:43 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=3
+2026-10-14 10:23:43 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=4 type=ORU^R01^ORU_R01 ctrl_id=4 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:23:43 - src.alerting.json_logger - WARNING - ALERT ALERT-000004-1791991423437 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:23:53 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=5 type=ORU^R01^ORU_R01 ctrl_id=5 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:23:53 - src.alerting.json_logger - WARNING - ALERT ALERT-000005-1791991433438 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:24:03 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=6 type=ORU^R01^ORU_R01 ctrl_id=6 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:24:03 - src.alerting.json_logger - WARNING - ALERT ALERT-000006-1791991443439 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:24:13 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=6
+2026-10-14 10:24:13 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=7 type=ORU^R01^ORU_R01 ctrl_id=7 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:24:13 - src.alerting.json_logger - WARNING - ALERT ALERT-000007-1791991453438 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:24:23 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=8 type=ORU^R01^ORU_R01 ctrl_id=8 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:24:23 - src.alerting.json_logger - WARNING - ALERT ALERT-000008-1791991463439 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:24:33 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=9 type=ORU^R01^ORU_R01 ctrl_id=9 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1019
+2026-10-14 10:24:33 - src.alerting.json_logger - WARNING - ALERT ALERT-000009-1791991473438 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:24:43 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=9
+2026-10-14 10:24:43 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=10 type=ORU^R01^ORU_R01 ctrl_id=10 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:24:43 - src.alerting.json_logger - WARNING - ALERT ALERT-000010-1791991483440 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:24:53 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=11 type=ORU^R01^ORU_R01 ctrl_id=11 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:24:53 - src.alerting.json_logger - WARNING - ALERT ALERT-000011-1791991493444 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:25:03 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=12 type=ORU^R01^ORU_R01 ctrl_id=12 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:25:03 - src.alerting.json_logger - WARNING - ALERT ALERT-000012-1791991503441 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:25:13 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=12
+2026-10-14 10:25:13 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=13 type=ORU^R01^ORU_R01 ctrl_id=13 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:25:13 - src.alerting.json_logger - WARNING - ALERT ALERT-000013-1791991513441 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:25:23 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=14 type=ORU^R01^ORU_R01 ctrl_id=14 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:25:23 - src.alerting.json_logger - WARNING - ALERT ALERT-000014-1791991523442 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:25:33 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=15 type=ORU^R01^ORU_R01 ctrl_id=15 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:25:33 - src.alerting.json_logger - WARNING - ALERT ALERT-000015-1791991533443 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:25:43 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=15
+2026-10-14 10:25:43 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=16 type=ORU^R01^ORU_R01 ctrl_id=16 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:25:43 - src.alerting.json_logger - WARNING - ALERT ALERT-000016-1791991543444 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:25:53 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=17 type=ORU^R01^ORU_R01 ctrl_id=17 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:25:53 - src.alerting.json_logger - WARNING - ALERT ALERT-000017-1791991553444 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:26:03 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=18 type=ORU^R01^ORU_R01 ctrl_id=18 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:26:03 - src.alerting.json_logger - WARNING - ALERT ALERT-000018-1791991563444 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:26:13 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=18
+2026-10-14 10:26:13 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=19 type=ORU^R01^ORU_R01 ctrl_id=19 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:26:13 - src.alerting.json_logger - WARNING - ALERT ALERT-000019-1791991573446 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:26:23 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=20 type=ORU^R01^ORU_R01 ctrl_id=20 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:26:23 - src.alerting.json_logger - WARNING - ALERT ALERT-000020-1791991583445 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:26:33 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=21 type=ORU^R01^ORU_R01 ctrl_id=21 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:26:33 - src.alerting.json_logger - WARNING - ALERT ALERT-000021-1791991593449 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:26:43 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=21
+2026-10-14 10:26:43 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=22 type=ORU^R01^ORU_R01 ctrl_id=22 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:26:43 - src.alerting.json_logger - WARNING - ALERT ALERT-000022-1791991603448 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:26:53 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=23 type=ORU^R01^ORU_R01 ctrl_id=23 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:26:53 - src.alerting.json_logger - WARNING - ALERT ALERT-000023-1791991613449 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:27:03 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=24 type=ORU^R01^ORU_R01 ctrl_id=24 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:27:03 - src.alerting.json_logger - WARNING - ALERT ALERT-000024-1791991623448 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:27:13 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=24
+2026-10-14 10:27:13 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=25 type=ORU^R01^ORU_R01 ctrl_id=25 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:27:13 - src.alerting.json_logger - WARNING - ALERT ALERT-000025-1791991633450 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:27:23 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=26 type=ORU^R01^ORU_R01 ctrl_id=26 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:27:23 - src.alerting.json_logger - WARNING - ALERT ALERT-000026-1791991643449 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:27:33 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=27 type=ORU^R01^ORU_R01 ctrl_id=27 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:27:33 - src.alerting.json_logger - WARNING - ALERT ALERT-000027-1791991653450 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:27:43 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=27
+2026-10-14 10:27:43 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=28 type=ORU^R01^ORU_R01 ctrl_id=28 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:27:43 - src.alerting.json_logger - WARNING - ALERT ALERT-000028-1791991663452 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:27:53 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=29 type=ORU^R01^ORU_R01 ctrl_id=29 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:27:53 - src.alerting.json_logger - WARNING - ALERT ALERT-000029-1791991673451 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:28:03 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=30 type=ORU^R01^ORU_R01 ctrl_id=30 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:28:03 - src.alerting.json_logger - WARNING - ALERT ALERT-000030-1791991683457 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:28:13 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=30
+2026-10-14 10:28:13 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=31 type=ORU^R01^ORU_R01 ctrl_id=31 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:28:13 - src.alerting.json_logger - WARNING - ALERT ALERT-000031-1791991693452 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:28:23 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=32 type=ORU^R01^ORU_R01 ctrl_id=32 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:28:23 - src.alerting.json_logger - WARNING - ALERT ALERT-000032-1791991703452 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:28:33 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=33 type=ORU^R01^ORU_R01 ctrl_id=33 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:28:33 - src.alerting.json_logger - WARNING - ALERT ALERT-000033-1791991713454 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:28:43 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=33
+2026-10-14 10:28:43 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=34 type=ORU^R01^ORU_R01 ctrl_id=34 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:28:43 - src.alerting.json_logger - WARNING - ALERT ALERT-000034-1791991723454 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:28:53 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=35 type=ORU^R01^ORU_R01 ctrl_id=35 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:28:53 - src.alerting.json_logger - WARNING - ALERT ALERT-000035-1791991733454 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:29:03 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=36 type=ORU^R01^ORU_R01 ctrl_id=36 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:29:03 - src.alerting.json_logger - WARNING - ALERT ALERT-000036-1791991743455 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:29:13 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=36
+2026-10-14 10:29:13 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=37 type=ORU^R01^ORU_R01 ctrl_id=37 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:29:13 - src.alerting.json_logger - WARNING - ALERT ALERT-000037-1791991753454 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:29:23 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=38 type=ORU^R01^ORU_R01 ctrl_id=38 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:29:23 - src.alerting.json_logger - WARNING - ALERT ALERT-000038-1791991763456 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:29:33 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=39 type=ORU^R01^ORU_R01 ctrl_id=39 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:29:33 - src.alerting.json_logger - WARNING - ALERT ALERT-000039-1791991773456 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:29:43 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=39
+2026-10-14 10:29:43 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=40 type=ORU^R01^ORU_R01 ctrl_id=40 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:29:43 - src.alerting.json_logger - WARNING - ALERT ALERT-000040-1791991783456 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:29:53 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=41 type=ORU^R01^ORU_R01 ctrl_id=41 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:29:53 - src.alerting.json_logger - WARNING - ALERT ALERT-000041-1791991793459 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:30:03 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=42 type=ORU^R01^ORU_R01 ctrl_id=42 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:30:03 - src.alerting.json_logger - WARNING - ALERT ALERT-000042-1791991803458 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:30:13 - __main__ - INFO - ESTADO: sesiones_activas=1 total_mensajes=42
+2026-10-14 10:30:13 - src.mllp.server - INFO - MSG_RECV session_id=127.0.0.1:64343:1791991393418 msg=43 type=ORU^R01^ORU_R01 ctrl_id=43 segments=['MSH', 'PID', 'PV1', 'OBR', 'OBX', 'OBX', 'OBX', 'OBX'] size=1022
+2026-10-14 10:30:13 - src.alerting.json_logger - WARNING - ALERT ALERT-000043-1791991813458 rule=R-OBX-002 session=127.0.0.1:64343:1791991393418 severity=MEDIUM reason=R-OBX-002: Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC for code 202886
+2026-10-14 10:30:13 - src.mllp.server - INFO - SESSION_END session_id=127.0.0.1:64343:1791991393418 duration=420.0s messages=43 bytes=44048 acks_sent=0 errors=0
+2026-10-14 10:30:13 - src.evidence.writer - INFO - SESSION_CLOSED session_id=127.0.0.1:64343:1791991393418 hashes={'raw': '91aa5b8fa5d32ae3c8150963bcc4d4c0045d70de6e639cc0eab47a4bfacaec7d', 'hl7': '7ffd17b62b2b063830dad4681e81fbe44f5fa0530ccf70a31ad254fb9dab1182', 'log': 'b3e75805558dd27e438c132de9d454ca753b34af1882527e7de8898566c6b0d5', 'alerts': 'a7ee38768b1707aec2c611b3b6cc74e2a8d9736ad45ba5dabc52799bb8aace26'}

@@ -129,3 +129,40 @@ docker fallido). El usuario pidió "Sigue haz todo".
 - Docs actualizadas con el estado nuevo: README (Fase 4 ✅ local+docker), LAB_ARCHITECTURE
   (tabla de despliegue), LIMITATIONS (§2 Docker: dos particularidades del entorno).
 - Commits de la sesión: `19fbdf3` (todo lo anterior, 29 archivos) + este commit (HANDOFF).
+
+## 8. Adenda — sesión asistente 3 (2026-10-14, Fase 9 + E1)
+
+Contexto: usuario pidió "hazlo todo" (ejecutar todo lo pendiente de §3 del HANDOFF:
+validación Fase 9). Hubo una **sesión paralela activa** trabajando en los archivos
+compartidos (advertencia en §6).
+
+- **Tooling Fase 9 verificado** (commits `025693e` paralelo + `416b6f1` mío):
+  - `replay_evidence.py`: extracción OK (STANDBY = 43 ORU, intervals ~10 s).
+  - `latency_bench.py`: p95=178 µs ≪ 500 µs (PASS, host PC). Fix mío: ruta `--out`
+    relativa rompía `relative_to(ROOT)` → resolver contra ROOT.
+  - `run_matrix.py` (mío): campaña N corridas + ADR/IC95 Wilson; smoke N=2 OK
+    (ADR 100%, IC95 [97.1,100], 15/15 escenarios). Fix mío: leer stdout del
+    subproceso con `encoding="utf-8"` (cp1252 rompía con `≥`/UTF-8).
+- **Hallazgo E1 (FP 43/43 en replay STANDBY)**: el replay real sobre
+  `LECTURACONACK25AGOSTO.pcapng` produjo 43 FP, todos R-OBX-002
+  ("Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC"). Causa raíz doble:
+  1. `baseline.yaml` tenía `obx_units_observed: []` (el builder asumía
+     "STANDBY CWE sin unidades"; falso — el STANDBY real SÍ trae OBX-6 DIMLESS).
+  2. `src/hl7/validator.py` disparaba R-OBX-002 para *todo* OBX CWE
+     (`or cwe_with_unit`), incluso unidad legítima.
+  **La sesión paralela lo arregló (Enmienda E1, sin commitear):** builder popula
+  `obx_units_observed=['262656^MDC_DIM_DIMLESS^MDC']`, validador quita la cláusula
+  `cwe_with_unit`, baseline.yaml + rules.yaml documentan. Suite verde **179 tests**.
+  Archivos E1 sin commitear: `src/hl7/validator.py`, `src/evidence/baseline_builder.py`,
+  `baseline.yaml`, `config/rules.yaml`, `tests/test_validation_tools.py`.
+- **Campaña H1 abortada (contaminada)**: lancé `run_matrix` 30 docker + 30 A14 en
+  background; docker monta `./src` en vivo y el fix E1 cayó a mitad de campaña
+  (corridas 1-8 código viejo fp=0; corrida 9 código nuevo fp=1) → resultados no
+  sellables. Proceso orquestador + contenedor docker huérfano limpiados.
+- **Pendiente inmediato (§3)**: (a) commitear E1 (completo y verde; decidir si lo
+  commiteo yo o la sesión paralela); (b) re-ejecutar replay STANDBY con E1 (esperar
+  FP=0); (c) re-lanzar campaña H1 limpia desde commit sellado (30 docker sin A14 +
+  30 solo-A14); (d) bench 1000×3; (e) replay RUNNING; (f) diligenciar
+  `RESULTS_YYYYMMDD.md`; (g) hardware Pi (Fase 6) sigue fuera de alcance.
+- Commits de esta sesión: `416b6f1` (run_matrix + tests + fix bench). Fix run_matrix
+  UTF-8 pendiente de commit.

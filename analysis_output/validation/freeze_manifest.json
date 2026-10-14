@@ -1,0 +1,36 @@
+{
+  "fase": "9 - validación",
+  "protocolo": "VALIDATION_PROTOCOL.md §2 (artefactos congelados antes de medir)",
+  "fecha_freeze_utc": "2026-10-14T10:21:00Z",
+  "git": {
+    "head": "025693e1e30a288bcebf4736d0be9119e09aad65",
+    "head_short": "025693e",
+    "mensaje": "Fase 9 (tooling): semillas PRNG por corrida, bench latencia H2 y replay de evidencia H3",
+    "arbol_limpio": true,
+    "notas_sesion_paralela": "La sesión paralela editó run_experiment.py a las 10:16:30 (versión alternativa de semilla al generador) y revirtió su cambio al pausar; el árbol quedó limpio en este HEAD antes de cualquier medición."
+  },
+  "artefactos_sha256": {
+    "src/config/settings.yaml": "fb5260b2dcff0171500bfe9dd6ee2a2ccd8c2c4383ea5b7481beaebb07a98f2e",
+    "config/rules.yaml": "dd35891ff5c212c18736efb1d0d20dd7b85e2ffd5b937834bc00bbccd23214a8",
+    "baseline.yaml": "b7b1f109fcb0f61b0aec998be153a48c78843c5b8dcc9cb99109aa7d7a33d8de"
+  },
+  "semillas": {
+    "politica": "run_experiment --seed N explícito por corrida (campaña A01-A16); si se omite, se genera con SystemRandom y siempre queda registrado en runs/<ts>/seed.txt",
+    "derivadas_por_fase": {
+      "benign1": "seed_base",
+      "anomalies": "seed_base + 1000003",
+      "benign2": "seed_base + 2000003"
+    },
+    "registro": [
+      "runs/<ts>/seed.txt",
+      "runs/<ts>/scenario_order.txt (orden alternado de escenarios, protocolo §6)"
+    ]
+  },
+  "entorno": {
+    "host_declarado": "PC (Windows 10.0.26300), NO Raspberry Pi",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "cargas_paralelas_durante_medicion": "ninguna (secuencial; sesión paralela en pausa por decisión del usuario)",
+    "h2_en_pi": "NO VERIFICADO hasta repetir latency_bench.py en la Raspberry Pi (protocolo §3.3)"
+  }
+}

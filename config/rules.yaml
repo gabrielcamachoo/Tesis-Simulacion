@@ -137,13 +137,13 @@ rules:
 
   - rule_id: "R-OBX-002"
     name: "unauthorized_obx_unit"
-    description: "Unidad OBX-6 no permitida"
+    description: "Unidad OBX-6 fuera de las unidades observadas en el baseline (enmienda E1: CWE con unidad ya no es inválido per se; el STANDBY real trae OBX-6 DIMLESS)"
     category: "OBX"
     default_severity: "MEDIUM"
     enabled: true
     mitre_technique: "T1692.002"
     mitre_justification: "Unidades de medida falsificadas en telemetría (T1692.002; T0831 no aplica)"
-    limitations: "STANDBY usa CWE (sin unidades); unidades RUNNING NO_VERIFICADO"
+    limitations: "Unidades CWE del corpus baseline aceptadas (DIMLESS OBSERVADO 43/43); unidades RUNNING (mL, L/min, ...) NO_VERIFICADO"
     safety_limit: 0
 
   - rule_id: "R-OBX-003"

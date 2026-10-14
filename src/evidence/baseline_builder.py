@@ -243,7 +243,11 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
                 'status': 'OBSERVADO'
             }
         },
-        'obx_units_observed': [],  # STANDBY usa CWE, no unidades NM
+        # Enmienda E1 (2026-10-14): los 4 OBX CWE del STANDBY real SÍ traen
+        # OBX-6 = 262656^MDC_DIM_DIMLESS^MDC (43/43 ORU, evidencia pcap
+        # 25-08). La premisa previa "STANDBY usa CWE, no unidades" era falsa
+        # y produjo 43/43 FP en R-OBX-002 sobre el replay del corpus.
+        'obx_units_observed': ['262656^MDC_DIM_DIMLESS^MDC'],
         'obx_value_types_observed': ['CWE'],
         'state_transitions_observed': [
             ['SIN_GATEWAY', 'HANDSHAKE'],

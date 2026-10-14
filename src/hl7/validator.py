@@ -142,18 +142,17 @@ def validate_obx_constraints(msg: HL7Message, baseline: Baseline) -> ValidationR
             errors.append(f"R-OBX-003: Unexpected value type: {value_type} for code {code}")
             violations.append("R-OBX-003")
         
-        # R-OBX-002: Unidad no permitida
-        # - Si baseline tiene unidades: solo las observadas son válidas.
-        # - Si baseline NO tiene unidades (STANDBY CWE sin unidad): un valor
-        #   numérico/cualitativo con unidad es inesperado. Para CWE es
-        #   inválido siempre (CWE no lleva unidad de medida).
-        if len(obx.fields) > 6 and obx.fields[6].raw:
+        # R-OBX-002: Unidad no permitida. Solo se valida si el baseline
+        # tiene unidades observadas: cualquier OBX-6 fuera de esa lista es
+        # anómala. Enmienda E1 (2026-10-14): CWE con unidad ya NO es
+        # inválido per se — la evidencia STANDBY real trae
+        # OBX-6 = 262656^MDC_DIM_DIMLESS^MDC en los 4 OBX CWE (43/43 ORU);
+        # la cláusula previa "cwe_with_unit" producía 43/43 FP en el replay.
+        if (allowed_units and len(obx.fields) > 6 and obx.fields[6].raw
+                and obx.fields[6].raw not in allowed_units):
             unit = obx.fields[6].raw
-            unit_allowed = bool(allowed_units) and unit in allowed_units
-            cwe_with_unit = (value_type == 'CWE')
-            if (allowed_units and not unit_allowed) or cwe_with_unit:
-                errors.append(f"R-OBX-002: Unauthorized unit: {unit} for code {code}")
-                violations.append("R-OBX-002")
+            errors.append(f"R-OBX-002: Unauthorized unit: {unit} for code {code}")
+            violations.append("R-OBX-002")
     
     return ValidationResult(
         is_valid=len(errors) == 0,

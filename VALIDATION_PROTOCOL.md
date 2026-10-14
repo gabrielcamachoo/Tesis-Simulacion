@@ -82,3 +82,35 @@ causa; no se ajustan los umbrales post hoc para alcanzarlas.
 - `RESULTS_TEMPLATE.md` diligenciado (Fase 9).
 - Tablas y corridas crudas en `analysis_output/validation/` (selladas con SHA-256).
 - Este protocolo no se modifica después de iniciar la Fase 9 salvo enmienda versionada.
+
+## 8. Enmiendas versionadas
+
+### E1 (2026-10-14) — R-OBX-002: CWE con unidad
+
+- **Disparador:** primer replay del corpus negativo STANDBY (§5.3,
+  `analysis_output/validation/replay_STANDBY_20261014/`): 43/43 FP,
+  todos R-OBX-002 (`Unauthorized unit: 262656^MDC_DIM_DIMLESS^MDC`).
+- **Defecto (no ajuste de umbral):** la regla trataba CWE con OBX-6 como
+  inválido *siempre*, con la premisa "STANDBY usa CWE sin unidades"
+  (rules.yaml limitations; baseline `obx_units_observed: []`). La
+  evidencia real demuestra la premisa falsa: los 4 OBX CWE del STANDBY
+  (43/43 ORU, pcap 25-08) traen OBX-6 = `262656^MDC_DIM_DIMLESS^MDC`.
+  El E2E con emulador nunca lo detectó porque el emulador genera CWE sin
+  unidad (los mensajes sintéticos no reproducen el corpus real).
+- **Fix:**
+  1. `src/hl7/validator.py` (`validate_obx_constraints`): R-OBX-002 solo
+     alerta si el baseline tiene unidades observadas y la unidad del
+     mensaje está fuera de la lista (eliminada la cláusula
+     `cwe_with_unit`). A11 (CWE + `mg/dL`) sigue siendo detectable.
+  2. `src/evidence/baseline_builder.py` + `baseline.yaml`:
+     `obx_units_observed` registra la unidad OBSERVADA del corpus
+     (`262656^MDC_DIM_DIMLESS^MDC`, 43/43 ORU).
+  3. `config/rules.yaml`: descripción y limitaciones de R-OBX-002
+     actualizadas.
+- **Artefactos pre-enmienda:** HEAD `025693e` + SHA-256 de
+  settings/rules/baseline en `analysis_output/validation/freeze_manifest.json`.
+- **Decisión:** aprobada por el autor de la tesis (opción "enmienda
+  versionada + fix"). Transparencia: `RESULTS_20261014.md` publica AMBOS
+  resultados (pre-enmienda 43 FP / post-enmienda).
+- **Re-medida:** replay STANDBY re-ejecutado con artefactos
+  post-enmienda; nuevo HEAD y hashes registrados en el freeze manifest.

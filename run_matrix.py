@@ -63,7 +63,8 @@ def run_once(i: int, args, seed: int) -> Path:
     env["LAB_AUTHORIZED"] = "YES"
     print(f"\n[{i}/{args.runs}] seed={seed} modo={args.mode}", flush=True)
     t0 = time.monotonic()
-    r = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True)
+    r = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True,
+                       text=True, encoding="utf-8", errors="replace")
     elapsed = round(time.monotonic() - t0, 1)
     if r.returncode != 0:
         print(r.stdout[-2000:], file=sys.stderr)
