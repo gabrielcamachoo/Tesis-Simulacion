@@ -1,21 +1,23 @@
 metadata:
-  created_at: '2026-10-14T01:12:16.926054+00:00'
+  created_at: '2026-10-14T02:32:52.339985+00:00'
   schema_version: '1.0'
   source_sessions:
   - standby_20260825
   source_hashes:
-    C:\Users\OsoGa\OneDrive\Documentos\Wato\Investigacion-de-la-tesis\evidence_raw\pcap\LECTURA25AGOSYO.pcapng: cd9122c67bd3082c306d4044312e7d53cfb74dbb807f317a15a44f9e4fc58c31
-    C:\Users\OsoGa\OneDrive\Documentos\Wato\Investigacion-de-la-tesis\evidence_raw\informes\WATO STANDBY 25-08-2026.docx: ba2296a03a63b5f41e92ca338c19ed7f51d4ced5eb188d4319c5d4962b28ef3d
+    evidence_raw\pcap\LECTURACONACK25AGOSTO.pcapng: 41761f0a9d8baa50d216a431298869cefc5361b6e7f2a0b42ded315555febbba
+    evidence_raw\informes\WATO STANDBY 25-08-2026.docx: ba2296a03a63b5f41e92ca338c19ed7f51d4ced5eb188d4319c5d4962b28ef3d
   num_sessions: 1
   num_messages: 43
   states_included:
   - SESION_ESTABLECIDA_STANDBY
   limitations:
   - Baseline construida SOLO desde modo STANDBY (captura 25-08-2026)
+  - 'Fuente: LECTURACONACK25AGOSTO.pcapng (43 ORU + 43 ACK observados)'
   - Modo RUNNING no verificado - parámetros fisiológicos NO_VERIFICADO
   - Solo 4 códigos OBX tipo CWE observados (estados, no numéricos)
   - No hay alarmas ni eventos en baseline
   - Reloj WATO con offset +17min10s vs captura - usar timestamp de red
+  - Intervalos documentados por MSH-7 (10.000s); tiempo de captura varía ±4ms
   - Codificación UTF-8 declarada en MSH-18 (ackdummy usaba ISO-8859-1)
   clinical_approval_status: PENDING
   clinical_approval_date: null

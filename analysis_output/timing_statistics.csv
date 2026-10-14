@@ -1,1 +1,15 @@
 metric,value,unit
+count,140,messages
+min,9.648914337158203,seconds
+max,10.36129355430603,seconds
+mean,10.000260790756771,seconds
+median,10.00014853477478,seconds
+p95,10.003413438796997,seconds
+pcap0_LECTURAACK27AGOSTO_msg_count,198,messages
+pcap0_LECTURAACK27AGOSTO_msg_size_min,112,bytes
+pcap0_LECTURAACK27AGOSTO_msg_size_max,3894,bytes
+pcap0_LECTURAACK27AGOSTO_msg_size_mean,1581.909090909091,bytes
+pcap1_LECTURACONACK25AGOSTO_msg_count,86,messages
+pcap1_LECTURACONACK25AGOSTO_msg_size_min,112,bytes
+pcap1_LECTURACONACK25AGOSTO_msg_size_max,971,bytes
+pcap1_LECTURACONACK25AGOSTO_msg_size_mean,541.9767441860465,bytes

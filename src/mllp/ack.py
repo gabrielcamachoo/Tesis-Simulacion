@@ -5,7 +5,7 @@ Compatible con evidencia observada: WATO EX-35 requiere ACK (MSH-16 = AL)
 Estándar: HL7 v2.x Chapter 2 - Control Messages
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging

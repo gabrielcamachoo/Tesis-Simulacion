@@ -180,7 +180,7 @@ def _parse_hl7_timestamp(ts: str) -> Optional[datetime]:
     return None
 
 
-def validate_frequency(interval: float, baseline: BaselineSettings) -> tuple:
+def validate_frequency(interval: float, baseline: Baseline) -> tuple:
     """R-TIME-002: Valida frecuencia contra baseline (intervalo entre mensajes)."""
     min_interval = baseline.inter_message_interval_seconds.get('min', 0)
     max_interval = baseline.inter_message_interval_seconds.get('max', float('inf'))

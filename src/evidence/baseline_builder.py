@@ -76,7 +76,7 @@ def analyze_sessions_from_csv(sessions_csv: str, messages_csv: str) -> BaselineS
     # Tipos de mensaje permitidos
     msg_types = set()
     for s in sessions:
-        for mt in row.get('message_types', '').split(';'):
+        for mt in s.get('message_types', '').split(';'):
             if mt:
                 msg_types.add(mt)
     
@@ -179,10 +179,12 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
             'states_included': ['SESION_ESTABLECIDA_STANDBY'],
             'limitations': [
                 'Baseline construida SOLO desde modo STANDBY (captura 25-08-2026)',
+                'Fuente: LECTURACONACK25AGOSTO.pcapng (43 ORU + 43 ACK observados)',
                 'Modo RUNNING no verificado - parámetros fisiológicos NO_VERIFICADO',
                 'Solo 4 códigos OBX tipo CWE observados (estados, no numéricos)',
                 'No hay alarmas ni eventos en baseline',
                 'Reloj WATO con offset +17min10s vs captura - usar timestamp de red',
+                'Intervalos documentados por MSH-7 (10.000s); tiempo de captura varía ±4ms',
                 'Codificación UTF-8 declarada en MSH-18 (ackdummy usaba ISO-8859-1)'
             ],
             'clinical_approval_status': 'PENDING',
