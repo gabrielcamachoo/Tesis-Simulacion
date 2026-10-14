@@ -9,6 +9,7 @@ import argparse
 import socket
 import time
 import logging
+import random
 import signal
 import sys
 import threading
@@ -431,6 +432,8 @@ Ejemplos:
                         default="STANDBY", help="Estado inicial (default: STANDBY)")
     parser.add_argument("--interval", type=float, default=10.0, help="Intervalo entre mensajes en segundos (default: 10.0)")
     parser.add_argument("--count", type=int, default=0, help="Número de mensajes a enviar (0=infinito)")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Semilla PRNG para ctrl_id/fisiología/alarma (reproducibilidad)")
     parser.add_argument("--no-ack", action="store_true", help="No esperar ACK (modo fire-and-forget)")
     parser.add_argument("--ack-timeout", type=float, default=5.0, help="Timeout ACK en segundos")
     parser.add_argument("--reconnect-delay", type=float, default=2.0, help="Delay entre reconexiones")
@@ -441,6 +444,10 @@ Ejemplos:
     
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
+    
+    if args.seed is not None:
+        random.seed(args.seed)
+        logger.info(f"SEED={args.seed} (ctrl_id inicial reproducible)")
     
     return EmulatorConfig(
         receiver_host=args.host,

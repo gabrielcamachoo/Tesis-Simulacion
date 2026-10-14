@@ -22,6 +22,7 @@ import argparse
 import json
 import logging
 import os
+import random
 import signal
 import socket
 import sys
@@ -151,6 +152,18 @@ SCENARIOS: Dict[str, AnomalyScenario] = {
         threat="Suplantación / Session hijacking",
         mitre_ics="T1692.002", expected_rule="R-ID-001", safety_limit=5),
 }
+
+
+def select_scenarios(exclude_ids=None, seed: Optional[int] = None):
+    """Selección de escenarios con orden determinista controlado por semilla.
+
+    Protocolo §6: alternar el orden de escenarios entre corridas; la semilla
+    registra el orden (scenario_order.txt en la corrida)."""
+    excluded = set(exclude_ids) if exclude_ids else set()
+    selected = [s for s in SCENARIOS.values() if s.id not in excluded]
+    if seed is not None:
+        random.Random(seed).shuffle(selected)
+    return selected
 
 
 def base_hl7_message(control_id: str, timestamp: str,
@@ -654,6 +667,9 @@ Requiere: LAB_AUTHORIZED=YES y LAB_ONLY.marker
     p.add_argument("--all", action="store_true", help="Ejecutar los 16 escenarios")
     p.add_argument("--exclude", default="",
                    help="Escenarios a excluir con --all, separados por coma (ej: A14)")
+    p.add_argument("--seed", type=int, default=None,
+                   help="Semilla PRNG: alterna el orden de escenarios con --all "
+                        "(protocolo §6; registrada en scenario_order.txt)")
     p.add_argument("--count", type=int, default=5,
                    help="Inyecciones por escenario (default 5, tope safety_limit)")
     p.add_argument("--host", default="mllp-receiver",
@@ -709,9 +725,12 @@ def main() -> int:
 
     exclude = {s.strip() for s in args.exclude.split(",") if s.strip()}
     if args.all:
-        selected = [s for s in SCENARIOS.values() if s.id not in exclude]
+        selected = select_scenarios(exclude, args.seed)
     else:
         selected = [SCENARIOS[args.scenario]]
+
+    if args.seed is not None:
+        logger.info(f"SEED={args.seed} ORDER={' '.join(s.id for s in selected)}")
 
     if args.dry_run:
         logger.info("DRY-RUN: seguridad OK, no se envía nada")
@@ -723,6 +742,14 @@ def main() -> int:
     ts_dir = datetime.now().strftime("%Y%m%d_%H%M%S")
     gt_path = (Path(args.ground_truth) if args.ground_truth
                else Path(args.runs_dir) / ts_dir / "ground_truth.jsonl")
+
+    if args.seed is not None:
+        gt_path.parent.mkdir(parents=True, exist_ok=True)
+        (gt_path.parent / "scenario_order.txt").write_text(
+            f"seed={args.seed}\n" +
+            "".join(f"{i + 1:02d} {s.id} {s.name}\n"
+                    for i, s in enumerate(selected)),
+            encoding="utf-8")
 
     logger.info("=" * 60)
     logger.info("GENERADOR DE ANOMALÍAS - LABORATORIO AISLADO")

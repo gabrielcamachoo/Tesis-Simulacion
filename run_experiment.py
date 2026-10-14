@@ -23,6 +23,7 @@ Requiere: LAB_AUTHORIZED=YES y LAB_ONLY.marker (creado en la raíz del repo).
 
 import argparse
 import os
+import random
 import socket
 import subprocess
 import sys
@@ -49,6 +50,9 @@ def parse_args():
                    help="Escenarios a excluir, separados por coma (ej: A14)")
     p.add_argument("--window", type=float, default=5.0,
                    help="Ventana de matching inyección-alerta en s (default 5)")
+    p.add_argument("--seed", type=int, default=None,
+                   help="Semilla PRNG por corrida (protocolo §2.3); "
+                        "si se omite se genera y registra en runs/<ts>/seed.txt")
     return p.parse_args()
 
 
@@ -189,21 +193,24 @@ def run_local(args, run_dir: Path, port: int):
 
         run_cmd([PY, "wato_emulator.py", "--host", "127.0.0.1", "--port", port,
                  "--state", "STANDBY", "--count", args.benign_count,
-                 "--interval", args.interval, "--ack-timeout", "5"],
+                 "--interval", args.interval, "--ack-timeout", "5",
+                 "--seed", str(args.phase_seeds["benign1"])],
                 "FASE BENIGNA 1", env)
 
         gen_cmd = [PY, "anomaly_generator.py", "--all",
                    "--count", args.anomaly_count,
                    "--host", "127.0.0.1", "--port", port,
                    "--config", cfg,
-                   "--ground-truth", run_dir / "ground_truth.jsonl"]
+                   "--ground-truth", run_dir / "ground_truth.jsonl",
+                   "--seed", str(args.phase_seeds["anomalies"])]
         if args.exclude:
             gen_cmd += ["--exclude", args.exclude]
         run_cmd(gen_cmd, "FASE ANÓMALA", env)
 
         run_cmd([PY, "wato_emulator.py", "--host", "127.0.0.1", "--port", port,
                  "--state", "STANDBY", "--count", args.benign_count,
-                 "--interval", args.interval, "--ack-timeout", "5"],
+                 "--interval", args.interval, "--ack-timeout", "5",
+                 "--seed", str(args.phase_seeds["benign2"])],
                 "FASE BENIGNA 2", env)
 
         # Dar tiempo a que el servidor procese cierres (A05) y vacíe buffers
@@ -235,14 +242,16 @@ def run_docker(args, run_dir: Path):
                  "wato-emulator", "python", "wato_emulator.py",
                  "--host", "mllp-receiver", "--port", "1550",
                  "--state", "STANDBY", "--count", args.benign_count,
-                 "--interval", args.interval, "--ack-timeout", "5"],
+                 "--interval", args.interval, "--ack-timeout", "5",
+                 "--seed", str(args.phase_seeds["benign1"])],
                 "FASE BENIGNA 1 (docker)", env)
 
         gen_cmd = ["docker", "compose", "--profile", "anomalies", "run", "--rm",
                    "anomaly-generator", "python", "anomaly_generator.py",
                    "--all", "--count", args.anomaly_count,
                    "--host", "mllp-receiver", "--port", "1550",
-                   "--ground-truth", f"{outdir}/ground_truth.jsonl"]
+                   "--ground-truth", f"{outdir}/ground_truth.jsonl",
+                   "--seed", str(args.phase_seeds["anomalies"])]
         if args.exclude:
             gen_cmd += ["--exclude", args.exclude]
         run_cmd(gen_cmd, "FASE ANÓMALA (docker)", env)
@@ -251,7 +260,8 @@ def run_docker(args, run_dir: Path):
                  "wato-emulator", "python", "wato_emulator.py",
                  "--host", "mllp-receiver", "--port", "1550",
                  "--state", "STANDBY", "--count", args.benign_count,
-                 "--interval", args.interval, "--ack-timeout", "5"],
+                 "--interval", args.interval, "--ack-timeout", "5",
+                 "--seed", str(args.phase_seeds["benign2"])],
                 "FASE BENIGNA 2 (docker)", env)
 
         time.sleep(2.0)
@@ -287,7 +297,32 @@ def main() -> int:
     run_dir = ROOT / "runs" / ts
     run_dir.mkdir(parents=True, exist_ok=True)
 
+    # §2.3: semilla PRNG por corrida, registrada antes de medir. Derivados
+    # distintos por fase para que los MCID benignos no colisionen entre fases
+    # (una semilla idéntica haría repetir el ctrl_id inicial -> FP R-SEQ-001).
+    seed_base = args.seed if args.seed is not None else \
+        random.SystemRandom().randrange(1, 2**31)
+    args.phase_seeds = {
+        "benign1": seed_base,
+        "anomalies": seed_base + 1_000_003,
+        "benign2": seed_base + 2_000_003,
+    }
+    (run_dir / "seed.txt").write_text(
+        f"seed_base={seed_base}\n"
+        f"seed_benign1={args.phase_seeds['benign1']}\n"
+        f"seed_anomalies={args.phase_seeds['anomalies']}\n"
+        f"seed_benign2={args.phase_seeds['benign2']}\n"
+        f"mode={args.mode}\nexclude={args.exclude}\n"
+        f"anomaly_count={args.anomaly_count}\nbenign_count={args.benign_count}\n"
+        f"interval={args.interval}\n"
+        f"nota=derivados +1000003/+2000003 entre fases para evitar "
+        f"MCID idénticos (R-SEQ-001); orden de escenarios en "
+        f"scenario_order.txt\n",
+        encoding="utf-8")
+
     print(f"Modo: {mode} | Corrida: {run_dir.relative_to(ROOT)}")
+    print(f"Semilla: {seed_base} "
+          f"(anomalies=+1000003, benign2=+2000003, registrada en seed.txt)")
 
     if mode == "local":
         run_local(args, run_dir, free_port())
