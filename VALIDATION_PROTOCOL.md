@@ -25,7 +25,7 @@ causa; no se ajustan los umbrales post hoc para alcanzarlas.
 
 ### 3.1 Datos positivos (para ADR)
 
-- Generación por escenario con el techo de `ATTACK_SCENARIOS.md` (5–20 msg), repetida en
+- Generación por escenario con el techo de `ATTACK_SCENARIOS.md` (3–20 msg), repetida en
   **≥ 30 corridas** por escenario con semillas distintas (o todas las corridas posibles si el
   techo lo limita; se declara N real por escenario).
 - Salida medida: alerta emitida por la regla mapeada al escenario (TP) o ausencia (FN);
@@ -60,7 +60,8 @@ causa; no se ajustan los umbrales post hoc para alcanzarlas.
 1. Verificar guardas (`LAB_AUTHORIZED`, `LAB_ONLY.marker`) y límites `safety`.
 2. Congelar artefactos (§2) y registrar `git rev-parse HEAD`.
 3. Correr corpus negativo (evidencia) → registrar FP.
-4. Correr A01–A16 según §3.1 → matriz TP/FP/FN por corrida.
+4. Correr A01–A16 según §3.1 → matriz TP/FP/FN por corrida
+   (herramienta: `run_experiment.py --mode docker`, prerequisito de la corrida de latencia).
 5. Correr latencia (§3.3).
 6. Rellenar `RESULTS_TEMPLATE.md` con los números crudos (sin redondeos selectivos).
 7. Decisión: H1/H2 aceptadas o rechazadas; si se rechazan, `LIMITATIONS.md` y análisis de

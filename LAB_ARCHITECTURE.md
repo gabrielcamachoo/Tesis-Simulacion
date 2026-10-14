@@ -1,7 +1,8 @@
 # Arquitectura del Laboratorio — Banco de Pruebas HL7/MLLP
 
 **Proyecto:** detector determinista de anomalías para comunicaciones HL7/MLLP (Tesis G18 SIDRE)
-**Fecha:** 2026-10-13 · **Estado:** Fase 1 cerrada (evidencia), Fase 2 en curso (emulador)
+**Fecha:** 2026-10-14 · **Estado:** Fases 1–4 cerradas (E2E local y docker validados);
+Fase 6 (guía Pi) escrita; ejecución en hardware pendiente
 
 ## 1. Visión general
 
@@ -68,8 +69,8 @@ Puntos de entrada en la raíz: `mllp_receiver.py` (receptor integrado) y `wato_e
 ## 5. Interlock de seguridad (presente en todos los modos)
 
 1. `LAB_AUTHORIZED=YES` (entorno) + `LAB_ONLY.marker` exigidos por settings.
-2. Límites `safety` (≤50 anomalías, ≤5 msg/s, ≤32 KiB, cooldown ≥30 s, `safety_limit` por
-   escenario) — ver `ETHICS_AND_SAFETY.md` §3.
+2. Límites `safety` (≤70 anomalías por corrida, ≤5 msg/s, ≤32 KiB, cooldown ≥30 s,
+   `safety_limit` por escenario) — ver `ETHICS_AND_SAFETY.md` §3.
 3. Anonimización por defecto en todo artefacto derivado de evidencia clínica.
 4. Evidencia original inmutable (solo lectura) + SHA-256 verificable.
 
@@ -78,11 +79,12 @@ Puntos de entrada en la raíz: `mllp_receiver.py` (receptor integrado) y `wato_e
 | Ítem | Estado |
 |------|--------|
 | Python + Git + venv | ✅ instalados (Fase 0) |
-| Suite de pruebas | ✅ 104 passed |
+| Suite de pruebas | ✅ 161 passed (2026-10-14) |
 | Pipeline evidencia (offline) | ✅ cerrado y commiteado (Fase 1) |
-| Emulador + receptor runtime | 🔄 en desarrollo (Fase 2) |
-| Docker Desktop | ❌ instalación automática fallida (código 4294967291, elevación UAC); requiere instalación manual → `docker-compose.yml` diferido |
-| Ejecución en Raspberry Pi | ⬜ pendiente (Fase 5+) |
+| Emulador + receptor + generador + evaluador | ✅ funcionales (Fase 2/4); E2E local y docker OK |
+| Orquestador `run_experiment.py` | ✅ modo local (67/67) y docker (64/64, `--exclude A14`) probados 2026-10-14 |
+| Docker Desktop/WSL (host Windows) | ✅ Docker 29.8.2 + WSL2; compose validado y E2E OK (evidencia en named volume `lab_output`) |
+| Ejecución en Raspberry Pi | ⬜ pendiente (`RASPBERRY_PI_SETUP.md`, Fase 6) |
 
 ## 7. Convenciones
 

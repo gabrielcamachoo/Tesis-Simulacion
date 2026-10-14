@@ -140,3 +140,13 @@ network_parameters:
   server_port: 1550
   protocol: TCP
   client_role: WATO inicia conexión (cliente TCP)
+  # IPs de origen permitidas (R-NET-001). 192.168.23.250 = OBSERVADO en
+  # captura real; las demás son INFERIDAS para el laboratorio aislado:
+  # loopback (tests host), IP fija del emulador (172.30.0.10) y del
+  # generador de anomalías (172.30.0.11) en la red Docker interna.
+  allowed_ips:
+  - "192.168.23.250"
+  - "127.0.0.1"
+  - "::1"
+  - "172.30.0.10"
+  - "172.30.0.11"

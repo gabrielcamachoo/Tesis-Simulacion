@@ -161,8 +161,8 @@ def base_hl7_message(control_id: str, timestamp: str,
                      obx_unit: str = "") -> str:
     """Construye mensaje HL7 base sintético similar al observado."""
     ts = msh7 or timestamp
-    msh = (f"MSH|^~\\&|{sending_app}|||{ts}||{message_type}|"
-           f"{control_id}|P|2.6|||NE|AL|||UNICODE UTF-8|||"
+    msh = (f"MSH|^~\\&|{sending_app}||||{ts}||{message_type}|"
+           f"{control_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
            f"IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO")
     pid = "PID|||^^^^PI||^^^^^^L|||"
     pv1 = "PV1||I|^^^"
@@ -199,14 +199,11 @@ class SafetyGuard:
         if os.environ.get("LAB_AUTHORIZED", "").strip().upper() != "YES":
             self._errors.append("LAB_AUTHORIZED=YES no está definido en el entorno")
 
-        # 2. Marcador LAB_ONLY.marker
+        # 2. Marcador LAB_ONLY.marker en la ruta configurada (sin atajos)
         marker = Path(self.settings.safety.lab_marker_path)
         if self.settings.safety.require_lab_marker and not marker.exists():
-            # Permitir marcador local de desarrollo como alternativa
-            local_marker = Path(__file__).parent / "LAB_ONLY.marker"
-            if not local_marker.exists():
-                self._errors.append(
-                    f"Marcador LAB_ONLY.marker no encontrado ({marker} ni {local_marker})")
+            self._errors.append(
+                f"Marcador LAB_ONLY.marker no encontrado: {marker}")
 
         # 3. Hostname/IP de destino permitido
         host_ok = target_host in ALLOWED_HOSTNAMES
@@ -427,15 +424,18 @@ class AnomalyGenerator:
             return self._send_hl7(hl7, scenario, cid)
 
         if scenario.id == "A02":
-            # MCID duplicado: sembrar una vez con MCID "1" (sin registrar)
+            # MCID duplicado: sembrar UNA vez con un MCID fijo (sin registrar)
             # y luego inyectar otro mensaje con el MISMO MCID.
+            # MCID fijo "DUP-SEED-0001" no colisiona con los secuenciales
+            # del emulador benigno.
+            dup_cid = "DUP-SEED-0001"
             if not self._a02_seeded:
-                if not self._send_setup(base_hl7_message("1", now_hl7_timestamp())):
+                if not self._send_setup(base_hl7_message(dup_cid, now_hl7_timestamp())):
                     return None
                 self._a02_seeded = True
                 time.sleep(0.1)
-            hl7 = base_hl7_message("1", ts)
-            return self._send_hl7(hl7, scenario, "1")
+            hl7 = base_hl7_message(dup_cid, ts)
+            return self._send_hl7(hl7, scenario, dup_cid)
 
         if scenario.id == "A03":
             # Replay byte a byte del mensaje anterior (seed no se registra)
@@ -491,8 +491,8 @@ class AnomalyGenerator:
 
         if scenario.id == "A08":
             # Orden inválido: OBX antes de MSH
-            msh = (f"MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|||{ts}||"
-                   f"ORU^R01^ORU_R01|{cid}|P|2.6|||NE|AL|||UNICODE UTF-8|||"
+            msh = (f"MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||{ts}||"
+                   f"ORU^R01^ORU_R01|{cid}|P|2.6|||NE|AL||UNICODE UTF-8|||"
                    f"IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO")
             obx_first = ("OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|"
                          "202836^MDC_EVT_STAT_STANDBY^MDC\r")
@@ -562,8 +562,8 @@ class AnomalyGenerator:
             target_size = min(scenario.params.get("max_size_bytes", MAX_PAYLOAD_BYTES),
                               MAX_PAYLOAD_BYTES)
             filler_count = max(0, target_size - 512)
-            msh = (f"MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|||{ts}||"
-                   f"ORU^R01^ORU_R01|{cid}|P|2.6|||NE|AL|||UNICODE UTF-8|||"
+            msh = (f"MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||{ts}||"
+                   f"ORU^R01^ORU_R01|{cid}|P|2.6|||NE|AL||UNICODE UTF-8|||"
                    f"IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO")
             nte = "NTE|1||" + ("SYNTHETIC-FILLER-" * ((filler_count // 17) + 1))[:filler_count]
             big = msh + "\r" + nte + "\r"
@@ -582,10 +582,14 @@ class AnomalyGenerator:
         return None
 
     def run_scenario(self, scenario: AnomalyScenario, count: int) -> int:
-        """Ejecuta un escenario N veces. Devuelve inyecciones exitosas."""
+        """Ejecuta un escenario N veces. Devuelve inyecciones registradas
+        en ground truth (los escenarios de ráfaga registran varias por
+        llamada, ej. A12=20, A13=5)."""
         if not scenario.enabled:
             logger.info(f"{scenario.id} deshabilitado, omitiendo")
             return 0
+        
+        injections_before = self._injection_counter
         
         # Escenarios de ráfaga/reconexión internas: UNA sola llamada ya
         # genera todas las inyecciones (evita multiplicar por count)
@@ -617,7 +621,7 @@ class AnomalyGenerator:
                             f"bytes={rec.bytes_sent}")
             if scenario.id not in burst_scenarios:
                 time.sleep(0.2)
-        return ok
+        return self._injection_counter - injections_before
 
     def close(self):
         self._close()
@@ -648,6 +652,8 @@ Requiere: LAB_AUTHORIZED=YES y LAB_ONLY.marker
     p.add_argument("--scenario", choices=list(SCENARIOS.keys()),
                    help="Escenario a ejecutar")
     p.add_argument("--all", action="store_true", help="Ejecutar los 16 escenarios")
+    p.add_argument("--exclude", default="",
+                   help="Escenarios a excluir con --all, separados por coma (ej: A14)")
     p.add_argument("--count", type=int, default=5,
                    help="Inyecciones por escenario (default 5, tope safety_limit)")
     p.add_argument("--host", default="mllp-receiver",
@@ -670,6 +676,23 @@ def main() -> int:
         logger.error("Especifica --scenario AXX o --all")
         return 2
 
+    # Desarrollo local (p. ej. Windows): la ruta por defecto /LAB_ONLY.marker
+    # no es escribible en la raíz del disco. Si falta, cargar la configuración
+    # apuntando al marcador del repo (mismo criterio que run_experiment).
+    cfg_path = Path(args.config)
+    if cfg_path.exists() and not Path("/LAB_ONLY.marker").exists():
+        local_marker = Path(__file__).parent / "LAB_ONLY.marker"
+        text = cfg_path.read_text(encoding="utf-8")
+        if local_marker.exists() and 'lab_marker_path: "/LAB_ONLY.marker"' in text:
+            import tempfile
+            text = text.replace('lab_marker_path: "/LAB_ONLY.marker"',
+                                f'lab_marker_path: "{local_marker.as_posix()}"')
+            with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False,
+                                             encoding="utf-8") as tf:
+                tf.write(text)
+            args.config = tf.name
+            logger.info(f"Config con marcador del repo: {args.config}")
+
     try:
         settings = load_settings(args.config)
     except RuntimeError as e:
@@ -684,7 +707,11 @@ def main() -> int:
         logger.error("  touch LAB_ONLY.marker")
         return 3
 
-    selected = list(SCENARIOS.values()) if args.all else [SCENARIOS[args.scenario]]
+    exclude = {s.strip() for s in args.exclude.split(",") if s.strip()}
+    if args.all:
+        selected = [s for s in SCENARIOS.values() if s.id not in exclude]
+    else:
+        selected = [SCENARIOS[args.scenario]]
 
     if args.dry_run:
         logger.info("DRY-RUN: seguridad OK, no se envía nada")

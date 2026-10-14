@@ -20,8 +20,12 @@ tesis como resultado; se declara como limitación. Complementa `THREAT_MODEL.md`
   de error → validez externa parcial.
 - ACK del receptor basado en `ackdummy`: valida correlación MSA-2↔MSH-10, no la semántica
   clínica del WATO.
-- Docker Desktop no instalado (instalación automática fallida) → la topología `docker-compose`
-  está pendiente de probar.
+- Docker Desktop 29.8.2 + WSL2 en el host: topología `docker-compose` validada E2E
+  (2026-10-14). Dos particularidades del entorno: (a) con redes `internal: true` el
+  publish de puertos no se materializa en Docker Desktop (la salud del receptor se
+  consulta desde el contenedor, no desde el host); (b) escribir evidencia sobre el
+  bind del repo (OneDrive) desde un contenedor estancó el I/O (archivos de 0 bytes,
+  2026-10-13) → la evidencia vive en el named volume `lab_output` y se copia al host.
 
 ## 3. Baseline y falsos positivos
 

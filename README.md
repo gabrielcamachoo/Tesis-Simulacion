@@ -23,12 +23,13 @@ mllp_receiver.py    Receptor MLLP de laboratorio (solo localhost/red interna).
 wato_emulator.py    Emulador sintético ORU^R01 (periodicidad de evidencia).
 anomaly_generator.py Generador de escenarios A01–A16 con techos de seguridad.
 evaluate.py         Evaluación de corridas (ADR/FP) contra ground truth.
+run_experiment.py   Orquestador de corridas (benigno → anomalías → benigno → evaluación).
 docker-compose.yml  Topología de laboratorio (requiere Docker Desktop).
 
 Documentos de fase (raíz): THREAT_MODEL.md, ETHICS_AND_SAFETY.md,
 LAB_ARCHITECTURE.md, ATTACK_SCENARIOS.md, VALIDATION_PROTOCOL.md,
 RESULTS_TEMPLATE.md, LIMITATIONS.md, TRACEABILITY_MATRIX.csv,
-EVIDENCE_ANALYSIS.md.
+EVIDENCE_ANALYSIS.md, RASPBERRY_PI_SETUP.md.
 ```
 
 ## Requisitos
@@ -60,6 +61,13 @@ python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt
 .venv/Scripts/python wato_emulator.py --host 127.0.0.1 --count 10
 .venv/Scripts/python anomaly_generator.py --dry-run --scenario A01
 
+# Corrida completa del laboratorio (benigno → A01–A16 → benigno → evaluación).
+# El modo docker es el de la metodología de la tesis; --mode local es loopback
+# para desarrollo/CI. A14 dura ~135 s (3 × 45 s de silencio): usar --exclude A14
+# para corridas rápidas.
+LAB_AUTHORIZED=YES .venv/Scripts/python run_experiment.py --mode docker
+LAB_AUTHORIZED=YES .venv/Scripts/python run_experiment.py --mode local --exclude A14
+
 # Topología en Docker (cuando Docker Desktop esté instalado)
 docker compose up -d mllp-receiver wato-emulator
 docker compose --profile anomalies run --rm anomaly-generator
@@ -83,7 +91,12 @@ docker compose --profile anomalies run --rm anomaly-generator
   baseline trazable, anonimización por defecto.
 - **Fase 3** ✅ documentación: threat model, ética, arquitectura, escenarios A01–A16
   con técnicas ATT&CK ICS v20 verificadas (2026-10-13) y matriz de trazabilidad al SRS.
-- **Fase 2/4** 🔄 emulador, generador de anomalías y evaluación en desarrollo.
-- **Pendiente externo:** Docker Desktop (instalación manual; código de error
-  4294967291 vía winget) y ejecución en Raspberry Pi (Fase 5+).
-- **NO VERIFICADO:** H1 (ADR ≥ 90 %) y H2 (≤ 500 µs) hasta la Fase 9.
+- **Fase 2** ✅ emulador, generador A01–A16 y evaluador; 161 pruebas automatizadas.
+- **Fase 4** ✅ orquestador `run_experiment.py` end-to-end en modo local
+  (2026-10-14: 67/67 inyecciones, recall=1.0, fp=0) y en modo docker
+  (2026-10-14: 64/64 con `--exclude A14`, recall=1.0, fp=0; evidencia en
+  named volume `lab_output` copiada al host con `docker compose cp`).
+- **Pendiente externo:** ejecución en Raspberry Pi (Fase 6, guía en
+  `RASPBERRY_PI_SETUP.md`) y Fase 9 (corridas con repetición).
+- **NO VERIFICADO:** H1 (ADR ≥ 90 %) y H2 (≤ 500 µs) hasta la Fase 9 (corridas
+  con repetición y en la Pi; lo anterior es solo validación del pipeline).

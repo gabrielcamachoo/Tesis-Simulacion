@@ -7,6 +7,7 @@ Aplica reglas configuradas contra baseline y genera alertas.
 import time
 import hashlib
 import logging
+import threading
 from dataclasses import dataclass, field
 from typing import List, Dict, Set, Optional, Any
 from datetime import datetime, timezone
@@ -21,7 +22,7 @@ from ..hl7.validator import (
 )
 from ..detection.baseline import Baseline
 from ..detection.rules import RuleSet, RuleResult
-from ..alerting.json_logger import Alert, AlertSeverity
+from ..alerting.json_logger import Alert, AlertSeverity, AlertLabel
 from ..config.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class SessionState:
     seen_content_hashes: Set[str] = field(default_factory=set)
     last_timestamp: Optional[str] = None
     last_message_time: float = 0
-    current_state: str = "UNKNOWN"
+    current_state: str = ""  # vacío = primera transición no validada (sin estado previo)
     last_alert_time: float = 0
     logical_identity: tuple = ()  # (sending_app, sending_facility)
 
@@ -66,8 +67,23 @@ class DetectionEngine:
         self.baseline = baseline
         self.rules = rules
         self.sessions: Dict[str, SessionState] = {}
-        self._lock = logging.RLock()  # reentrant para callbacks
+        self._lock = threading.RLock()  # reentrant para callbacks
         self._alert_counter = 0
+        # Estado global del emisor (laboratorio: un solo dispositivo esperado).
+        # MCID, hash de contenido, timestamp y frecuencia se rastrean A TRAVÉS
+        # de sesiones TCP: replay/duplicación suelen venir en una conexión nueva.
+        self.global_control_ids: Set[str] = set()
+        # hash -> último time.time() visto. Con VENTANA: la telemetría benigna
+        # es periódica y su contenido se repite (STANDBY idéntico cada 10 s,
+        # solo cambian MSH-7/MSH-10). Solo se considera replay si el mismo
+        # contenido reaparece dentro de la ventana (mitad del intervalo baseline).
+        self.global_content_hashes: Dict[str, float] = {}
+        self.global_last_timestamp: Optional[str] = None
+        self.global_last_message_time: float = 0.0
+
+        # Ventana de replay: mitad del intervalo mínimo baseline (10 s → 5 s)
+        interval_min = baseline.inter_message_interval_seconds.get('min', 10.0) or 10.0
+        self.replay_window_s = max(1.0, interval_min * 0.5)
     
     def process_message(self, session_id: str, source_ip: str, source_port: int,
                         parsed_message: HL7Message, raw_bytes: bytes,
@@ -89,7 +105,8 @@ class DetectionEngine:
             
             # Reglas de detección
             alerts = []
-            alerts.extend(self._check_rules(session, parsed_message, raw_bytes, mllp_frame))
+            alerts.extend(self._check_rules(session, parsed_message, raw_bytes,
+                                            mllp_frame, validation, obx_validation))
             
             # Actualizar estado de sesión
             self._update_session_state(session, parsed_message, raw_bytes)
@@ -112,8 +129,9 @@ class DetectionEngine:
             )
         return self.sessions[session_id]
     
-    def _check_rules(self, session: SessionState, msg: HL7Message, 
-                     raw_bytes: bytes, mllp_frame: bytes) -> List[Alert]:
+    def _check_rules(self, session: SessionState, msg: HL7Message,
+                     raw_bytes: bytes, mllp_frame: bytes,
+                     validation: Any, obx_validation: Any) -> List[Alert]:
         """Ejecuta todas las reglas habilitadas."""
         alerts = []
         now = time.time()
@@ -157,30 +175,37 @@ class DetectionEngine:
             alerts.append(self._make_alert('R-HL7-003', session, msg,
                                           f"Invalid segment sequence: {msg.segment_sequence}", AlertSeverity.HIGH))
         
-        # R-SEQ-001: MCID duplicado
+        # R-SEQ-001: MCID duplicado (rastreo global: replay suele venir en sesión nueva)
         if self.rules.is_enabled('R-SEQ-001') and msg.message_control_id:
-            ok, reason = validate_message_control_id_uniqueness(msg.message_control_id, session.seen_control_ids)
+            ok, reason = validate_message_control_id_uniqueness(
+                msg.message_control_id, self.global_control_ids)
             if not ok:
                 alerts.append(self._make_alert('R-SEQ-001', session, msg, reason, AlertSeverity.HIGH))
+            session.seen_control_ids.add(msg.message_control_id)
         
-        # R-SEQ-002: Replay por hash normalizado
+        # R-SEQ-002: Replay por hash normalizado dentro de la ventana
         if self.rules.is_enabled('R-SEQ-002'):
             content_hash = hashlib.sha256(normalize_hl7_for_hash(msg.raw).encode()).hexdigest()
-            if content_hash in session.seen_content_hashes:
+            prev_seen = self.global_content_hashes.get(content_hash)
+            if prev_seen is not None and (now - prev_seen) < self.replay_window_s:
                 alerts.append(self._make_alert('R-SEQ-002', session, msg,
-                                              f"Replay detected: content hash {content_hash[:16]}", AlertSeverity.HIGH))
+                                              f"Replay detected: content hash {content_hash[:16]} "
+                                              f"within {self.replay_window_s:.1f}s window",
+                                              AlertSeverity.HIGH))
             else:
-                session.seen_content_hashes.add(content_hash)
+                self.global_content_hashes[content_hash] = now
+            session.seen_content_hashes.add(content_hash)
         
-        # R-TIME-001: Timestamp regresivo
+        # R-TIME-001: Timestamp regresivo (global: aplica entre sesiones)
         if self.rules.is_enabled('R-TIME-001') and msg.timestamp:
-            ok, reason = validate_timestamp_regression(msg.timestamp, session.last_timestamp)
+            ok, reason = validate_timestamp_regression(msg.timestamp, self.global_last_timestamp)
             if not ok:
                 alerts.append(self._make_alert('R-TIME-001', session, msg, reason, AlertSeverity.MEDIUM))
         
-        # R-TIME-002: Frecuencia fuera de baseline
-        if self.rules.is_enabled('R-TIME-002') and session.last_message_time > 0:
-            interval = now - session.last_message_time
+        # R-TIME-002: Frecuencia fuera de baseline (global: cubre ráfagas y
+        # reconexiones repetidas, no solo dentro de una sesión TCP)
+        if self.rules.is_enabled('R-TIME-002') and self.global_last_message_time > 0:
+            interval = now - self.global_last_message_time
             ok, reason = validate_frequency(interval, self.baseline)
             if not ok:
                 alerts.append(self._make_alert('R-TIME-002', session, msg, reason, AlertSeverity.MEDIUM))
@@ -228,7 +253,9 @@ class DetectionEngine:
             session.seen_control_ids.add(msg.message_control_id)
         if msg.timestamp:
             session.last_timestamp = msg.timestamp
+            self.global_last_timestamp = msg.timestamp
         session.last_message_time = time.time()
+        self.global_last_message_time = session.last_message_time
         session.logical_identity = (msg.sending_app, msg.sending_facility)
     
     def _make_alert(self, rule_id: str, session: SessionState, msg: HL7Message,
@@ -250,7 +277,7 @@ class DetectionEngine:
             reason=reason,
             evidence_hash=evidence_hash,
             experimental_state=session.current_state,
-            label="ANOMALO",
+            label=AlertLabel.ANOMALO,
             synthetic=False
         )
     

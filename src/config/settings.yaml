@@ -42,6 +42,10 @@ wato_observed_standby:
     carriage_return: 0x0D
     encoding: "UTF-8"              # OBSERVADO: MSH-18 = "UNICODE UTF-8"
     # NOTA: ackdummy original usaba ISO-8859-1 (INCORRECTO según evidencia)
+    # INFERIDO: umbral de detección del framer = 4× p95 baseline (971 B).
+    # El límite de protocolo documentado es 65535 B; en el laboratorio se
+    # usa 4096 B para detectar mensajes sobredimensionados (A15).
+    max_message_size: 4096
   
   hl7:
     version: "2.6"                 # OBSERVADO: MSH-12 = "2.6"
@@ -282,7 +286,9 @@ emulator:
 
 anomaly_generator:
   safety_limits:
-    max_anomalies_per_run: 50
+    # Presupuesto por corrida: cubre cobertura completa del experimento
+    # 14 escenarios × 3 inyecciones + A12(20) + A13(5) = 67; margen 70.
+    max_anomalies_per_run: 70
     max_rate_per_second: 5
     max_message_size_bytes: 32768
     cooldown_seconds: 30
@@ -378,21 +384,21 @@ anomaly_generator:
       burst_duration_seconds: 5
     A13:
       name: "repeated_reconnections"
-      description: "Reconexiones repetidas con máximo bajo y cooldown"
+      description: "Reconexiones repetidas (corta sesión y reconecta)"
       threat: "Connection flooding / Resource exhaustion"
       mitre_ics: "T0814"
       enabled: true
       safety_limit: 5
       max_reconnects: 5
-      cooldown_seconds: 60
+      inter_reconnect_seconds: 0.5
     A14:
-      name: "delayed_or_missing_ack"
-      description: "ACK retrasado o ausente desde el emulador"
-      threat: "Degradación canal / DoS parcial"
+      name: "periodic_silence"
+      description: "Silencio periódico de 45 s (hueco > baseline 15 s) y luego mensaje"
+      threat: "Degradación de canal / DoS parcial"
       mitre_ics: "T0814"
       enabled: true
-      safety_limit: 10
-      ack_delay_seconds: 5
+      safety_limit: 3
+      gap_seconds: 45
     A15:
       name: "oversized_message"
       description: "Mensaje excesivamente grande (límite seguro)"
@@ -416,7 +422,7 @@ baseline_builder:
   requires_clinical_approval: true
   clinical_approval_status: "PENDING"
   statistics:
-    message_types_allowed: ["ORU^R01"]
+    message_types_allowed: ["ORU^R01^ORU_R01"]
     segment_sequences_allowed:
       - ["MSH", "PID", "PV1", "OBR", "OBX", "OBX", "OBX", "OBX"]
     sending_applications_allowed: ["MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64"]

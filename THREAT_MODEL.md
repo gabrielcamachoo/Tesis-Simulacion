@@ -55,7 +55,7 @@ red** que habla el protocolo estándar sin autenticación.
 | **T**ampering | Contenido de mensaje alterado (OBX, timestamp, unidades) o framing malformado | A04–A08, A10, A11 | T1692.002 |
 | **R**epudiation | Mensajes sin firma/autenticación → quien envió no es verificable | A02, A03 (replay) | T1692.002 |
 | **I**nformation disclosure | Tráfico HL7 sin cifrado con datos identificables | (propiedad inherente) | N/A — mitigado con anonimización en evidencia |
-| **D**enial of service | Ráfagas, reconexiones, mensajes sobredimensionados, ACK degradado | A12, A13, A14, A15 | T0814 |
+| **D**enial of service | Ráfagas, reconexiones, silencio de canal, mensajes sobredimensionados | A12, A13, A14, A15 | T0814 |
 | **E**levation of privilege | Escalada o persistencia en el dispositivo | — | **Fuera de alcance** (el lab no explota software; prohibido por el plan) |
 
 ## 4. Técnicas ATT&CK ICS verificadas (v20, 2026-10-13)

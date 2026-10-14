@@ -1,6 +1,6 @@
 # HANDOFF — Contexto y pasos siguientes
 
-> Última actualización: 2026-10-13 (fin de sesión + adenda de la sesión asistente, ver §7).
+> Última actualización: 2026-10-14 (sesión asistente 2: E2E docker validado, §7).
 
 ## 1. Contexto del proyecto
 
@@ -15,90 +15,62 @@
   `LAB_ONLY.marker`, rate limit, `strict_validation=True` por defecto.
 - Host Windows, PowerShell (sin `&&`, usar `;`), Python:
   `C:\Users\OsoGa\AppData\Local\Python\bin\python.exe` (pyyaml + pytest instalados).
-- Docker Desktop 29.8.2 + WSL2 (Ubuntu) **instalados y con motor corriendo** (2026-10-13
-  ~22:35, sesión asistente — ver §7): `docker compose config` OK y contenedor healthy,
-  pero E2E en contenedor tuvo estancamiento de I/O en `evidence_output/` (§7).
-  En shells nuevos hace falta antes de usar docker:
-  `$env:PATH = "C:\Program Files\Docker\Docker\resources\bin;" + $env:PATH`
-  (si no: `docker-credential-desktop ... not found`).
+- Docker Desktop 29.8.2 + WSL2 con motor corriendo; git 2.55 con identidad repo-local
+  `Tesis G18 SIDRE <tesis-g18@local>`; el proyecto **ya es un repo git** (rama `main`).
 
-## 2. Estado completado
+## 2. Estado completado (todo probado)
 
-- Fases 1–3 completas y probadas: módulos `src/mllp|hl7|evidence|detection|alerting|config/`,
-  `wato_emulator.py`, `anomaly_generator.py` (A01–A16), `evaluate.py` (matching por ventana,
-  `run_from_dir`), 15 reglas R-* con mapeos MITRE ICS.
-- MSH corregido a 4 pipes + `||UNICODE UTF-8` (fuente autoritativa: `wato_captures.txt`).
-- `run_experiment.py` (orquestador local/docker) **probado end-to-end en modo local**:
-  `runs/20261013_230110/` → recall=1.000, precision=1.000, fp=0, fn=0
-  (50 inyecciones, 112 alertas, 5 mensajes normales), con
-  `--benign-count 3 --anomaly-count 2 --exclude A14`.
-- Fix de regresión de tests (161 passed): `SafetyGuard.check` ahora honora estrictamente
-  `safety.lab_marker_path` (se eliminó el fallback al marcador del repo que anulaba la
-  ruta configurada); la conveniencia de desarrollo (usar `LAB_ONLY.marker` del repo cuando
-  la ruta por defecto `/LAB_ONLY.marker` no existe, p.ej. Windows) vive solo en
-  `anomaly_generator.main()`.
-- Suite completa: **161 passed** (`python -m pytest tests/ -q`).
-- Docs Fase 5 existentes: README, THREAT_MODEL, ETHICS_AND_SAFETY, LAB_ARCHITECTURE,
+- Fases 1–4 completas: módulos `src/`, `wato_emulator.py`, `anomaly_generator.py`
+  (A01–A16), `evaluate.py`, `run_experiment.py`, 15 reglas R-* con MITRE ICS v20.
+- MSH corregido a 4 pipes + `||UNICODE UTF-8` (fuente: `wato_captures.txt`).
+- **Presupuesto de inyecciones resuelto** (§3 del HANDOFF anterior):
+  `max_anomalies_per_run: 70` en `src/config/settings.yaml` (25 + 14×count = 67 con
+  count=3); `preflight_budget()` fail-fast en `run_experiment.py` (exit 4 si no cabe);
+  docs ETHICS_AND_SAFETY y ATTACK_SCENARIOS actualizadas.
+- **E2E local completo** (2026-10-14, `runs/20261014_091151`): 67/67 inyecciones
+  (A12=20, A13=5, resto=3), recall=1.000, precision=1.000, fp=0, fn=0.
+- **E2E docker completo** (2026-10-14, `runs/20261014_094347`, `--exclude A14`):
+  64/64 inyecciones, recall=1.000, precision=1.000, fp=0, fn=0. Ver §7 para los dos
+  fixes de entorno que hizo falta.
+- Fix SafetyGuard estricto + conveniencia de desarrollo solo en `anomaly_generator.main()`.
+- `anomaly_generator.py`: sustitución del marcador ANTES de `load_settings`
+  (estricto exige marcador válido al cargar).
+- A13/A14 alineados en settings/docs (A13 `inter_reconnect_seconds: 0.5`;
+  A14 `periodic_silence` gap 45 s, safety_limit 3).
+- Docs Fase 5/6 sincronizadas: README, THREAT_MODEL, ETHICS_AND_SAFETY, LAB_ARCHITECTURE,
   ATTACK_SCENARIOS, VALIDATION_PROTOCOL, RESULTS_TEMPLATE, LIMITATIONS,
-  TRACEABILITY_MATRIX.csv.
+  TRACEABILITY_MATRIX.csv, **RASPBERRY_PI_SETUP.md** (borrador Fase 6, sin ejecutar).
+- Suite completa: **161 passed** (re-correr tras cualquier cambio).
 
-## 3. Hallazgo crítico de esta sesión (SIN RESOLVER — primera tarea)
+## 3. Pendientes (en orden)
 
-**El límite global `max_anomalies_per_run: 50` (`src/config/settings.yaml:289`) trunca
-corridas por defecto y silencia escenarios completos.**
+1. **Commit** de la sesión (ver §7): todo lo anterior está sin commitear.
+2. **Raspberry Pi (Fase 6):** ejecutar `RASPBERRY_PI_SETUP.md` en hardware real;
+   marcar la checklist del doc. Medir H2 (latencia ACK) ahí.
+3. **Fase 9 (validación):** ≥30 corridas/escenario con semillas fijas, según
+   `VALIDATION_PROTOCOL.md`; dillicenciar `RESULTS_TEMPLATE.md`.
+4. Limpieza opcional: `docker volume rm investigacion-de-la-tesis_lab_output`
+   (los datos de cada corrida ya viven en `runs/<ts>/` tras el cp).
 
-Fórmula exacta (ver `anomaly_generator.run_scenario`, líneas 584–624):
-- A12 = 20 (ráfaga, UNA sola llamada), A13 = 5 (UNA sola llamada) → 25 fijos.
-- Los otros 14 escenarios: `min(count, safety_limit)` cada uno.
-  safety_limits: A01–A04,A09–A11=10; A05–A08=5; **A14=3**; A15,A16=5.
-- Totales: count=1 → 39 ✓ | count=2 → **53 ✗** (A16 queda en 1, observado en el smoke
-  test) | count=3 (default de `run_experiment`) → **67 ✗✗** (el cap corta DURANTE A12 →
-  A13, A15, A16 **jamás se ejecutan**, y aun así evaluate.py reportaría recall=1.0).
-
-Plan acordado (no implementado):
-1. `src/config/settings.yaml`: `max_anomalies_per_run: 50` → **70** (cubre 14×3+25=67).
-2. Actualizar las dos docs que fijan el presupuesto:
-   - `ETHICS_AND_SAFETY.md` línea 36 (`≤ 50` → `≤ 70`).
-   - `ATTACK_SCENARIOS.md` línea 39 (presupuesto 50 → 70, añadir fórmula 25 + 14×count).
-3. `run_experiment.py`: **preflight fail-fast** — importar `SCENARIOS` de
-   `anomaly_generator`, calcular inyecciones esperadas (respetando `--exclude` y la
-   lógica de ráfaga A12=`min(params.max_burst_messages, safety_limit)`,
-   A13=`min(params.max_reconnects, safety_limit)`), leer el presupuesto de settings.yaml
-   y `die(...)` con mensaje claro si no cabe (evita truncamiento silencioso para siempre).
-4. Re-correr `pytest tests/ -q` (ningún test asume 50, verificado por grep).
-
-## 4. Pasos siguientes (en orden)
-
-1. Implementar el fix del §3 (settings + 2 docs + preflight) y re-correr la suite.
-2. Re-ejecutar el orquestador con parámetros default reales
-   (`LAB_AUTHORIZED=YES python run_experiment.py --mode local`) y confirmar que TODOS los
-   escenarios (salvo exclusiones) aparecen en `ground_truth.jsonl` (conteo por escenario).
-3. Revisar docs Fase 5 por consistencia con los cambios recientes: `--exclude`,
-   SafetyGuard estricto, run_experiment, A13 (espera R-TIME-002) / A14 (hueco de 45 s,
-   también R-TIME-002; `--exclude A14` recomendado por lentitud).
-4. Fase 6: escribir doc de setup Raspberry Pi OS (falta; pendiente también WSL/Docker
-   para validar `--mode docker`).
-5. `docker-compose.yml` + `Dockerfile`: `docker compose config` ya OK y contenedor
-   healthy; falta re-validar E2E tras los fixes de ~22:59 (antes hubo estancamiento de
-   I/O en contenedor, ver §7) y probar `--mode docker` de run_experiment.
-6. Actualizar este HANDOFF al terminar.
-
-## 5. Comandos útiles
+## 4. Comandos útiles
 
 ```powershell
 # Suite completa (debe decir 161 passed)
 & "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" -m pytest tests/ -q
 
-# Corrida local rápida (smoke)
+# Corrida local completa (67 inyecciones, ~3 min)
 $env:LAB_AUTHORIZED="YES"
-& "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" run_experiment.py --mode local `
-  --benign-count 3 --anomaly-count 2 --exclude A14
+& "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" run_experiment.py --mode local
+
+# Corrida docker (metodología de la tesis; ~3 min; requiere Docker corriendo)
+$env:LAB_AUTHORIZED="YES"
+& "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" run_experiment.py --mode docker --exclude A14
 
 # Evaluación de una corrida existente
-& "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" -c "from evaluate import run_from_dir; print(run_from_dir('runs/20261013_230110'))"
+& "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" -c "from evaluate import run_from_dir; print(run_from_dir('runs/20261014_094347'))"
 ```
 
-## 6. Decisiones de diseño relevantes (no rehacer)
+## 5. Decisiones de diseño relevantes (no rehacer)
 
 - Motor de detección: MCIDs/hashes/último timestamp **globales entre sesiones**;
   `replay_window_s = 5`; intervalo benigno must be [5, 15.015] s (tests usan 6 s).
@@ -106,41 +78,54 @@ $env:LAB_AUTHORIZED="YES"
 - Evaluador: alertas dentro de la ventana de inyección → correlacionadas (no FP).
 - `allowed_ips` exact-match (sin CIDR): 192.168.23.250, 127.0.0.1, ::1, 172.30.0.10/11.
 - framer `max_message_size: 4096` → A15 dispara R-MLLP-001.
-- `runs/` sí se puede regenerar; `evidence_raw/` es solo lectura.
+- `runs/` y `evidence_output/` en `.gitignore` (regenerables); `evidence_raw/` solo lectura.
+- **Evidencia docker en named volume** `lab_output` (montado en `/lab_output`), NO en el
+  bind del repo; `run_experiment.py` la copia al host con `docker compose cp` antes del
+  `down`. Razón: el bind sobre OneDrive estancó el I/O (§7).
+- **Salud del receptor por healthcheck del contenedor** (`wait_healthy`), no por puerto
+  publicado: con redes `internal: true`, Docker Desktop WSL2 no materializa el publish
+  (§7). Las fases docker van por DNS interno (`mllp-receiver`), sin depender del host.
+- `--mode local` sigue escribiendo directo en `runs/<ts>/` (Python en el host no tiene
+  el problema de I/O del contenedor).
 
-## 7. Adenda — sesión asistente (2026-10-13, ~21:55–23:15)
+## 6. Riesgos conocidos
 
-Commits de esta sesión (además de los previos): `23c476b` THREAT_MODEL + corrección de
-mapeos MITRE en configs · `4cca06e` ETHICS_AND_SAFETY · `a2d1d64` LAB_ARCHITECTURE ·
-`fa1e530` ATTACK_SCENARIOS · `2cd891f` VALIDATION_PROTOCOL + LIMITATIONS · `8fca852`
-RESULTS_TEMPLATE + TRACEABILITY_MATRIX · `ab6735b` docker-compose + test MITRE +
-receptor `--host` por defecto `127.0.0.1` · `1d2107a` mapeos MITRE en
-`anomaly_generator.py` + test de sincronía + `runs/` en `.gitignore`.
+- Validación clínica pendiente (`clinical_approval_status: PENDING`): ninguna regla
+  clínica activa hasta aprobación (ETHICS_AND_SAFETY.md).
+- RUNNING: códigos OBX NM/SN no baselineados → posible semitono de FP en Fase 9.
+- A14 completo cuesta ~135 s/corrida; en Fase 9 decidir si se corre completo o se
+  excluye documentando la exclusión.
+- Si se reutiliza `%TEMP%\settings_lab_smoke.yaml` de sesiones viejas: regenerarla
+  (settings.yaml cambió y produce FPs confusos).
 
-- **MITRE ATT&CK ICS v20** verificado 2026-10-13 en attack.mitre.org: `T0855` redirige a
-  `T1692.001` y `T0857` a `T1693.001` (Modify Firmware). Mapeos corregidos en
-  `settings.yaml`/`rules.yaml`/`rules.py`/`anomaly_generator.py` → **T1692.002**
-  (mensaje de reporte no autorizado) y **T0814** (DoS, A12–A15). Guardia de regresión:
-  `tests/test_mitre_mappings.py` (falla si reaparecen IDs obsoletos o si
-  generator/settings/rules divergen en técnica).
-- **E2E host (22:48): OK** — emulador 2/2 ACKs AA, alertas emitidas (R-NET-001,
-  R-HL7-002*, R-TIME-002, R-OBX-001*), evidencia con hashes SHA-256. *R-HL7-002 fue FP
-  por config vieja de22:24; el fix posterior (3 partes) de la otra sesión lo resuelve.
-  Método: TODO en un solo comando (Start-Process receptor → emulador → Stop-Process);
-  el wrapper de la shell **mata procesos hijos vivos** (`ChildProcess.kill`) — no dejar
-  receptores detachados entre llamadas.
-- **E2E Docker (22:38): FALLÓ por I/O** — el contenedor creó `evidence_output/**` en
-  **0 bytes** y los hilos quedaron bloqueados dentro de `open_session` (sesiones subían
-  sin `SESSION_START`/`MSG_RECV`, RLock retenido ⇒ sin ACKs). Síntoma típico de
-  escritura de bind-mount OneDrive↔Docker Desktop estancada. Plan: (a) reintentar con
-  los fixes posteriores a 22:59, (b) si persiste → named volume en
-  `/app/evidence_output` + `docker compose cp`, o repo fuera de OneDrive para Docker.
-- Si se reutiliza `%TEMP%\settings_lab_smoke.yaml` (config de pruebas con marcador en
-  TEMP): **regenerarla** — `settings.yaml` cambió después de copiarla y produce falsos
-  positivos confusos (p.ej. R-HL7-002 por `message_types_allowed` desactualizado).
-- `evidence_output/` agregado a `.gitignore` (runtime, análogo a `runs/`). El
-  `LAB_ONLY.marker` de la raíz sigue sin trackear: decidir si se committea o se
-  documenta como artefacto local (lo usa la comodidad de `anomaly_generator.main()`).
-- Python: además del sistema (`AppData\Local\Python\bin\python.exe`), el venv del repo
-  `.venv\Scripts\python.exe` sirve igual (ambos con pyyaml+pytest).
-- Confirmado a las23:09: **161 passed**.
+## 7. Adenda — sesión asistente 2 (2026-10-14, ~09:00–15:00)
+
+Contexto: el HANDOFF anterior quedó a medias tras la sesión 2026-10-13 (§ del E2E
+docker fallido). El usuario pidió "Sigue haz todo".
+
+- **Docker/WSL ya estaban disponibles** (instalados tras la sesión 13; el blocker
+  "falta Docker" del HANDOFF anterior quedó obsoleto).
+- **Fix named volume** (`docker-compose.yml`): volumen `lab_output` montado en
+  `/lab_output` en los tres servicios; receptor con `--outdir ${LAB_OUTDIR:-/lab_output/evidence}`;
+  `run_experiment.py --mode docker` usa `LAB_OUTDIR=/lab_output/<ts>` y tras las fases
+  copia al host con `docker compose cp mllp-receiver:/lab_output/<ts>/. runs/<ts>`.
+  Motivo: el E2E docker del 13 falló con archivos de 0 bytes y threads bloqueados en
+  `open_session` (RLock retenido) — estancamiento de I/O del bind OneDrive↔Docker.
+- **Fix `wait_healthy`** (`run_experiment.py`): el modo docker ya no usa
+  `wait_port("127.0.0.1", 1550)`. Verificado empíricamente 2026-10-14: con redes
+  `internal: true`, Docker Desktop WSL2 acepta el `ports:` en la config pero
+  `NetworkSettings.Ports` queda vacío (el publish no se materializa; control con red
+  default SÍ funciona). `wait_healthy` consulta `docker inspect` del healthcheck
+  (contenedor interno, sin host). El `ports: 127.0.0.1:1550:1550` se dejó anotado como
+  solo-útil-en-Linux/Pi.
+- **Corrida docker de verificación:** `runs/20261014_094347` — 64/64 (A01–A11=3,
+  A12=20, A13=5, A15=3, A16=3; A14 excluido), 153 alertas + 11 normales,
+  recall=1.000 precision=1.000 fp=0 fn=0. Estructura del run idéntica a la local
+  (alerts/, hl7/, logs/, raw/, ground_truth.jsonl, evaluation.*).
+- Identidad git repo-local configurada (antes solo existía en commits previos):
+  `git config user.name/user.email` → `Tesis G18 SIDRE <tesis-g18@local>`.
+- `LAB_ONLY.marker` decidido para commit: es un flag de cero contenido que marca
+  "este árbol es el repo del lab autorizado" (el gate real es `LAB_AUTHORIZED=YES`,
+  que NO se commitea). Hacerlo tracking facilita clones/Pi sin paso manual extra.
+- Docs actualizadas con el estado nuevo: README (Fase 4 ✅ local+docker), LAB_ARCHITECTURE
+  (tabla de despliegue), LIMITATIONS (§2 Docker: dos particularidades del entorno).

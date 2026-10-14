@@ -296,7 +296,17 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
             'server_ip': '192.168.23.200',
             'server_port': 1550,
             'protocol': 'TCP',
-            'client_role': 'WATO inicia conexión (cliente TCP)'
+            'client_role': 'WATO inicia conexión (cliente TCP)',
+            # IPs de origen permitidas (R-NET-001). 192.168.23.250 = OBSERVADA
+            # en captura real; loopback e IP del emulador Docker = INFERIDO
+            # para el laboratorio aislado.
+            'allowed_ips': [
+                '192.168.23.250',
+                '127.0.0.1',
+                '::1',
+                '172.30.0.10',
+                '172.30.0.11',
+            ]
         }
     }
 

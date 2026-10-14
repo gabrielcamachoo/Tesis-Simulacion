@@ -19,7 +19,7 @@ from ..hl7.parser import parse_hl7_message, HL7Message
 from ..hl7.validator import validate_hl7_structure
 from ..evidence.writer import EvidenceWriter
 from ..detection.engine import DetectionEngine
-from ..alerting.json_logger import AlertLogger
+from ..alerting.json_logger import AlertLogger, AlertLabel
 from ..config.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -153,6 +153,18 @@ class MLLPRequestHandler(socketserver.BaseRequestHandler):
         for alert in detection_result.alerts:
             self.alert_logger.log_alert(alert)
             self.evidence_writer.write_alert(self.session_info.session_id, alert)
+
+        if not detection_result.alerts:
+            # Mensaje sin alerta -> registro NORMAL (fuente de TN para evaluación)
+            import hashlib as _hashlib
+            _eh = _hashlib.sha256(frame.content).hexdigest()
+            self.alert_logger.log_normal(
+                session_id=self.session_info.session_id,
+                source=f"{self.session_info.client_ip}:{self.session_info.client_port}",
+                msg_control_id=parsed.message_control_id or "N/A",
+                state=detection_result.session_state.current_state,
+                evidence_hash=_eh
+            )
         
         if self.send_ack and parsed.message_control_id:
             ack_bytes = self._build_ack(parsed, hl7_text)
@@ -176,6 +188,31 @@ class MLLPRequestHandler(socketserver.BaseRequestHandler):
         logger.warning(f"FRAMING_ERROR session_id={self.session_info.session_id} error={error}")
         self.session_info.errors.append(error)
         self.evidence_writer.write_error(self.session_info.session_id, error, b'')
+        # Los errores de framing son detectables: generar alerta R-MLLP-001
+        self._alert_framing_error(error)
+
+    def _alert_framing_error(self, error: str):
+        """Crea y registra una alerta R-MLLP-001 por error de framing."""
+        import hashlib as _hashlib
+        from ..alerting.json_logger import Alert, AlertSeverity
+        from datetime import datetime as _dt, timezone as _tz
+        
+        now = _dt.now(_tz.utc)
+        alert = Alert(
+            alert_id=f"ALERT-FRAME-{int(now.timestamp()*1000)}",
+            rule_id="R-MLLP-001",
+            timestamp_utc=now.isoformat(),
+            session_id=self.session_info.session_id,
+            source=f"{self.session_info.client_ip}:{self.session_info.client_port}",
+            message_control_id="N/A",
+            severity=AlertSeverity.HIGH,
+            reason=f"R-MLLP-001: {error}",
+            evidence_hash=_hashlib.sha256(error.encode()).hexdigest(),
+            experimental_state="FRAMING_ERROR",
+            label=AlertLabel.ANOMALO
+        )
+        self.alert_logger.log_alert(alert)
+        self.evidence_writer.write_alert(self.session_info.session_id, alert)
 
     def _log_timeout(self):
         elapsed = time.monotonic() - self.session_info.last_activity
@@ -184,6 +221,13 @@ class MLLPRequestHandler(socketserver.BaseRequestHandler):
 
     def finish(self):
         if self.session_info:
+            # Frame pendiente al cierre = trama incompleta (ej. A05: sin EB/CR)
+            if self.framer.buffer or self.framer.state.name != "WAITING_SB":
+                pending = len(self.framer.buffer)
+                self._alert_framing_error(
+                    f"incomplete_frame_at_session_close:{pending}_bytes_pending")
+                self.framer.buffer = b''
+            
             duration = time.monotonic() - self.session_info.start_time
             logger.info(f"SESSION_END session_id={self.session_info.session_id} "
                         f"duration={duration:.1f}s messages={self.session_info.message_count} "

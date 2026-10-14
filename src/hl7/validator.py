@@ -84,18 +84,27 @@ def _validate_segment_sequence(observed: List[str], allowed_sequences: List[List
 
 
 def _sequences_match(observed: List[str], allowed: List[str]) -> bool:
-    """Compara secuencias permitiendo OBX repetidos."""
-    if len(observed) < len(allowed):
-        return False
+    """Compara secuencias permitiendo OBX repetidos y NTE opcional al final.
+    El prefijo fijo (no-OBX) debe coincidir en orden; tras él se acepta
+    cualquier número de OBX (el baseline documenta 4 en STANDBY, pero el
+    número de OBX no es una regla de ORDEN de segmentos)."""
+    
+    # NTE (notas) es un segmento opcional legal al final - no forma parte
+    # de la secuencia estructural observada en baseline
+    trimmed = list(observed)
+    while trimmed and trimmed[-1] == 'NTE':
+        trimmed.pop()
     
     # Verificar prefijo fijo (MSH, PID, PV1, OBR)
     fixed_prefix = [s for s in allowed if s != 'OBX']
+    if len(trimmed) < len(fixed_prefix):
+        return False
     for i, seg in enumerate(fixed_prefix):
-        if i >= len(observed) or observed[i] != seg:
+        if trimmed[i] != seg:
             return False
     
     # Verificar que el resto sean OBX
-    remaining = observed[len(fixed_prefix):]
+    remaining = trimmed[len(fixed_prefix):]
     return all(s == 'OBX' for s in remaining)
 
 
@@ -110,6 +119,9 @@ def validate_obx_constraints(msg: HL7Message, baseline: Baseline) -> ValidationR
     violations = []
     
     allowed_codes = set(baseline.obx_identifiers_observed)
+    # El baseline guarda el identificador completo ("202886^MDC...^MDC");
+    # el código primario (OBX-3 primer componente) también debe aceptarse.
+    allowed_primary = {c.split('^')[0] for c in allowed_codes}
     allowed_types = set(baseline.obx_value_types_observed)
     allowed_units = set(baseline.obx_units_observed)
     
@@ -119,7 +131,8 @@ def validate_obx_constraints(msg: HL7Message, baseline: Baseline) -> ValidationR
         
         # R-OBX-001: Identificador no autorizado
         code = obx.fields[3].components[0] if obx.fields[3].components else ""
-        if code and allowed_codes and code not in allowed_codes:
+        if (code and allowed_codes and code not in allowed_codes
+                and code not in allowed_primary):
             errors.append(f"R-OBX-001: Unauthorized OBX code: {code}")
             violations.append("R-OBX-001")
         
@@ -129,11 +142,17 @@ def validate_obx_constraints(msg: HL7Message, baseline: Baseline) -> ValidationR
             errors.append(f"R-OBX-003: Unexpected value type: {value_type} for code {code}")
             violations.append("R-OBX-003")
         
-        # R-OBX-002: Unidad no permitida (solo si hay unidades en baseline)
+        # R-OBX-002: Unidad no permitida
+        # - Si baseline tiene unidades: solo las observadas son válidas.
+        # - Si baseline NO tiene unidades (STANDBY CWE sin unidad): un valor
+        #   numérico/cualitativo con unidad es inesperado. Para CWE es
+        #   inválido siempre (CWE no lleva unidad de medida).
         if len(obx.fields) > 6 and obx.fields[6].raw:
             unit = obx.fields[6].raw
-            if allowed_units and unit not in allowed_units:
-                warnings.append(f"R-OBX-002: Unexpected unit: {unit} for code {code}")
+            unit_allowed = bool(allowed_units) and unit in allowed_units
+            cwe_with_unit = (value_type == 'CWE')
+            if (allowed_units and not unit_allowed) or cwe_with_unit:
+                errors.append(f"R-OBX-002: Unauthorized unit: {unit} for code {code}")
                 violations.append("R-OBX-002")
     
     return ValidationResult(

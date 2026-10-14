@@ -54,7 +54,8 @@ class EvidenceWriter:
         self.hash_algorithm = settings.evidence.hash_algorithm
         
         self.sessions: Dict[str, SessionFiles] = {}
-        self._lock = threading.Lock()
+        # RLock: open_session (con lock) llama a _write_log (con lock)
+        self._lock = threading.RLock()
         self.session_metadata: Dict[str, Dict] = {}
         
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -214,6 +215,11 @@ class EvidenceWriter:
             
             # Anonimizar antes de escribir si configurado
             alert_dict = asdict(alert)
+            # Serializables: enums a str (json.dumps no los soporta)
+            if hasattr(alert_dict.get('severity'), 'value'):
+                alert_dict['severity'] = alert_dict['severity'].value
+            if hasattr(alert_dict.get('label'), 'value'):
+                alert_dict['label'] = alert_dict['label'].value
             if self.settings.alerting.anonymize_before_alert:
                 alert_dict = self._anonymize_alert(alert_dict)
             

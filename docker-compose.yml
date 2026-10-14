@@ -1,27 +1,50 @@
-# docker-compose.yml - Laboratorio HL7/MLLP (solo red local del host)
-# Requiere Docker Desktop instalado (pendiente: instalacion manual, ver README).
-# El puerto se publica SOLO en 127.0.0.1 del host; el emulador habla por la red interna.
-# Uso:
-#   docker compose up -d mllp-receiver wato-emulator
+# docker-compose.yml - Laboratorio HL7/MLLP aislado (red interna, sin egress)
+# Requiere Docker Desktop + WSL (pendiente de instalar en la máquina del lab).
+#
+# Diseño:
+#   - Red interna (internal: true) con subred fija 172.30.0.0/24: los
+#     contenedores NO tienen salida a Internet en runtime (builds sí).
+#   - IPs fijas registradas en baseline.yaml -> network_parameters.allowed_ips
+#     (R-NET-001): emulador 172.30.0.10, generador 172.30.0.11,
+#     receptor 172.30.0.20.
+#   - Imagen única (Dockerfile) con dependencias instaladas en build.
+#   - El puerto 1550 se publica SOLO en 127.0.0.1 del host (debug/manual).
+#   - Evidencia en named volume lab_output montado en /lab_output (NO en el
+#     bind-mount del repo): el E2E docker de 2026-10-13 falló con estancamiento
+#     de I/O (archivos de 0 bytes) al escribir evidence_output/ sobre OneDrive
+#     desde el contenedor. run_experiment.py --mode docker usa
+#     LAB_OUTDIR=/lab_output/<timestamp> y luego `docker compose cp` copia
+#     resultados al host (runs/<timestamp>/) para la evaluación.
+#
+# Uso manual:
+#   docker compose up -d mllp-receiver
+#   docker compose --profile benign run --rm wato-emulator
 #   docker compose --profile anomalies run --rm anomaly-generator
 #   docker compose down
+# Uso recomendado: python run_experiment.py --mode docker
 
 x-lab-env: &lab-env
   LAB_AUTHORIZED: "YES"
 
 services:
   mllp-receiver:
-    image: python:3.11-slim
+    build: .
     working_dir: /app
     volumes:
       - ./:/app
+      - lab_output:/lab_output
     environment: *lab-env
     command: >-
-      sh -c "touch /LAB_ONLY.marker &&
-             pip install -q --no-cache-dir -r requirements.txt &&
-             python mllp_receiver.py --host 0.0.0.0 --port 1550"
+      python mllp_receiver.py --host 0.0.0.0 --port 1550
+      --outdir ${LAB_OUTDIR:-/lab_output/evidence}
     ports:
+      # Solo debug/manual. En Docker Desktop WSL2 con redes internal:true
+      # el publish NO se materializa (verificado 2026-10-14); el E2E
+      # automatizado no depende de esto (las fases van por DNS interno).
       - "127.0.0.1:1550:1550"
+    networks:
+      lab:
+        ipv4_address: 172.30.0.20
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket;s=socket.create_connection(('127.0.0.1',1550),2);s.close()\""]
       interval: 5s
@@ -30,37 +53,52 @@ services:
     restart: "no"
 
   wato-emulator:
-    image: python:3.11-slim
+    build: .
+    profiles: ["benign"]
     working_dir: /app
     volumes:
       - ./:/app
+      - lab_output:/lab_output
     environment: *lab-env
     depends_on:
       mllp-receiver:
         condition: service_healthy
+    networks:
+      lab:
+        ipv4_address: 172.30.0.10
+    # Comando por defecto benigno; run_experiment.py lo sobreescribe
     command: >-
-      sh -c "touch /LAB_ONLY.marker &&
-             pip install -q --no-cache-dir -r requirements.txt &&
-             python wato_emulator.py --host mllp-receiver --port 1550 --count 0"
+      python wato_emulator.py --host mllp-receiver --port 1550
+      --state STANDBY --count 10 --interval 6.0
     restart: "no"
 
   anomaly-generator:
-    image: python:3.11-slim
-    working_dir: /app
+    build: .
     profiles: ["anomalies"]
+    working_dir: /app
     volumes:
       - ./:/app
+      - lab_output:/lab_output
     environment: *lab-env
     depends_on:
       mllp-receiver:
         condition: service_healthy
+    networks:
+      lab:
+        ipv4_address: 172.30.0.11
+    # Comando por defecto; run_experiment.py lo sobreescribe (ground truth)
     command: >-
-      sh -c "touch /LAB_ONLY.marker &&
-             pip install -q --no-cache-dir -r requirements.txt &&
-             python anomaly_generator.py --host mllp-receiver --count 5 --all"
+      python anomaly_generator.py --host mllp-receiver --port 1550
+      --all --count 5
     restart: "no"
 
 networks:
-  default:
+  lab:
     name: wato-lab
-    # Aislada del mundo salvo el loopback del host via 127.0.0.1:1550
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  lab_output:

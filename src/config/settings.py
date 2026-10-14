@@ -103,6 +103,9 @@ class Settings:
     safety: SafetySettings = field(default_factory=SafetySettings)
     alerting: AlertingSettings = field(default_factory=AlertingSettings)
     anomaly_generator: AnomalyGeneratorSettings = field(default_factory=AnomalyGeneratorSettings)
+    # strict_validation=True (default): falla seguro si LAB_AUTHORIZED/marcador ausentes.
+    # Solo debe desactivarse en tests unitarios; NUNCA en el receptor ni en el generador.
+    strict_validation: bool = True
     
     # Runtime
     _lab_authorized: bool = field(default=False, init=False)
@@ -161,8 +164,12 @@ class Settings:
         
         if errors:
             error_msg = "VALIDACIÓN DE SEGURIDAD FALLÓ:\n" + "\n".join(f"  - {e}" for e in errors)
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            if self.strict_validation:
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            # Modo solo-lectura/tests: registrar pero no bloquear
+            logger.warning(error_msg)
+            return
         
         logger.info("Validación de seguridad PASÓ: LAB_AUTHORIZED=%s, LAB_MARKER=%s",
                    self._lab_authorized, self._lab_marker_exists)

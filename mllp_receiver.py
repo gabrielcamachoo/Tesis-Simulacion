@@ -70,7 +70,7 @@ Ejemplos:
     parser.add_argument("--host", default="127.0.0.1",
                         help="IP a escuchar (default: 127.0.0.1; usar 0.0.0.0 solo en red Docker del lab)")
     parser.add_argument("--port", type=int, default=1550, help="Puerto TCP (default: 1550)")
-    parser.add_argument("--config", default="config/settings.yaml", help="Archivo YAML de configuración")
+    parser.add_argument("--config", default="src/config/settings.yaml", help="Archivo YAML de configuración")
     parser.add_argument("--baseline", default="baseline.yaml", help="Archivo baseline YAML")
     parser.add_argument("--rules", default="config/rules.yaml", help="Archivo reglas YAML")
     parser.add_argument("--outdir", default="evidence_output", help="Directorio de evidencia")

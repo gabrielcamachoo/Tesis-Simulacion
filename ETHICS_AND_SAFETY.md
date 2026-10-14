@@ -33,13 +33,14 @@ se detiene. Los límites operativos citados están en `src/config/settings.yaml`
 
 | Control | Valor (settings.yaml `laboratory.safety`) |
 |---------|-------------------------------|
-| Anomalías por ejecución | ≤ 50 (`max_anomalies_per_run`) |
+| Anomalías por ejecución | ≤ 70 (`max_anomalies_per_run`; cobertura 14×3 + A12 20 + A13 5 = 67) |
 | Tasa global | ≤ 5 msg/s (`max_rate_per_second`) |
 | Tamaño máximo de mensaje | ≤ 32 768 bytes (`max_message_size_bytes`) |
 | Enfriamiento entre ejecuciones | ≥ 30 s (`cooldown_seconds`) |
 | Límite por escenario (A01–A16) | `safety_limit` 5–20 por escenario |
 | Burst (A12) | ≤ 20 msg en 5 s |
-| Reconexiones (A13) | ≤ 5, con cooldown 60 s |
+| Reconexiones (A13) | ≤ 5, 0.5 s entre intentos |
+| Silencio (A14) | hueco 45 s por inyección (techo 3) |
 
 **Prohibiciones absolutas:** ransomware/wiper, malware o persistencia de cualquier clase,
 exploits o búsqueda de vulnerabilidades en software de terceros, fuerza brute, DoS sin techo,
