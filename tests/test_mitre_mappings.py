@@ -71,3 +71,18 @@ def test_default_rules_and_yaml_agree():
             f"{rule.rule_id}: rules.py={rule.mitre_technique} "
             f"differs de rules.yaml={yaml_rules.get(rule.rule_id)}"
         )
+
+
+def test_generator_scenarios_match_settings():
+    """Solo invariantes MITRE: limites/nombres/sincronia fina los cubre
+    tests/test_anomaly_generator.py (pueden evolucionar en paralelo)."""
+    from anomaly_generator import SCENARIOS
+
+    scenarios = _load_yaml(ROOT / "src" / "config" / "settings.yaml")[
+        "anomaly_generator"]["scenarios"]
+    assert set(SCENARIOS) == set(scenarios)
+    for sid, sc in SCENARIOS.items():
+        yaml_sc = scenarios[sid]
+        assert sc.mitre_ics == yaml_sc["mitre_ics"], (
+            f"{sid}: generator={sc.mitre_ics} vs settings={yaml_sc['mitre_ics']}")
+        assert sc.mitre_ics in ALLOWED_TECHNIQUES, f"{sid}: {sc.mitre_ics} no permitida"
