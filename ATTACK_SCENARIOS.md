@@ -1,6 +1,6 @@
 # Escenarios de Ataque del Laboratorio (A01–A16)
 
-**Fuente de verdad operativa:** `src/config/settings.yaml` → `anomalies.scenarios`
+**Fuente de verdad operativa:** `src/config/settings.yaml` → `anomaly_generator.scenarios`
 **Mapeo MITRE:** verificado contra ATT&CK ICS v20 el 2026-10-13 (`THREAT_MODEL.md` §4–§5)
 **Carácter:** generación sintética **dentro del lab**, con techo por escenario
 (`safety_limit`) y los límites globales de `ETHICS_AND_SAFETY.md` §3. No hay explotación,

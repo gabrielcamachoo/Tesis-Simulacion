@@ -4,7 +4,8 @@ mllp_receiver.py - Receptor MLLP/HL7 modular para WATO EX-35
 Punto de entrada principal que integra todos los componentes.
 
 Uso:
-    python mllp_receiver.py                    # 0.0.0.0:1550, con ACK
+    python mllp_receiver.py                    # 127.0.0.1:1550, con ACK
+    python mllp_receiver.py --host 0.0.0.0     # Solo con red Docker/lab aislada
     python mllp_receiver.py --no-ack           # Modo observador pasivo
     python mllp_receiver.py --config config.yaml
     python mllp_receiver.py --outdir evidence_output
@@ -66,7 +67,8 @@ Ejemplos:
   python mllp_receiver.py --outdir ./mis_capturas  # Directorio de salida
         """
     )
-    parser.add_argument("--host", default="0.0.0.0", help="IP a escuchar (default: 0.0.0.0)")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="IP a escuchar (default: 127.0.0.1; usar 0.0.0.0 solo en red Docker del lab)")
     parser.add_argument("--port", type=int, default=1550, help="Puerto TCP (default: 1550)")
     parser.add_argument("--config", default="config/settings.yaml", help="Archivo YAML de configuración")
     parser.add_argument("--baseline", default="baseline.yaml", help="Archivo baseline YAML")
@@ -96,6 +98,8 @@ Ejemplos:
         # Sobrescribir host/port si se pasan por CLI
         settings.network.bind_host = args.host
         settings.network.bind_port = args.port
+        # Sincronizar directorio de evidencia (AlertLogger usa settings.evidence.output_dir)
+        settings.evidence.output_dir = args.outdir
         
         logger.info(f"Configuración: bind={settings.network.bind_host}:{settings.network.bind_port}")
         logger.info(f"Servidor HL7 esperado: {settings.network.server_ip}:{settings.network.server_port}")

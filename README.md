@@ -20,6 +20,15 @@ src/
 tests/              Pruebas pytest (incluye verificación contra los PCAP reales).
 baseline.yaml       Línea base estadística trazable a hashes de evidencia.
 mllp_receiver.py    Receptor MLLP de laboratorio (solo localhost/red interna).
+wato_emulator.py    Emulador sintético ORU^R01 (periodicidad de evidencia).
+anomaly_generator.py Generador de escenarios A01–A16 con techos de seguridad.
+evaluate.py         Evaluación de corridas (ADR/FP) contra ground truth.
+docker-compose.yml  Topología de laboratorio (requiere Docker Desktop).
+
+Documentos de fase (raíz): THREAT_MODEL.md, ETHICS_AND_SAFETY.md,
+LAB_ARCHITECTURE.md, ATTACK_SCENARIOS.md, VALIDATION_PROTOCOL.md,
+RESULTS_TEMPLATE.md, LIMITATIONS.md, TRACEABILITY_MATRIX.csv,
+EVIDENCE_ANALYSIS.md.
 ```
 
 ## Requisitos
@@ -46,6 +55,14 @@ python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt
 
 # Receptor MLLP de laboratorio (solo entorno autorizado)
 .venv/Scripts/python mllp_receiver.py --help
+
+# Emulador benigno (otra terminal) y escenarios de anomalía
+.venv/Scripts/python wato_emulator.py --host 127.0.0.1 --count 10
+.venv/Scripts/python anomaly_generator.py --dry-run --scenario A01
+
+# Topología en Docker (cuando Docker Desktop esté instalado)
+docker compose up -d mllp-receiver wato-emulator
+docker compose --profile anomalies run --rm anomaly-generator
 ```
 
 ## Reglas de seguridad (no negociables)
@@ -61,6 +78,12 @@ python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt
 
 ## Estado
 
-Fase 0 (toolchain, Git) y Fase 1 (análisis de evidencia verificado: 142 ORU +
-142 ACK correlacionados, baseline trazable) completadas. El resto de fases
-(emulador, motor de detección, escenarios, validación) está en construcción.
+- **Fase 0** ✅ toolchain (Python 3.11.9, Git, venv).
+- **Fase 1** ✅ análisis de evidencia verificado: 142 ORU + 142 ACK correlacionados,
+  baseline trazable, anonimización por defecto.
+- **Fase 3** ✅ documentación: threat model, ética, arquitectura, escenarios A01–A16
+  con técnicas ATT&CK ICS v20 verificadas (2026-10-13) y matriz de trazabilidad al SRS.
+- **Fase 2/4** 🔄 emulador, generador de anomalías y evaluación en desarrollo.
+- **Pendiente externo:** Docker Desktop (instalación manual; código de error
+  4294967291 vía winget) y ejecución en Raspberry Pi (Fase 5+).
+- **NO VERIFICADO:** H1 (ADR ≥ 90 %) y H2 (≤ 500 µs) hasta la Fase 9.

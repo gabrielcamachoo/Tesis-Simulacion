@@ -1,0 +1,66 @@
+# docker-compose.yml - Laboratorio HL7/MLLP (solo red local del host)
+# Requiere Docker Desktop instalado (pendiente: instalacion manual, ver README).
+# El puerto se publica SOLO en 127.0.0.1 del host; el emulador habla por la red interna.
+# Uso:
+#   docker compose up -d mllp-receiver wato-emulator
+#   docker compose --profile anomalies run --rm anomaly-generator
+#   docker compose down
+
+x-lab-env: &lab-env
+  LAB_AUTHORIZED: "YES"
+
+services:
+  mllp-receiver:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment: *lab-env
+    command: >-
+      sh -c "touch /LAB_ONLY.marker &&
+             pip install -q --no-cache-dir -r requirements.txt &&
+             python mllp_receiver.py --host 0.0.0.0 --port 1550"
+    ports:
+      - "127.0.0.1:1550:1550"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket;s=socket.create_connection(('127.0.0.1',1550),2);s.close()\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: "no"
+
+  wato-emulator:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment: *lab-env
+    depends_on:
+      mllp-receiver:
+        condition: service_healthy
+    command: >-
+      sh -c "touch /LAB_ONLY.marker &&
+             pip install -q --no-cache-dir -r requirements.txt &&
+             python wato_emulator.py --host mllp-receiver --port 1550 --count 0"
+    restart: "no"
+
+  anomaly-generator:
+    image: python:3.11-slim
+    working_dir: /app
+    profiles: ["anomalies"]
+    volumes:
+      - ./:/app
+    environment: *lab-env
+    depends_on:
+      mllp-receiver:
+        condition: service_healthy
+    command: >-
+      sh -c "touch /LAB_ONLY.marker &&
+             pip install -q --no-cache-dir -r requirements.txt &&
+             python anomaly_generator.py --host mllp-receiver --count 5 --all"
+    restart: "no"
+
+networks:
+  default:
+    name: wato-lab
+    # Aislada del mundo salvo el loopback del host via 127.0.0.1:1550

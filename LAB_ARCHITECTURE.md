@@ -39,7 +39,7 @@ evidencia. No hay componente inline en el dispositivo WATO.
 | `hl7/` | `parser.py`, `validator.py` | Parseo HL7 por segmentos/campos, validaciones estructurales y contra baseline (OBX, MCID, timestamp, frecuencia, FSM, identidad, framing) |
 | `detection/` | `engine.py`, `rules.py`, `baseline.py` | Motor determinista con estado por sesión; 15 reglas (ID/NET/MLLP/HL7/SEQ/TIME/OBX/STATE) con severidad, límites de seguridad y mapeo MITRE; carga de `baseline.yaml` |
 | `evidence/` | `pcap_reader.py`, `analyze_evidence.py`, `baseline_builder.py`, `writer.py`, `hashing.py` | Lector PCAP/PCAPNG en Python puro (sin pyshark), pipeline de análisis con anonimización por defecto, generación de baseline, escritor y SHA-256 |
-| `config/` | `settings.py`, `settings.yaml` | Carga de configuración única; `safety` (límites de §3 de ETHICS), `anomalies.scenarios` (A01–A16) |
+| `config/` | `settings.py`, `settings.yaml` | Carga de configuración única; `laboratory.safety` (límites de §3 de ETHICS), `anomaly_generator.scenarios` (A01–A16) |
 | `alerting/` | `json_logger.py` | Alertas JSONL con hash de evidencia |
 
 Puntos de entrada en la raíz: `mllp_receiver.py` (receptor integrado) y `wato_emulator.py`

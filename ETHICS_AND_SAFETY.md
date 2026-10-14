@@ -3,7 +3,7 @@
 **Fecha:** 2026-10-13 · **Estado:** vigente · **Revisión:** obligada antes de cada fase de ejecución
 
 Este documento fija los límites aceptables del laboratorio. Cualquier ejecución que lo contradiga
-se detiene. Los límites operativos citados están en `src/config/settings.yaml` (`safety`).
+se detiene. Los límites operativos citados están en `src/config/settings.yaml` (`laboratory.safety`).
 
 ## 1. Principios
 
@@ -31,7 +31,7 @@ se detiene. Los límites operativos citados están en `src/config/settings.yaml`
 
 ## 3. Límites cuantitativos del generador de anomalías
 
-| Control | Valor (settings.yaml `safety`) |
+| Control | Valor (settings.yaml `laboratory.safety`) |
 |---------|-------------------------------|
 | Anomalías por ejecución | ≤ 50 (`max_anomalies_per_run`) |
 | Tasa global | ≤ 5 msg/s (`max_rate_per_second`) |
