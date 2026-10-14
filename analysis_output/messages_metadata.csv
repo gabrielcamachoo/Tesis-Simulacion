@@ -1,0 +1,1 @@
+message_id,session_id,timestamp,source_ip,source_port,message_type,message_control_id,hl7_version,sending_app,sending_facility,segment_sequence,size_bytes,interval_since_prev,ack_received,ack_time_ms,obx_codes,status,notes

@@ -1,0 +1,270 @@
+#!/usr/bin/env python3
+"""
+detection/engine.py - Motor de detección determinista HL7/MLLP
+Aplica reglas configuradas contra baseline y genera alertas.
+"""
+
+import time
+import hashlib
+import logging
+from dataclasses import dataclass, field
+from typing import List, Dict, Set, Optional, Any
+from datetime import datetime, timezone
+
+from ..hl7.parser import HL7Message, parse_hl7_message, normalize_hl7_for_hash
+from ..hl7.validator import (
+    validate_hl7_structure, validate_obx_constraints,
+    validate_message_control_id_uniqueness, validate_timestamp_regression,
+    validate_frequency, validate_state_transition,
+    validate_network_origin, validate_sending_application,
+    validate_sending_facility, validate_mllp_framing
+)
+from ..detection.baseline import Baseline
+from ..detection.rules import RuleSet, RuleResult
+from ..alerting.json_logger import Alert, AlertSeverity
+from ..config.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SessionState:
+    """Estado de una sesión para detección."""
+    session_id: str
+    source_ip: str
+    source_port: int
+    message_count: int = 0
+    seen_control_ids: Set[str] = field(default_factory=set)
+    seen_content_hashes: Set[str] = field(default_factory=set)
+    last_timestamp: Optional[str] = None
+    last_message_time: float = 0
+    current_state: str = "UNKNOWN"
+    last_alert_time: float = 0
+    logical_identity: tuple = ()  # (sending_app, sending_facility)
+
+
+@dataclass
+class DetectionResult:
+    """Resultado de procesar un mensaje."""
+    alerts: List[Alert]
+    session_state: SessionState
+    validation: Any  # ValidationResult
+    processing_time_ms: float
+
+
+class DetectionEngine:
+    """
+    Motor de detección determinista.
+    - Carga reglas desde RuleSet
+    - Mantiene estado por sesión
+    - Aplica validaciones contra baseline
+    - Genera alertas con evidencia y hash
+    """
+    
+    def __init__(self, settings: Settings, baseline: Baseline, rules: RuleSet):
+        self.settings = settings
+        self.baseline = baseline
+        self.rules = rules
+        self.sessions: Dict[str, SessionState] = {}
+        self._lock = logging.RLock()  # reentrant para callbacks
+        self._alert_counter = 0
+    
+    def process_message(self, session_id: str, source_ip: str, source_port: int,
+                        parsed_message: HL7Message, raw_bytes: bytes,
+                        mllp_frame: bytes) -> DetectionResult:
+        """Procesa un mensaje HL7 completo y genera alertas."""
+        start_time = time.perf_counter()
+        
+        with self._lock:
+            session = self._get_or_create_session(session_id, source_ip, source_port)
+            
+            # Validaciones estructurales
+            validation = validate_hl7_structure(parsed_message, self.settings.hl7)
+            
+            # Validaciones OBX contra baseline
+            obx_validation = validate_obx_constraints(parsed_message, self.baseline)
+            validation.errors.extend(obx_validation.errors)
+            validation.warnings.extend(obx_validation.warnings)
+            validation.rule_violations.extend(obx_validation.rule_violations)
+            
+            # Reglas de detección
+            alerts = []
+            alerts.extend(self._check_rules(session, parsed_message, raw_bytes, mllp_frame))
+            
+            # Actualizar estado de sesión
+            self._update_session_state(session, parsed_message, raw_bytes)
+            
+            processing_time = (time.perf_counter() - start_time) * 1000
+            
+            return DetectionResult(
+                alerts=alerts,
+                session_state=session,
+                validation=validation,
+                processing_time_ms=processing_time
+            )
+    
+    def _get_or_create_session(self, session_id: str, source_ip: str, source_port: int) -> SessionState:
+        if session_id not in self.sessions:
+            self.sessions[session_id] = SessionState(
+                session_id=session_id,
+                source_ip=source_ip,
+                source_port=source_port
+            )
+        return self.sessions[session_id]
+    
+    def _check_rules(self, session: SessionState, msg: HL7Message, 
+                     raw_bytes: bytes, mllp_frame: bytes) -> List[Alert]:
+        """Ejecuta todas las reglas habilitadas."""
+        alerts = []
+        now = time.time()
+        
+        # R-NET-001: Origen de red no permitido
+        if self.rules.is_enabled('R-NET-001'):
+            ok, reason = validate_network_origin(session.source_ip, self.baseline.allowed_ips)
+            if not ok:
+                alerts.append(self._make_alert('R-NET-001', session, msg, reason, AlertSeverity.HIGH))
+        
+        # R-ID-001: Aplicación emisora no permitida
+        if self.rules.is_enabled('R-ID-001'):
+            ok, reason = validate_sending_application(msg.sending_app, self.baseline.allowed_sending_apps)
+            if not ok:
+                alerts.append(self._make_alert('R-ID-001', session, msg, reason, AlertSeverity.HIGH))
+        
+        # R-ID-002: Institución emisora no permitida
+        if self.rules.is_enabled('R-ID-002'):
+            ok, reason = validate_sending_facility(msg.sending_facility, self.baseline.allowed_sending_facilities)
+            if not ok:
+                alerts.append(self._make_alert('R-ID-002', session, msg, reason, AlertSeverity.MEDIUM))
+        
+        # R-MLLP-001: Framing inválido
+        if self.rules.is_enabled('R-MLLP-001'):
+            ok, reason = validate_mllp_framing(mllp_frame)
+            if not ok:
+                alerts.append(self._make_alert('R-MLLP-001', session, msg, reason, AlertSeverity.HIGH))
+        
+        # R-HL7-001: MSH ausente (ya en validation)
+        if 'R-HL7-001' in validation.rule_violations:
+            alerts.append(self._make_alert('R-HL7-001', session, msg, 
+                                          "Missing MSH segment", AlertSeverity.HIGH))
+        
+        # R-HL7-002: Tipo mensaje desconocido
+        if 'R-HL7-002' in validation.rule_violations:
+            alerts.append(self._make_alert('R-HL7-002', session, msg,
+                                          f"Unknown message type: {msg.message_type}", AlertSeverity.HIGH))
+        
+        # R-HL7-003: Secuencia segmentos inválida
+        if 'R-HL7-003' in validation.rule_violations:
+            alerts.append(self._make_alert('R-HL7-003', session, msg,
+                                          f"Invalid segment sequence: {msg.segment_sequence}", AlertSeverity.HIGH))
+        
+        # R-SEQ-001: MCID duplicado
+        if self.rules.is_enabled('R-SEQ-001') and msg.message_control_id:
+            ok, reason = validate_message_control_id_uniqueness(msg.message_control_id, session.seen_control_ids)
+            if not ok:
+                alerts.append(self._make_alert('R-SEQ-001', session, msg, reason, AlertSeverity.HIGH))
+        
+        # R-SEQ-002: Replay por hash normalizado
+        if self.rules.is_enabled('R-SEQ-002'):
+            content_hash = hashlib.sha256(normalize_hl7_for_hash(msg.raw).encode()).hexdigest()
+            if content_hash in session.seen_content_hashes:
+                alerts.append(self._make_alert('R-SEQ-002', session, msg,
+                                              f"Replay detected: content hash {content_hash[:16]}", AlertSeverity.HIGH))
+            else:
+                session.seen_content_hashes.add(content_hash)
+        
+        # R-TIME-001: Timestamp regresivo
+        if self.rules.is_enabled('R-TIME-001') and msg.timestamp:
+            ok, reason = validate_timestamp_regression(msg.timestamp, session.last_timestamp)
+            if not ok:
+                alerts.append(self._make_alert('R-TIME-001', session, msg, reason, AlertSeverity.MEDIUM))
+        
+        # R-TIME-002: Frecuencia fuera de baseline
+        if self.rules.is_enabled('R-TIME-002') and session.last_message_time > 0:
+            interval = now - session.last_message_time
+            ok, reason = validate_frequency(interval, self.baseline)
+            if not ok:
+                alerts.append(self._make_alert('R-TIME-002', session, msg, reason, AlertSeverity.MEDIUM))
+        
+        # R-OBX-001/002/003: Validaciones OBX (ya en obx_validation)
+        for rule_id in ['R-OBX-001', 'R-OBX-002', 'R-OBX-003']:
+            if rule_id in obx_validation.rule_violations:
+                sev = AlertSeverity.HIGH if rule_id in ['R-OBX-001', 'R-OBX-003'] else AlertSeverity.MEDIUM
+                alerts.append(self._make_alert(rule_id, session, msg, 
+                                              obx_validation.errors[0] if obx_validation.errors else "OBX violation", sev))
+        
+        # R-STATE-001: Transición estado no permitida
+        if self.rules.is_enabled('R-STATE-001'):
+            new_state = self._infer_state(msg)
+            if new_state != session.current_state:
+                ok, reason = validate_state_transition(
+                    session.current_state, new_state, self.baseline.state_transitions
+                )
+                if not ok:
+                    alerts.append(self._make_alert('R-STATE-001', session, msg, reason, AlertSeverity.HIGH))
+                session.current_state = new_state
+        
+        return alerts
+    
+    def _infer_state(self, msg: HL7Message) -> str:
+        """Infiere estado FSM desde mensaje HL7."""
+        if not msg.obx_segments:
+            return "UNKNOWN"
+        
+        # Buscar OBX de estado dispositivo
+        for obx in msg.obx_segments:
+            if len(obx.fields) > 3 and obx.fields[3].components:
+                code = obx.fields[3].components[0]
+                if code == '202886' and len(obx.fields) > 5:
+                    val = obx.fields[5].components[0] if obx.fields[5].components else ""
+                    if 'STANDBY' in val:
+                        return "SESION_ESTABLECIDA_STANDBY"
+                    elif 'RUNNING' in val or 'VENT' in val:
+                        return "SESION_ESTABLECIDA_RUNNING"
+        return "SESION_ESTABLECIDA_UNKNOWN"
+    
+    def _update_session_state(self, session: SessionState, msg: HL7Message, raw_bytes: bytes):
+        session.message_count += 1
+        if msg.message_control_id:
+            session.seen_control_ids.add(msg.message_control_id)
+        if msg.timestamp:
+            session.last_timestamp = msg.timestamp
+        session.last_message_time = time.time()
+        session.logical_identity = (msg.sending_app, msg.sending_facility)
+    
+    def _make_alert(self, rule_id: str, session: SessionState, msg: HL7Message,
+                    reason: str, severity: AlertSeverity) -> Alert:
+        self._alert_counter += 1
+        alert_id = f"ALERT-{self._alert_counter:06d}-{int(time.time()*1000)}"
+        
+        # Hash de evidencia (raw bytes del mensaje)
+        evidence_hash = hashlib.sha256(msg.raw.encode('utf-8', errors='replace')).hexdigest()
+        
+        return Alert(
+            alert_id=alert_id,
+            rule_id=rule_id,
+            timestamp_utc=datetime.now(timezone.utc).isoformat(),
+            session_id=session.session_id,
+            source=f"{session.source_ip}:{session.source_port}",
+            message_control_id=msg.message_control_id or "N/A",
+            severity=severity,
+            reason=reason,
+            evidence_hash=evidence_hash,
+            experimental_state=session.current_state,
+            label="ANOMALO",
+            synthetic=False
+        )
+    
+    def get_session_stats(self, session_id: str) -> Optional[Dict]:
+        """Obtiene estadísticas de una sesión."""
+        session = self.sessions.get(session_id)
+        if not session:
+            return None
+        return {
+            'session_id': session.session_id,
+            'source': f"{session.source_ip}:{session.source_port}",
+            'messages': session.message_count,
+            'unique_control_ids': len(session.seen_control_ids),
+            'unique_content_hashes': len(session.seen_content_hashes),
+            'current_state': session.current_state,
+            'logical_identity': session.logical_identity
+        }

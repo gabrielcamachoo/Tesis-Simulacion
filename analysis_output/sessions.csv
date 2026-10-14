@@ -1,0 +1,1 @@
+session_id,source_ip,source_port,dest_ip,dest_port,start_time,end_time,tcp_connections,mllp_messages,message_types,hl7_version,sending_app,sending_facility,message_control_ids,segment_sequences,message_sizes,intervals_seconds,ack_present,ack_times,obx_codes,status,notes

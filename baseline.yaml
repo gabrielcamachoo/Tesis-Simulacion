@@ -1,0 +1,140 @@
+metadata:
+  created_at: '2026-10-14T01:12:16.926054+00:00'
+  schema_version: '1.0'
+  source_sessions:
+  - standby_20260825
+  source_hashes:
+    C:\Users\OsoGa\OneDrive\Documentos\Wato\Investigacion-de-la-tesis\evidence_raw\pcap\LECTURA25AGOSYO.pcapng: cd9122c67bd3082c306d4044312e7d53cfb74dbb807f317a15a44f9e4fc58c31
+    C:\Users\OsoGa\OneDrive\Documentos\Wato\Investigacion-de-la-tesis\evidence_raw\informes\WATO STANDBY 25-08-2026.docx: ba2296a03a63b5f41e92ca338c19ed7f51d4ced5eb188d4319c5d4962b28ef3d
+  num_sessions: 1
+  num_messages: 43
+  states_included:
+  - SESION_ESTABLECIDA_STANDBY
+  limitations:
+  - Baseline construida SOLO desde modo STANDBY (captura 25-08-2026)
+  - Modo RUNNING no verificado - parámetros fisiológicos NO_VERIFICADO
+  - Solo 4 códigos OBX tipo CWE observados (estados, no numéricos)
+  - No hay alarmas ni eventos en baseline
+  - Reloj WATO con offset +17min10s vs captura - usar timestamp de red
+  - Codificación UTF-8 declarada en MSH-18 (ackdummy usaba ISO-8859-1)
+  clinical_approval_status: PENDING
+  clinical_approval_date: null
+  clinical_approver: null
+message_types_allowed:
+- ORU^R01^ORU_R01
+segment_sequences_allowed:
+- - MSH
+  - PID
+  - PV1
+  - OBR
+  - OBX
+  - OBX
+  - OBX
+  - OBX
+sending_applications_allowed:
+- MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64
+sending_facilities_allowed:
+- ''
+hl7_versions_allowed:
+- '2.6'
+message_length:
+  min: 968
+  median: 971
+  p95: 971.0
+  max: 971
+inter_message_interval_seconds:
+  min: 10.0
+  median: 10.0
+  p95: 10.0
+  max: 10.0
+messages_per_minute: 6.0
+obx_identifiers_observed:
+- 202886^MDC_EVT_STAT_DEV^MDC
+- 30002^MNDRY_EVT_STAT_MODE_DEV
+- 30005^MNDRY_EVT_PATIENT_TYPE
+- 30007^MNDRY_EVT_STAT_WARMER_ON_BOOL
+obx_identifier_details:
+  202886^MDC_EVT_STAT_DEV^MDC:
+    description: Estado del dispositivo
+    observed_values:
+    - 202836^MDC_EVT_STAT_STANDBY^MDC
+    value_type: CWE
+    status: OBSERVADO
+  30002^MNDRY_EVT_STAT_MODE_DEV:
+    description: Modo del dispositivo
+    observed_values:
+    - 30003^MNDRY_EVT_STAT_MODE_NORMAL
+    value_type: CWE
+    status: OBSERVADO
+  30005^MNDRY_EVT_PATIENT_TYPE:
+    description: Tipo de paciente
+    observed_values:
+    - 202890^MDC_EVT_STAT_DEV_MODE_ADULT
+    value_type: CWE
+    status: OBSERVADO
+  30007^MNDRY_EVT_STAT_WARMER_ON_BOOL:
+    description: Estado calentador
+    observed_values:
+    - 30000^MDC_TRUE
+    value_type: CWE
+    status: OBSERVADO
+obx_units_observed: []
+obx_value_types_observed:
+- CWE
+state_transitions_observed:
+- - SIN_GATEWAY
+  - HANDSHAKE
+- - HANDSHAKE
+  - SESION_ESTABLECIDA_STANDBY
+- - SESION_ESTABLECIDA_STANDBY
+  - SESION_ESTABLECIDA_STANDBY
+fsm_states:
+  SIN_GATEWAY:
+    description: Reintentos SYN sin respuesta (gateway no disponible)
+    observed_duration_range:
+    - 0
+    - 80
+    behavior: SYN cada ~30s, luego reinicio puerto efímero
+  HANDSHAKE:
+    description: Establecimiento TCP exitoso
+    observed_duration_range:
+    - 0
+    - 2
+    behavior: SYN -> SYN-ACK -> ACK, luego primer ORU^R01
+  SESION_ESTABLECIDA_STANDBY:
+    description: Sesión persistente con ORU^R01 periódicos + ACK
+    observed_duration_range:
+    - 0
+    - 509
+    behavior: ORU^R01 cada 10.000s exactos, ACK MSA|AA en <1ms
+    message_profile:
+      type: ORU^R01^ORU_R01
+      interval_seconds: 10.0
+      ack_required: true
+      ack_type: AL
+      obx_count: 4
+      obx_types:
+      - CWE
+      - CWE
+      - CWE
+      - CWE
+mllp_parameters:
+  start_block: '0x0B'
+  end_block: '0x1C'
+  carriage_return: '0x0D'
+  encoding: UTF-8
+  max_message_size_bytes: 65535
+hl7_parameters:
+  version: '2.6'
+  profile: IHE_PCD_01
+  separators: '|^~\&'
+  processing_id: P
+  ack_required: AL
+  charset: UNICODE UTF-8
+network_parameters:
+  wato_ip: 192.168.23.250
+  wato_mac: 00:0f:14:35:86:ec
+  server_ip: 192.168.23.200
+  server_port: 1550
+  protocol: TCP
+  client_role: WATO inicia conexión (cliente TCP)

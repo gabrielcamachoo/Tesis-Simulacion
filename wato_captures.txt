@@ -1,0 +1,711 @@
+=== WATO First Try 18-08-2026.docx ===
+INFORME DE ANÁLISIS DE CAPTURA DE RED
+Archivo: WATOPARANALIZAR.pcap
+
+1. Resumen ejecutivo
+Se analizó la captura WATOPARANALIZAR.pcap (1,664 paquetes, ≈25 minutos, 18 de agosto de 2026). El tráfico corresponde a dos dispositivos conectados directamente por cable Ethernet (sin router ni servidor DHCP de por medio): un laptop Windows y un ventilador con control por red (identificado en el análisis como "WATO").
+El hallazgo principal es que ambos dispositivos nunca llegan a comunicarse: el ventilador busca constantemente un equipo en la IP 192.168.23.200, mientras que el laptop terminó configurado en la subred 195.168.23.0/24 (195 en vez de 192). Esta discrepancia de un solo dígito impide que el ARP resuelva y, por lo tanto, que se intercambie cualquier paquete IP entre ambos.
+2. Datos generales de la captura
+3. Dispositivos identificados
+4. Protocolos presentes en la captura
+No se registró tráfico TCP en ningún momento. Todo lo capturado corresponde a protocolos de descubrimiento, autoconfiguración y mantenimiento de red (broadcast/multicast):
+5. Hallazgo principal: falla de comunicación con el ventilador
+El dispositivo con MAC 00:0f:14:35:86:ec (IP 192.168.23.250) envía 241 solicitudes ARP a lo largo de toda la captura, aproximadamente cada 2.6 segundos, todas con el mismo destino:
+who has 192.168.23.200?
+Ninguna de esas 241 solicitudes recibe respuesta. En paralelo, se reconstruyó la secuencia de direcciones IP que usó el laptop durante la captura:
+
+6. Recomendación
+Configurar la interfaz Ethernet del laptop con una IP fija en la subred 192.168.23.0/24 (por ejemplo 192.168.23.100), máscara 255.255.255.0, sin gateway.
+Verificar en la documentación o firmware del ventilador si 192.168.23.200 es la IP que espera para el equipo controlador, o si es configurable.
+Repetir la captura tras el cambio y confirmar que aparecen respuestas ARP y tráfico IP (probablemente UDP/TCP propio del protocolo de control del ventilador) entre ambas IPs.
+7. Otras observaciones menores
+El ventilador también envía dos solicitudes ARP hacia 210.72.145.44 y dos hacia 132.163.4.103 (direcciones públicas), probablemente un intento de contactar un servidor NTP o "check-in" en la nube al arrancar; sin gateway configurado, tampoco progresan.
+El laptop nunca recibió respuesta de un servidor DHCP real (no se capturó DHCPOFFER/DHCPACK), de ahí las direcciones APIPA (169.254.x.x) que aparecen al inicio y al final de la captura.
+El tráfico hacia 224.77.77.77:12177 (ASUS Armoury Crate) es independiente del problema anterior; corresponde al software de gestión ASUS del laptop y no está relacionado con el ventilador.
+
+=== WATO STANDBY 25-08-2026.docx ===
+Investigación técnica sobre la salida HL7 de la máquina de anestesia Mindray WATO EX-35
+1. Arquitectura de comunicación de la WATO EX-35
+1.1 Interfaces físicas de comunicación
+El manual de operador de la WATO EX-35 indica que el equipo dispone de varios puertos de comunicación: al menos un conector RS‑232 (DB9), un puerto de red Ethernet (RJ‑45) y puertos USB.
+En la ficha técnica oficial de la WATO EX‑35 se describen "One RS‑232C connector and one DB9 connector" junto con "Ethernet (RJ‑45)" y USB como puertos de comunicación estándar.
+Estas interfaces se utilizan para integrar el equipo con sistemas de información de anestesia, monitores de paciente y para exportación local de datos.
+1.2 Función de Ethernet y RS‑232
+El manual de operador de la WATO EX‑35 (versión en ruso) describe que el equipo puede conectarse a un sistema de información de anestesia mediante el protocolo HL7 a través de Ethernet, configurando IP de destino y puerto.
+Documentación de otros modelos WATO (por ejemplo WATO EX‑65 Pro) indica explícitamente que el puerto de red se conecta al sistema de información de anestesia "a través del protocolo HL7", mientras que el puerto RS‑232 se usa tanto para HL7 como para protocolos propietarios (MR‑WATO) hacia monitores o sistemas específicos.
+Por consistencia de diseño entre la familia WATO, es razonable inferir que en la WATO EX‑35 el puerto Ethernet se emplea principalmente para integración HL7 con CIS/HIS/EMR y el puerto RS‑232 para integración HL7 o MR‑WATO con monitores Mindray/Philips y otros dispositivos.
+1.3 Configuración de HL7 en el equipo
+El manual de operador WATO EX‑35 incluye una sección de "Network" donde se configuran parámetros IP, máscara de red, puerta de enlace, y un apartado "HL7" con opciones de activación, IP de destino, puerto y compatibilidad HL7.
+En el manual de operador de WATO EX‑65 Pro se detalla un menú similar: direcciones IP (propia y de destino), puerto HL7 (por defecto 1550), "HL7 Protocol Version" y un parámetro "Compatibility" para elegir la versión o perfil más reciente.
+En modelos Mindray A‑Series, la configuración de HL7 serial permite seleccionar protocolo (HL7/MR‑WATO/None), baud rate, bits de datos, bits de parada, paridad y "transmission frequency" 
+Aplicado a WATO EX‑35, la configuración HL7 incluye: IP local, IP de destino (servidor HL7 o eGateway), puerto HL7 (configurable, con valores por defecto alrededor de 1550), selección de versión/compatibilidad HL7 v2.x y un intervalo de transmisión para datos periódicos.
+Ip = 192.168.23.200/24
+Mascara = 255.255.255.0
+New-NetFirewallRule -DisplayName "HL7 TCP 1550" -Direction Inbound -Protocol TCP -LocalPort 1550 -Action Allow
+1.4 Parámetros de red y transporte
+La documentación de A‑Series especifica que HL7 sobre Ethernet usa TCP/IP con framing MLLP (Minimal Lower Layer Protocol), y sobre RS‑232 emplea también MLLP con encapsulado de mensajes y CRC.
+Los manuales HL7 de Mindray (por ejemplo BS‑400/420 HL7 Interface Manual y Mindray Patient Data Share Protocol) indican que Mindray usa HL7 v2.3.1 y MLLP como capa inferior estándar. 
+Dado que WATO EX‑35 ofrece parámetro "HL7 Compatibility" y se integra con eGateway (que soporta HL7 2.1–2.6 e IHE PCD), es altamente probable que HL7 funcione sobre TCP/IP (Ethernet) utilizando MLLP como transporte, y sobre RS‑232 emplee HL7 framed con MLLP y CRC según las guías A‑Series.
+1.5 Receptores típicos del tráfico HL7
+La documentación de Mindray sobre eGateway describe que los dispositivos de anestesia exportan datos en HL7 hacia eGateway, que a su vez se comunica con ADT, CIS, EMR y sistemas de gestión de alarmas.
+Manual de operador de A‑Series y guía de comunicación señalan que el anestesia system actúa como Device Observation Reporter (DOR), mientras que el sistema receptor (DOC) puede ser un servidor de información clínica, eGateway o un monitor que consume datos HL7.
+[Inferencia] En el caso de WATO EX‑35, el receptor típico es un servidor de integración (Mindray eGateway u otro motor HL7), un sistema de información de anestesia (AIMS/CIS) o, vía RS‑232, monitores Mindray conectados mediante BeneLink u otros módulos de enlace.
+1.6 Versiones de hardware y firmware
+Los manuales de servicio de la familia WATO describen placas de red, módulos auxiliares y procedimientos de actualización de software, indicando que ciertas funciones (incluida comunicación de red) pueden activarse mediante códigos de configuración o módulos de software específicos.
+El manual de servicio WATO EX‑203035 señala distintas revisiones de software y procedimientos de "Software Function Activation" vinculados a la activación de funciones como monitorización O2 y módulos adicionales.
+Es probable que la capacidad HL7 de WATO EX‑35 dependa de la presencia de la placa de red y de la activación de la función de comunicación HL7 en software; distintas versiones de firmware pueden añadir o modificar tipos de mensaje o parámetros, por lo que la compatibilidad exacta debe verificarse contra la versión de software instalada.
+2. Configuración de HL7 y parámetro "Interval"
+2.1 Significado del parámetro "Interval" HL7
+En el manual de operador de WATO EX‑65 Pro se describe un parámetro "Interval" asociado a HL7 y SNTP, con opciones como Disabled, 10 s, 30 s, 1 min, 5 min, 30 min, 1 h, 2 h, 6 h, 12 h, 24 h para el protocolo de sincronización SNTP.
+En la guía de comunicación A‑Series, el "Export Protocol" indica que los resultados no solicitados se envían a un intervalo máximo de 10 segundos, configurable a intervalos más cortos o largos; el técnico puede establecer la "transmission frequency" para HL7 en el diálogo de configuración de serie.
+Para WATO EX‑35, el parámetro "Interval" de HL7 representa la frecuencia con la que el equipo envía mensajes de observación (mediciones, parámetros, estado) de forma periódica; valores típicos serían 10 segundos como máximo para datos en tiempo casi real, con posibilidad de intervalos mayores para entornos menos exigentes.
+2.2 ¿Todos los datos se envían en cada intervalo?
+La documentación A‑Series indica que el DOR transmite "working data (measurements, settings, vent modes, status, etc.)" periódicamente según el intervalo configurado y que los datos de alerta (alarms) pueden enviarse como mensajes separados de tipo alerta (por ejemplo OUL/ALR) además de las observaciones.
+No se especifica que solo cambien los campos modificados: se habla de resultados no solicitados que contienen el conjunto de observaciones relevantes, incluidos valores actuales y algunos límites.
+ En WATO EX‑35, es razonable asumir que en cada intervalo se envía un mensaje de observación que incluye un conjunto de parámetros ventilatorios y de gases, más campos de estado; algunos eventos (alarmas, cambios de modo) pueden generar mensajes adicionales fuera del intervalo periódico.
+2.3 Capacidad de transmisión en tiempo real vs actualizaciones periódicas
+La descripción de A‑Series export protocol establece que los datos se envían de manera "unsolicited" a intervalos configurables, y que la transmisión continua de waveforms puede habilitarse aparte a través de Ethernet.
+Para HL7 v2.x, la práctica común en dispositivos de anestesia es enviar datos discretos (no waveforms) a intervalos de segundos (5–10 s), lo que se considera tiempo cuasi real pero no streaming continuo.
+Aplicado a WATO EX‑35, HL7 proporciona actualizaciones periódicas de datos fisiológicos y de ventilación (intervalos típicos 10 s), con posibilidad de considerarlo "near real-time" para análisis de tráfico, pero no como flujo de alta frecuencia comparable a waveforms.
+3. Estructura general de los mensajes HL7 de Mindray
+3.1 Versión de HL7 empleada
+La "Patient Data Share Protocol Programmer's Guide" de Mindray establece que Mindray PDS se basa en HL7 versión 2.3.1, utilizando solo una parte del estándar.
+El manual HL7 BS‑400/420 indica que el campo Version ID del segmento MSH se fija en "2.3.1" y describe mensajes ORU^R01 y otros tipos compatibles.
+[Inferencia] Aunque el menú de WATO EX‑65 Pro hace referencia genérica a "HL7 Protocol Version" y "Compatibility", la evidencia apunta a que Mindray utiliza HL7 v2.3.1 como base para sus interfaces de datos de dispositivos; es altamente probable que WATO EX‑35 emita mensajes HL7 v2.3.1 o compatibles con 2.3.x.
+3.2 Tipos generales de mensaje HL7 en anestesia Mindray
+La guía de protocolo de A‑Series indica que el sistema actúa como Device Observation Reporter (DOR) en el perfil IHE PCD DEC, utilizando mensajes HL7 estructurados que contienen observaciones, configuraciones y alertas.
+La documentación BS‑400/420 HL7 describe el uso de mensajes ORU^R01 (Observation Result) para transmitir datos de laboratorio y observaciones, incluyendo segmentos MSH, PID, OBR y OBX.
+[Inferencia] Para WATO EX‑35, el tipo de mensaje más probable para exportar datos periódicos es ORU^R01 (u otro mensaje conforme a IHE PCD-01, que reutiliza ORU^R01 para dispositivos), complementado quizás por mensajes de alerta específicos o extensiones propietarias.
+3.3 Segmentos habituales: MSH, PID, PV1, OBR, OBX
+En Mindray PDS y BS‑400/420 HL7, la estructura típica de mensaje incluye:
+MSH: encabezado de mensaje, versión, tipo de mensaje, ID de mensaje.
+PID: datos demográficos del paciente (ID, nombre, fecha de nacimiento, sexo, etc.).
+PV1: información de visita (ward, cama, etc.).
+OBR: orden u observación agrupadora.
+OBX: resultados de observación individuales (mediciones, parámetros).
+A‑Series Communication Protocol Guide confirma el uso de MSH y OBX para datos de dispositivos, insertando códigos de nomenclatura de Mindray para identificar cada parámetro.
+Es razonable suponer que WATO EX‑35 utiliza al menos MSH, PID y OBX; PV1 y OBR pueden estar presentes para compatibilidad con sistemas hospitalarios, pero esto no está explícitamente documentado para WATO EX‑35.
+3.4 Campos y separadores
+El HL7 interface manual BS‑400/420 especifica que Mindray define los separadores en MSH-2 como "|^~&" y utiliza estos caracteres para campos, componentes, repeticiones y subcomponentes, conforme al estándar HL7.
+Mindray PDS establece que el Version ID (MSH-12) se fija en "2.3.1" y que número de control de mensaje (MSH-10) se usa para correlacionar mensajes con ACK en MSA.[^4]
+[Inferencia] Para WATO EX‑35, la estructura de separadores y campos en MSH, PID, OBX seguirá el patrón estándar HL7 v2.3.1 con "|^~&"; los campos concretos para cada parámetro (OBX-3 código de observación, OBX-5 valor, OBX-6 unidad, OBX-11 estado, etc.) se ajustan al estándar pero con códigos y unidades propietarias de Mindray cuando corresponde.
+3.5 Framing, ACK/NACK y confirmación
+La guía A‑Series describe el uso de MLLP para delimitar mensajes: <SB> + <Message> + <CRC> + <EB> + <CR> en RS‑232, y sin CRC adicional en Ethernet porque la capa física ya incluye verificación.
+
+En modo Ethernet, el DOR no requiere recibir ACK para seguir enviando resultados no solicitados; en modo serie, los ACK pueden no ser esperados (dependiendo del perfil de uso).
+ En WATO EX‑35, los mensajes HL7 sobre Ethernet están encapsulados mediante MLLP y se pueden configurar para ignorar ACK (unidireccional DOR→DOC), aunque un receptor estándar puede responder con mensajes de ACK (MSA) según HL7; sobre RS‑232, también se usa MLLP y CRC para integridad.
+4. Datos clínicos potencialmente transmitidos por WATO EX‑35
+4.1 Alcance de datos según manual de operador
+El manual de operador WATO EX‑35 describe que el equipo monitoriza:
+Parámetros de ventilación: frecuencia respiratoria, volumen corriente (TV), volumen minuto (MV), modos ventilatorios (VCV, PCV, SIMV, PSV), presión pico y media de vía aérea, PEEP, etc.
+Parámetros de gases: FiO2, EtCO2, FiCO2, concentraciones de gases anestésicos (halotano, isoflurano, sevoflurano, desflurano), N2O, MAC, etc., mediante módulos AG y CO2
+Datos de espirometría y curvas de presión/volumen/flujo
+Datos de paciente (ID, tamaño, datos demográficos). 
+[No verificado] Sin embargo, el manual de operador no incluye una especificación directa de qué subconjunto de estos parámetros se envía por HL7.
+4.2 Alcance de datos según integración HL7 (documentación genérica Mindray)
+La guía de comunicación A‑Series indica que la anestesia system envía "ventilation modes, status, parameters, alarms, alarm limits and patient information" mediante HL7 a sistemas de información.
+El mismo documento señala que como DOR en IHE PCD DEC exporta "measurements, settings, vent modes, status" periódicamente.
+Aplicado a WATO EX‑35, esto sugiere que la interfaz HL7 entrega al menos: parámetros ventilatorios clave, parámetros de gases, modos ventilatorios, estados del ventilador, alarmas y límites de alarma, junto con identificadores de paciente.
+4.3 Tabla detallada de parámetros (nivel de certeza)
+La siguiente tabla consolida parámetros relevantes, indicando únicamente como "confirmado" aquellos para los que hay referencia explícita en documentación HL7 de Mindray (no específica de WATO EX‑35 pero sí de dispositivos de anestesia/monitorización), y marcando el resto como inferidos o no confirmados.
+ En ausencia de una "WATO EX‑35 HL7 Interface Specification" pública, no es posible confirmar que cada parámetro mostrado en pantalla se transmita por HL7.
+Solo se puede afirmar con certeza que Mindray, en sus productos de anestesia, usa HL7 para enviar ventilación modes, status, parameters, alarms, alarm limits y patient information, sin listado exhaustivo por modelo.
+5. Alarmas y eventos en HL7
+5.1 Presencia de alarmas en la interfaz HL7
+La "Communication Protocol Interface Guide" de A‑Series señala explícitamente que el sistema puede enviar "Alert data" además de "Observation data" y "Waveform data" por Ethernet, y "Alert data" y "Observation data" por puerto serie, usando un protocolo basado en HL7.
+El manual de operador de Mindray para A‑Series indica que, al conectar el sistema de anestesia al sistema de información, se pueden transmitir modos de ventilación, parámetros, alarmas, límites de alarma e información de paciente vía HL7.
+Para WATO EX‑35, es razonable asumir que las alarmas clínicas (por ejemplo Drive Gas Pressure Low, O2 Supply Failure, High Paw, Low MV, etc.) se exportan mediante HL7 como "alert data" con algún tipo de segmentación específica.
+5.2 Contenido típico de una alarma HL7 Mindray
+La documentación A‑Series, aunque centrada en estructura de mensajes para observaciones, describe nomenclaturas para alertas, con códigos que representan tipo de alarma y severidad (High, Medium, Low), alineadas con niveles de alarma del dispositivo.
+Las tablas de alarmas del manual de servicio WATO EX‑203035 clasifican alarmas técnicas y fisiológicas con niveles (H, M, L) y textos descriptivos, por ejemplo "Drive Gas Pressure Low" o "CO2 Comm Stop".
+En HL7, las alarmas podrían codificarse como:
+Un código de alarma (propietario Mindray) en un campo de observación (OBX-3) o segmento AL1.
+Texto de alarma en OBX-5 o AL1-3.
+Severidad prioritaria (H/M/L) en componentes adicionales.
+No hay evidencia pública específica para WATO EX‑35 que confirme el formato exacto.
+5.3 Diferenciación entre datos periódicos y eventos
+El export protocol de A‑Series diferencia resultados no solicitados (periódicos) de secuencias de alerta, donde las alertas se envían en respuesta a eventos (alarmas activadas), no necesariamente sincronizadas con el intervalo periódico.
+En WATO EX‑35, los datos periódicos de observación (parámetros) se envían con frecuencia fija; las alarmas generan mensajes adicionales en el momento de activación, permitiendo distinguir en el tráfico HL7 entre baseline periódica y eventos.
+6. Función "Export Data" y USB vs HL7
+6.1 Exportación de datos mediante USB
+El manual de operador WATO EX‑35 menciona puertos USB y funciones de exportación/importación de datos, incluyendo "Export Data" para registros de paciente, datos de ventilación y posiblemente logs de uso.
+En otros productos Mindray (por ejemplo A‑Series, monitores de paciente), la función "Export Data" suele generar archivos en formatos internos (por ejemplo .dat, .txt o estructuras propietarias) que contienen registros históricos, tendencias y eventos para análisis y respaldo.
+No se encuentra documentación pública que describa en detalle el formato de archivos USB específicos de WATO EX‑35 (por ejemplo CSV, HL7, binario), por lo que su estructura exacta no puede verificarse.
+6.2 Comparación conceptual entre datos USB y HL7
+Los datos USB típicamente incluyen históricos completos de casos (tendencias, eventos, configuraciones) almacenados en el equipo, mientras que HL7 se centra en la transmisión en línea de datos (near real-time) hacia sistemas externos.
+[Inferencia] En WATO EX‑35, es probable que la exportación USB proporcione un conjunto más rico de históricos (por ejemplo curvas de presión/volumen, registros de alarmas), mientras que HL7 envía un subconjunto seleccionado de parámetros, estados y alarmas necesarios para integración clínica.
+7. Información del dispositivo en mensajes HL7
+7.1 Identificadores de dispositivo en Mindray HL7
+La guía Mindray PDS HL7 describe cómo en ciertos campos (por ejemplo, ubicación en PV1 o componentes de cama) se codifica la información de "Office Name", "bed id", "IP" y "IPSeq" dentro de subcomponentes, lo que permite identificar el origen de los datos.
+En mensajes HL7 estándares, el campo MSH-3 (Sending Application) y MSH-4 (Sending Facility) se usan habitualmente para identificar el dispositivo o el sistema que genera el mensaje.
+[Inferencia] Para WATO EX‑35, el identificador de dispositivo (modelo, número de serie, ID) se podría representar en:
+MSH-3 como "WATO_EX35" o un nombre de aplicación configurado.
+PV1 o campos de cama/ubicación con subcomponentes que incluyen IP y ubicación física.
+No hay evidencia directa que liste número de serie o versión de software en HL7 para WATO EX‑35; esto podría requerir un perfil propietario.
+7.2 Estado de conexión y otros identificadores
+La documentación eGateway y IHE PCD describe que es posible identificar el dispositivo por IP, dirección MAC en capa de red y por campos HL7 de ubicación.
+[Inferencia] Aunque el estado de conexión (online/offline) no suele aparecer como campo HL7, puede deducirse de la presencia/ausencia de mensajes, y el dispositivo puede identificarse en el tráfico por IP, puerto, y patrones de MSH (Sending Application/Facility).
+8. Documentación técnica relevante y piezas faltantes
+8.1 Documentación oficial localizada
+Se han identificado las siguientes piezas de documentación oficial relacionadas con Mindray y WATO EX‑35:
+WATO EX‑35 Operator’s Manual (Ruso): Mindray, 2015, Manual del operador, describe funcionamiento clínico, monitorización, puertos de comunicación (RS‑232, Ethernet, USB), configuración de red y HL7 (IP de destino, puerto, compatibilidad).
+WATO EX‑35 Specifications: Mindray, ficha técnica, resume puertos de comunicación (RS‑232, DB9, Ethernet RJ‑45, USB), características del ventilador y módulos.
+WATO EX‑203035 Service Manual: Mindray, manual de servicio (extractos adjuntos), se centra en mantenimiento, calibración, alarmas y hardware; incluye referencias a módulo de red y activación de funciones de software, pero no parece contener una especificación HL7 completa.
+WATO EX‑65 Pro Operator’s Manual (Español): Mindray, manual de operador, muestra configuración de Ethernet y serie, selección de protocolo HL7/MR‑WATO, parámetros de IP, puerto, intervalo, compatibilidad HL7 y SNTP.
+A‑Series Communication Protocol Interface Guide (DSP): Mindray DS USA, guía técnica, especifica interfaz de comunicación para sistemas de anestesia A‑Series, incluyendo HL7 basado en IHE PCD DEC, MLLP, estructura de mensajes, tipos de datos (observaciones, alertas, waveforms) y configuración de serial/Ethernet.
+Mindray Patient Data Share Protocol Programmer’s Guide: Mindray, guía de programador, describe protocolo PDS basado en HL7 v2.3.1, estructura de segmentos MSH, PID, OBX, campos y codificación de ubicación.
+BS‑400/420 HL7 Interface Manual: Mindray, manual HL7 para analizadores de laboratorio, define mensajes ORU^R01, uso de MSH, PID, OBR, OBX, separadores y Version ID=2.3.1.
+Mindray eGateway Integration Solution: Mindray, documentación de interoperabilidad, indica soporte HL7 2.1–2.6 e IHE PCD, así como integración con dispositivos de anestesia.
+8.2 Documentación ausente o no pública necesaria para especificación exacta
+[No verificado] No se ha localizado públicamente un documento con título explícito, por ejemplo:
+"WATO EX-35 HL7 Interface Specification".
+"WATO EX-35 Communication Protocol Specification".
+"WATO EX-35 Data Communication Protocol".
+"WATO EX-35 Integration Manual".
+Por analogía con A‑Series, es razonable suponer que existen documentos internos Mindray como:
+"WATO EX-35 Communication Protocol Interface Guide" (similar en estructura a "A Series Communication Protocol Interface Guide").
+"WATO EX-35 HL7 Interface Manual" o "Mindray WATO EX Series HL7 Export Protocol".
+Estos documentos serían la pieza faltante crítica para conocer:
+El listado exhaustivo de parámetros exportados.
+Los códigos HL7/OBX utilizados (LOINC vs propietaria Mindray).
+La estructura detallada de cada mensaje (segmentos presentes y campos usados).
+Reglas de frecuencia de transmisión y agrupación de observaciones.
+9. Comparación con HL7 estándar y extensiones Mindray
+9.1 Conformidad con HL7 v2.x
+Las guías HL7 de Mindray (PDS, BS‑400, A‑Series) se basan en HL7 v2.3.1, usando segmentos estándar (MSH, PID, PV1, OBR, OBX) y separadores "|~&".
+La documentación BS‑400 HL7 indica que Version ID (MSH‑12) se fija en "2.3.1", y que se utiliza ASCII como conjunto de caracteres.
+[Inferencia] Es muy probable que WATO EX‑35 utilice HL7 v2.3.1 (o v2.5.x compatible) como base, cumpliendo la gramática estándar de segmentos, pero limitándose a un subconjunto necesario para dispositivos de anestesia.
+9.2 Implementaciones propietarias Mindray
+Mindray define un protocolo PDS propio basado en HL7, donde ciertos campos se utilizan de forma específica, por ejemplo subcomponentes en la cama para incluir IP y office name.
+El protocolo MR‑WATO (para serie) es declarado como "for Mindray internal use only" y ofrece una alternativa no HL7 para comunicación con monitores Mindray.
+A‑Series export protocol utiliza nomenclatura propietaria para códigos de observación (no LOINC), alineados con IHE PCD DEC pero definidos por Mindray.
+Para WATO EX‑35:
+La estructura de mensajes HL7 se ajusta al estándar, pero los códigos de OBX-3 probablemente son propietarios Mindray (no LOINC), con catálogos internos.
+MR‑WATO proporciona una alternativa distinta a HL7 para ciertos usos (monitores Mindray), no documentada públicamente.
+9.3 Uso de LOINC u otros sistemas de codificación
+Ninguna de las guías Mindray PDS, BS‑400 o A‑Series menciona la adopción de LOINC como sistema de códigos de OBX; en su lugar, describen códigos internos Mindray y nomenclaturas DEC para IHE PCD.
+Por tanto, no hay evidencia pública de que WATO EX‑35 utilice LOINC para sus parámetros; lo más probable es que use códigos propietarios Mindray.
+10. Utilidad del tráfico HL7 para investigación de ciberseguridad
+10.1 Información observable mediante captura pasiva
+A partir de la estructura HL7 Mindray y del rol de DOR/DOC en IHE PCD, un observador pasivo de tráfico HL7 de WATO EX‑35 podría obtener:
+Parámetros clínicos periódicos (RR, TV, MV, presiones, FiO2, EtCO2, gases anestésicos) en OBX-5.
+Datos demográficos del paciente en PID (ID, nombre, fecha de nacimiento, sexo).[9][4]
+Información de ubicación física (ward, bed, office name, IP) en PV1 y subcomponentes de la cama.
+Identificación del dispositivo (Sending Application/Facility, IP origen, patrones de puerto).
+Alarmas y límites de alarma como alert data en segmentos específicos o en OBX.
+10.2 Campos con información sensible
+Los campos que podrían considerarse información sensible incluyen:
+PID-3 (Patient ID), PID-5 (nombre), PID-7 (fecha de nacimiento), PID-8 (sexo).
+PV1 (ubicación de paciente: ward, room, bed) y subcomponentes de cama con office name e IP.
+Datos clínicos en OBX (por ejemplo EtCO2, FiO2, MAC, presiones), que pueden revelar estado clínico del paciente.
+10.3 Metadatos para identificar el dispositivo
+Los metadatos relevantes para identificar WATO EX‑35 en tráfico HL7 incluyen:
+Dirección IP origen y puerto HL7 configurado (p.ej. 192.168.23.x:1550).
+MSH-3/4 (Sending Application/Facility) con nombre de dispositivo o estación.
+Subcomponentes de cama (Office Name&bed id&IP&IPSeq) si se aplican.
+10.4 Patrones de tráfico y periodicidad
+La exportación de resultados no solicitados en Mindray A‑Series se realiza a intervalos máximos de 10 s, con opción de configuraciones más cortas o largas.
+El parámetro "Interval" configurado en HL7/Network determina dicha periodicidad.
+[Inferencia] En WATO EX‑35, se esperaría ver:
+Mensajes HL7 periódicos cada N segundos (N configurado en Interval), con un mensaje ORU^R01 (u equivalente PCD‑01) conteniendo OBX múltiples.
+Mensajes de alerta/evento que aparecen fuera de esta cadencia cuando hay alarmas o cambios importantes.
+Estos patrones permiten construir una línea base de comportamiento normal, útil para detección de anomalías en investigación de ciberseguridad (por ejemplo, intervalos irregulares, ausencia de mensajes, o presencia de parámetros inconsistentes).
+11. Resumen de nivel de certeza y lagunas de información
+11.1 Conclusiones confirmadas por documentación oficial Mindray
+WATO EX‑35 dispone de puertos RS‑232, Ethernet y USB como interfaces de comunicación.[1][4]
+El equipo se puede conectar a un sistema de información de anestesia mediante HL7, configurando IP de destino, puerto HL7, intervalo y compatibilidad de versión
+Mindray utiliza HL7 v2.3.1 (PDS, BS‑400/420) con segmentos MSH, PID, OBR, OBX y separadores "|~&".
+Los sistemas de anestesia Mindray (A‑Series) actúan como Device Observation Reporter en IHE PCD DEC, enviando observaciones, estados, modos de ventilación, alarmas, alarm limits y patient information en HL7 a sistemas receptores (DOC).
+La capa de transporte para HL7 en dispositivos Mindray emplea TCP/IP sobre Ethernet y MLLP (con opción CRC en RS‑232), configurando baud rate, bits de datos, paridad y frecuencia de transmisión en serie.
+11.2 Conclusiones confirmadas solo por documentación técnica secundaria
+La especificación detallada de HL7 de WATO EX‑35 (lista de parámetros, códigos, estructura por mensaje) no aparece en documentación pública y es referida indirectamente en manuales de otros modelos WATO y A‑Series.
+Algunas descripciones de configuración HL7 para WATO EX‑35 proceden de manuales traducidos o recursos de terceros (almacenamiento de manuales en línea), que aunque parecen legítimos, no equivalen a una especificación oficial HL7 de Mindray.
+11.3 Conclusiones inferidas (no verificadas específicamente para WATO EX‑35)
+[Inferencia]
+WATO EX‑35 probablemente utiliza HL7 v2.3.1 como base, con mensajes ORU^R01 alineados con el perfil IHE PCD‑01 DEC.
+Los segmentos presentes incluyen MSH, PID, PV1 (posible), OBR (opcional), OBX (múltiples), y posiblemente AL1/NTE para alertas.
+Se exportan parámetros de ventilación (RR, TV, MV, presiones, PEEP), parámetros de gases (FiO2, EtCO2, FiCO2, AG, N2O, MAC), modos ventilatorios, estados del ventilador, alarmas y límites de alarma, más datos de paciente.
+La frecuencia periódica de mensajes es configurable mediante "Interval" (valores típicos ~10 s), y se complementa con mensajes por evento.
+Los códigos de observación en OBX son propietarios Mindray y no basados en LOINC.
+11.4 Información no encontrada / no verificable públicamente
+[No verificado]
+Lista exhaustiva de campos HL7 específicos de WATO EX‑35.
+Ejemplos de mensajes HL7 reales generados por WATO EX‑35 (no se han localizado en manuales públicos).
+Documentos oficiales Mindray específicamente titulados "WATO EX‑35 HL7 Interface" o "WATO EX‑35 Communication Protocol Specification".
+Confirmación explícita de qué parámetros monitorizados (por ejemplo espirometría completa, todos los eventos técnicos) se incluyen o excluyen de HL7.
+12. Tabla final de parámetros y nivel de confirmación
+La tabla siguiente resume los parámetros clave subjetivos a tu proyecto, indicando nivel de certeza respecto a su transmisión por HL7 en WATO EX‑35.
+
+Sin acceso a documentación interna Mindray específica de WATO EX‑35, no es posible ir más allá de este nivel de detalle sin caer en especulación.
+13. Respuesta a la pregunta central
+[Inferencia] Integrando toda la evidencia disponible:
+Qué información entrega exactamente una Mindray WATO EX‑35 mediante HL7: parámetros periódicos de ventilación y gases, modos y estado del ventilador, alarmas y límites de alarma, datos demográficos del paciente y metadatos de ubicación/dispositivo; la lista exacta por parámetro para EX‑35 no se ha publicado.
+Cómo está estructurada esa información: mensajes HL7 v2.3.1 (probables ORU^R01/PCD‑01) con segmentos MSH, PID y múltiples OBX, separados por "|^~&", encuadrados mediante MLLP sobre TCP/IP (Ethernet) o RS‑232.
+Con qué frecuencia se transmite: de forma no solicitada, con intervalo configurable (p.ej. hasta 10 s en A‑Series, similar en WATO), más mensajes adicionales por eventos de alarma.
+Qué elementos del tráfico pueden observarse desde un receptor de red: valores clínicos, identificadores de paciente, información de ubicación, identificadores de dispositivo, patrones de intervalos, secuencias de alarmas y cambios de estado, todo en texto ASCII codificado según HL7.
+Para pasar de este nivel de inferencia a una especificación exacta exige obtener de Mindray la "WATO EX‑35 HL7/Communication Protocol Interface Guide" o un documento equivalente que liste campos y ejemplos de mensajes
+
+References
+Manual-WATO-EX-35.pdf - page-1 WATO EX-203035 Anesthesia Machine Service Manual page-3 I Intellectual Property Statement SHE...
+[PDF] Communication Protocol Interface Guide (DSP) A-Series Anesthesia ...
+Operating Instructions
+[PDF] Mindray Patient Data Share Protocol Programmer's Guide
+[PDF] Наркозный аппарат WATO EX-35 Руководство оператора
+WATO EX-65 Pro - Operator's Manual - V1.0 - Spanish - PDFCOFFEE.COM - Equipo de anestesia WATO EX-65 ProManual del operador © 2016 Shenzhen Mindray Bio-Medical Electronic...
+[PDF] A Series Communication Protocol Interface Guide - Mindray
+Communication Protocol Interface Guide A Series ... - SNTP is a subset of NTP, it uses UDP protocol with “well-known” port of. 123. The Mindray anesthesia...
+BS-400&420_HL7 Interface Manual_V2.0_EN - Scribd is the source for 200M+ user uploaded documents and specialty resources.
+Mindray Demonstrates IHE Communications at HIMSS - MAHWAH, N.J. (PRWEB) March 06, 2018 -- Mindray announces its participation in the HIMSS Conference a...
+eGateway - Mindray - eGateway Integration Solution Providing meaningful interoperability between Mindray clinical solutio...
+Mindray A Series Anesthesia System Communication Protocol Interface Guide - This guide details the communication protocols and interface specifications for Mindray A Series Ane...
+
+ANEXO TÉCNICO: LECTURA WIRESHARK DEL TRÁFICO HL7 DE LA MINDRAY WATO EX-35 EN MODO STANDBY
+
+Objetivo de la sesión
+
+Documentar el comportamiento real de la salida HL7 de la Mindray WATO EX-35 en modo Standby, a partir de una captura de red obtenida en laboratorio, con énfasis en establecimiento de sesión, periodicidad, estructura de mensajes y utilidad forense para línea base de tráfico.
+
+Resumen ejecutivo de la captura
+
+La sesión confirmó operación HL7 activa del equipo mediante una conexión TCP persistente con intercambio de mensajes ORU^R01 y sus respectivos ACK. Se capturaron 43 mensajes HL7 ORU^R01, cada uno seguido por su confirmación de aplicación, lo que constituye un baseline real del comportamiento del equipo en modo Standby.
+
+La secuencia observada fue la siguiente:
+• t=3.4 s: intento desde puerto 2069 con patrón SYN, seguido de RST a los 46.6 s.
+• t=51.0 s: intento desde puerto 2070 mediante SYN.
+• t=82.6 s: SYN-ACK del receptor, coincidente con la apertura del puerto en el host receptor.
+• t=82.8 s: primer mensaje ORU^R01 de 972 bytes.
+• t=82.8 s: respuesta ACK con MSA|AA de 115 bytes.
+• A partir de ese momento: 43 ciclos exactos, cada 10.000 s.
+• t=509 s: finalización de la captura con la sesión aún activa.
+
+Comportamiento de la sesión TCP
+
+La captura mostró una única conexión TCP persistente sin cierre mediante FIN, sostenida por el intercambio periódico de mensajes HL7 cada 10 segundos. Este patrón define un estado estable del equipo en modo Standby.
+
+La secuencia observada contiene además la transición completa entre un estado sin recepción efectiva y una sesión establecida, lo cual es útil para modelado de máquina de estados finitos (FSM):
+• SIN_GATEWAY: intento fallido con patrón de reintentos y reinicio.
+• HANDSHAKE: establecimiento exitoso al habilitar el puerto receptor.
+• SESION_ESTABLECIDA_STANDBY: conexión persistente con ORU^R01 periódicos cada 10 s.
+
+Estructura HL7 observada
+
+El mensaje observado presenta la siguiente estructura representativa:
+MSH|^~\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||20260825141442-0500||ORU^R01^ORU_R01|1|P|2.6|||NE|AL||UNICODE UTF-8|||IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO
+PID|||^^^^PI||^^^^^^L|||
+PV1||I|^^^
+OBR|1|1^MINDRAY_WATOPRO-SERIES^...|1^...|70040^MDC_DEV_SYS_ANESTH^MDC|||20260825141442-0500|
+OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202836^MDC_EVT_STAT_STANDBY^MDC
+OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL
+OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT
+OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL|1.3.1.30007|30000^MDC_TRUE
+
+A partir de esta observación, la sesión documenta los siguientes rasgos del mensaje:
+• Versión HL7: 2.6.
+• Perfil de interoperabilidad: IHE PCD-01 (DEC).
+• OID del perfil: 1.3.6.1.4.1.19376.1.6.1.1.1.
+• Tipo de mensaje: ORU^R01.
+• Confirmación de aplicación requerida: MSH-16 = AL.
+• Identificador del sistema emisor: MINDRAY_WATOPRO-SERIES.
+• Identificador físico reportado por el equipo: 000F14002D3586ec con etiqueta EUI-64.
+• Identificación del dispositivo como sistema de anestesia: 70040^MDC_DEV_SYS_ANESTH^MDC.
+• Uso de nomenclatura IEEE/ISO 11073-10101 para conceptos MDC.
+• Presencia de espacio propietario MNDRY para eventos no cubiertos por la nomenclatura estándar.
+
+Segmentos observados y significado
+
+MSH
+El segmento MSH contiene separadores estándar HL7, aplicación emisora, identificador EUI-64 del equipo, marca temporal del emisor en MSH-7, tipo de mensaje ORU^R01^ORU_R01, control ID, Processing ID P, versión 2.6, requisito de ACK de aplicación AL, codificación UNICODE UTF-8 y perfil IHE_PCD_001.
+
+PID
+El segmento PID aparece presente, pero en esta sesión Standby no transporta datos demográficos sustantivos del paciente. La estructura vacía sigue formando parte del mensaje clínico emitido por el dispositivo.
+
+PV1
+El segmento PV1 también aparece presente con contenido mínimo. Indica que el mensaje conserva estructura hospitalaria compatible con integración clínica, aunque en esta sesión no aporta localización clínica detallada.
+
+OBR
+El segmento OBR identifica el conjunto de observaciones del dispositivo y lo clasifica como sistema de anestesia mediante MDC_DEV_SYS_ANESTH.
+
+OBX
+Los OBX observados en Standby son de tipo CWE y transportan estados discretos del equipo, no variables numéricas fisiológicas. En esta sesión se observaron al menos los siguientes estados:
+• OBX-1: 202886^MDC_EVT_STAT_DEV^MDC -> Estado del dispositivo: MDC_EVT_STAT_STANDBY.
+• OBX-2: 30002^MNDRY_EVT_STAT_MODE_DEV -> Modo del dispositivo: MNDRY_EVT_STAT_MODE_NORMAL.
+• OBX-3: 30005^MNDRY_EVT_PATIENT_TYPE -> Tipo de paciente: MDC_EVT_STAT_DEV_MODE_ADULT.
+• OBX-4: 30007^MNDRY_EVT_STAT_WARMER_ON_BOOL -> Estado lógico del calentador: MDC_TRUE.
+
+Periodicidad y baseline temporal
+
+La captura registró 43 mensajes ORU^R01 idénticos en contenido funcional, con variación únicamente en el timestamp del mensaje, el control ID y el tamaño puntual entre 968 y 971/972 bytes.
+
+Los tamaños observados fueron:
+• 971 bytes: 34 mensajes.
+• 968 bytes: 9 mensajes.
+• ACK: 115 y 117 bytes.
+
+La periodicidad fue exactamente de 10.000 s entre mensajes, con la sesión activa de inicio a fin. Este patrón define la línea base temporal del comportamiento HL7 del equipo en modo Standby.
+
+Interpretación funcional del contenido en Standby
+
+El primer OBX reporta explícitamente MDC_EVT_STAT_STANDBY, por lo que la sesión caracteriza el comportamiento del equipo en reposo operativo. El mensaje emitido en este estado describe estatus del sistema, modo del dispositivo, tipo de paciente y estado booleano de funciones auxiliares, pero no muestra en esta captura variables fisiológicas numéricas de ventilación o gases.
+
+Por tanto, el baseline de Standby queda definido como una telemetría HL7 centrada en estado operativo del sistema y no en parámetros clínicos dinámicos.
+
+Hallazgo forense de sincronización horaria
+
+La comparación entre tiempo de captura y tiempo de aplicación mostró un desfase constante de +17 min 10 s.
+• Timestamp del paquete (pcap): 13:57:32.
+• ACK del receptor: 13:57:32.
+• MSH-7 del WATO: 14:14:42.
+
+Este hallazgo implica que la correlación forense de eventos debe anclarse al timestamp de captura de red y no al timestamp de aplicación emitido por el dispositivo.
+
+Rastro de transporte y rol de red del equipo
+
+Durante la sesión también se observó actividad hacia los puertos 1550 y 80 desde puertos efímeros del host de análisis, con respuesta del equipo mediante FIN+RST+ACK y TTL 30. En esta captura, el equipo no se comportó como servidor en esos puertos; el patrón observado corresponde a uso del canal HL7 como destino saliente desde el WATO hacia el receptor.
+
+En la captura analizada, el equipo generó tráfico TCP asociado a la sesión HL7 y no se observaron emisiones adicionales relevantes atribuibles al WATO fuera de este flujo estable.
+
+Valor para modelado FSM y ciberseguridad
+
+La captura permite documentar formalmente tres estados observables en red:
+1. SIN_GATEWAY: patrón de intento fallido con reintentos y reinicio.
+2. HANDSHAKE: establecimiento exitoso de la sesión TCP al habilitar el puerto receptor.
+3. SESION_ESTABLECIDA_STANDBY: flujo periódico ORU^R01 cada 10 s con ACK por mensaje.
+
+Desde una perspectiva de caracterización de tráfico, esta sesión permite definir una firma temporal estable de 10 s, un patrón de conexión TCP persistente, un conjunto mínimo de segmentos HL7 presentes en reposo (MSH, PID, PV1, OBR, OBX) y una huella de autoidentificación del dispositivo mediante MINDRAY_WATOPRO-SERIES y EUI-64.
+
+=== WATO RUNNING 27-08-2026.docx ===
+Investigación técnica sobre la salida HL7 de la máquina de anestesia Mindray WATO EX-35
+1. Arquitectura de comunicación de la WATO EX-35
+1.1 Interfaces físicas de comunicación
+El manual de operador de la WATO EX-35 indica que el equipo dispone de varios puertos de comunicación: al menos un conector RS-232 (DB9), un puerto de red Ethernet (RJ-45) y puertos USB.
+En la ficha técnica oficial de la WATO EX-35 se describen "One RS-232C connector and one DB9 connector" junto con "Ethernet (RJ-45)" y USB como puertos de comunicación estándar.
+Estas interfaces se utilizan para integrar el equipo con sistemas de información de anestesia, monitores de paciente y para exportación local de datos.
+1.2 Función de Ethernet y RS-232
+El manual de operador de la WATO EX-35 (versión en ruso) describe que el equipo puede conectarse a un sistema de información de anestesia mediante el protocolo HL7 a través de Ethernet, configurando IP de destino y puerto.
+Documentación de otros modelos WATO (por ejemplo WATO EX-65 Pro) indica explícitamente que el puerto de red se conecta al sistema de información de anestesia "a través del protocolo HL7", mientras que el puerto RS-232 se usa tanto para HL7 como para protocolos propietarios (MR-WATO) hacia monitores o sistemas específicos.
+Por consistencia de diseño entre la familia WATO, es razonable inferir que en la WATO EX-35 el puerto Ethernet se emplea principalmente para integración HL7 con CIS/HIS/EMR y el puerto RS-232 para integración HL7 o MR-WATO con monitores Mindray/Philips y otros dispositivos.
+1.3 Configuración de HL7 en el equipo
+El manual de operador WATO EX-35 incluye una sección de "Network" donde se configuran parámetros IP, máscara de red, puerta de enlace, y un apartado "HL7" con opciones de activación, IP de destino, puerto y compatibilidad HL7.
+En el manual de operador de WATO EX-65 Pro se detalla un menú similar: direcciones IP (propia y de destino), puerto HL7 (por defecto 1550), "HL7 Protocol Version" y un parámetro "Compatibility" para elegir la versión o perfil más reciente.
+En modelos Mindray A-Series, la configuración de HL7 serial permite seleccionar protocolo (HL7/MR-WATO/None), baud rate, bits de datos, bits de parada, paridad y "transmission frequency".
+Aplicado a WATO EX-35, la configuración HL7 incluye: IP local, IP de destino (servidor HL7 o eGateway), puerto HL7 (configurable, con valores por defecto alrededor de 1550), selección de versión/compatibilidad HL7 v2.x y un intervalo de transmisión para datos periódicos.
+Ip = 192.168.23.200/24
+Mascara = 255.255.255.0
+New-NetFirewallRule -DisplayName "HL7 TCP 1550" -Direction Inbound -Protocol TCP -LocalPort 1550 -Action Allow
+1.4 Parámetros de red y transporte
+La documentación de A-Series especifica que HL7 sobre Ethernet usa TCP/IP con framing MLLP (Minimal Lower Layer Protocol), y sobre RS-232 emplea también MLLP con encapsulado de mensajes y CRC.
+Los manuales HL7 de Mindray (por ejemplo BS-400/420 HL7 Interface Manual y Mindray Patient Data Share Protocol) indican que Mindray usa HL7 v2.3.1 y MLLP como capa inferior estándar.
+Dado que WATO EX-35 ofrece parámetro "HL7 Compatibility" y se integra con eGateway (que soporta HL7 2.1-2.6 e IHE PCD), es altamente probable que HL7 funcione sobre TCP/IP (Ethernet) utilizando MLLP como transporte, y sobre RS-232 emplee HL7 framed con MLLP y CRC según las guías A-Series.
+1.5 Receptores típicos del tráfico HL7
+La documentación de Mindray sobre eGateway describe que los dispositivos de anestesia exportan datos en HL7 hacia eGateway, que a su vez se comunica con ADT, CIS, EMR y sistemas de gestión de alarmas.
+Manual de operador de A-Series y guía de comunicación señalan que el anestesia system actúa como Device Observation Reporter (DOR), mientras que el sistema receptor (DOC) puede ser un servidor de información clínica, eGateway o un monitor que consume datos HL7.
+[Inferencia] En el caso de WATO EX-35, el receptor típico es un servidor de integración (Mindray eGateway u otro motor HL7), un sistema de información de anestesia (AIMS/CIS) o, vía RS-232, monitores Mindray conectados mediante BeneLink u otros módulos de enlace.
+1.6 Versiones de hardware y firmware
+Los manuales de servicio de la familia WATO describen placas de red, módulos auxiliares y procedimientos de actualización de software, indicando que ciertas funciones (incluida comunicación de red) pueden activarse mediante códigos de configuración o módulos de software específicos.
+El manual de servicio WATO EX-203035 señala distintas revisiones de software y procedimientos de "Software Function Activation" vinculados a la activación de funciones como monitorización O2 y módulos adicionales.
+Es probable que la capacidad HL7 de WATO EX-35 dependa de la presencia de la placa de red y de la activación de la función de comunicación HL7 en software; distintas versiones de firmware pueden añadir o modificar tipos de mensaje o parámetros, por lo que la compatibilidad exacta debe verificarse contra la versión de software instalada.
+2. Configuración de HL7 y parámetro "Interval"
+2.1 Significado del parámetro "Interval" HL7
+En el manual de operador de WATO EX-65 Pro se describe un parámetro "Interval" asociado a HL7 y SNTP, con opciones como Disabled, 10 s, 30 s, 1 min, 5 min, 30 min, 1 h, 2 h, 6 h, 12 h, 24 h para el protocolo de sincronización SNTP.
+En la guía de comunicación A-Series, el "Export Protocol" indica que los resultados no solicitados se envían a un intervalo máximo de 10 segundos, configurable a intervalos más cortos o largos; el técnico puede establecer la "transmission frequency" para HL7 en el diálogo de configuración de serie.
+Para WATO EX-35, el parámetro "Interval" de HL7 representa la frecuencia con la que el equipo envía mensajes de observación (mediciones, parámetros, estado) de forma periódica; valores típicos serían 10 segundos como máximo para datos en tiempo casi real, con posibilidad de intervalos mayores para entornos menos exigentes.
+2.2 ¿Todos los datos se envían en cada intervalo?
+La documentación A-Series indica que el DOR transmite "working data (measurements, settings, vent modes, status, etc.)" periódicamente según el intervalo configurado y que los datos de alerta (alarms) pueden enviarse como mensajes separados de tipo alerta (por ejemplo OUL/ALR) además de las observaciones.
+No se especifica que solo cambien los campos modificados: se habla de resultados no solicitados que contienen el conjunto de observaciones relevantes, incluidos valores actuales y algunos límites.
+En WATO EX-35, es razonable asumir que en cada intervalo se envía un mensaje de observación que incluye un conjunto de parámetros ventilatorios y de gases, más campos de estado; algunos eventos (alarmas, cambios de modo) pueden generar mensajes adicionales fuera del intervalo periódico.
+2.3 Capacidad de transmisión en tiempo real vs actualizaciones periódicas
+La descripción de A-Series export protocol establece que los datos se envían de manera "unsolicited" a intervalos configurables, y que la transmisión continua de waveforms puede habilitarse aparte a través de Ethernet.
+Para HL7 v2.x, la práctica común en dispositivos de anestesia es enviar datos discretos (no waveforms) a intervalos de segundos (5-10 s), lo que se considera tiempo cuasi real pero no streaming continuo.
+Aplicado a WATO EX-35, HL7 proporciona actualizaciones periódicas de datos fisiológicos y de ventilación (intervalos típicos 10 s), con posibilidad de considerarlo "near real-time" para análisis de tráfico, pero no como flujo de alta frecuencia comparable a waveforms.
+3. Estructura general de los mensajes HL7 de Mindray
+3.1 Versión de HL7 empleada
+La "Patient Data Share Protocol Programmer's Guide" de Mindray establece que Mindray PDS se basa en HL7 versión 2.3.1, utilizando solo una parte del estándar.
+El manual HL7 BS-400/420 indica que el campo Version ID del segmento MSH se fija en "2.3.1" y describe mensajes ORU^R01 y otros tipos compatibles.
+[Inferencia] Aunque el menú de WATO EX-65 Pro hace referencia genérica a "HL7 Protocol Version" y "Compatibility", la evidencia apunta a que Mindray utiliza HL7 v2.3.1 como base para sus interfaces de datos de dispositivos; es altamente probable que WATO EX-35 emita mensajes HL7 v2.3.1 o compatibles con 2.3.x.
+3.2 Tipos generales de mensaje HL7 en anestesia Mindray
+La guía de protocolo de A-Series indica que el sistema actúa como Device Observation Reporter (DOR) en el perfil IHE PCD DEC, utilizando mensajes HL7 estructurados que contienen observaciones, configuraciones y alertas.
+La documentación BS-400/420 HL7 describe el uso de mensajes ORU^R01 (Observation Result) para transmitir datos de laboratorio y observaciones, incluyendo segmentos MSH, PID, OBR y OBX.
+[Inferencia] Para WATO EX-35, el tipo de mensaje más probable para exportar datos periódicos es ORU^R01 (u otro mensaje conforme a IHE PCD-01, que reutiliza ORU^R01 para dispositivos), complementado quizás por mensajes de alerta específicos o extensiones propietarias.
+3.3 Segmentos habituales: MSH, PID, PV1, OBR, OBX
+En Mindray PDS y BS-400/420 HL7, la estructura típica de mensaje incluye:
+• MSH: encabezado de mensaje, versión, tipo de mensaje, ID de mensaje.
+• PID: datos demográficos del paciente (ID, nombre, fecha de nacimiento, sexo, etc.).
+• PV1: información de visita (ward, cama, etc.).
+• OBR: orden u observación agrupadora.
+• OBX: resultados de observación individuales (mediciones, parámetros).
+A-Series Communication Protocol Guide confirma el uso de MSH y OBX para datos de dispositivos, insertando códigos de nomenclatura de Mindray para identificar cada parámetro.
+Es razonable suponer que WATO EX-35 utiliza al menos MSH, PID y OBX; PV1 y OBR pueden estar presentes para compatibilidad con sistemas hospitalarios, pero esto no está explícitamente documentado para WATO EX-35.
+3.4 Campos y separadores
+El HL7 interface manual BS-400/420 especifica que Mindray define los separadores en MSH-2 como "|^~\&" y utiliza estos caracteres para campos, componentes, repeticiones y subcomponentes, conforme al estándar HL7.
+Mindray PDS establece que el Version ID (MSH-12) se fija en "2.3.1" y que número de control de mensaje (MSH-10) se usa para correlacionar mensajes con ACK en MSA.
+[Inferencia] Para WATO EX-35, la estructura de separadores y campos en MSH, PID, OBX seguirá el patrón estándar HL7 v2.3.1 con "|^~\&"; los campos concretos para cada parámetro (OBX-3 código de observación, OBX-5 valor, OBX-6 unidad, OBX-11 estado, etc.) se ajustan al estándar pero con códigos y unidades propietarias de Mindray cuando corresponde.
+3.5 Framing, ACK/NACK y confirmación
+La guía A-Series describe el uso de MLLP para delimitar mensajes: <SB> + <Message> + <CRC> + <EB> + <CR> en RS-232, y sin CRC adicional en Ethernet porque la capa física ya incluye verificación.
+En modo Ethernet, el DOR no requiere recibir ACK para seguir enviando resultados no solicitados; en modo serie, los ACK pueden no ser esperados (dependiendo del perfil de uso).
+En WATO EX-35, los mensajes HL7 sobre Ethernet están encapsulados mediante MLLP y se pueden configurar para ignorar ACK (unidireccional DOR→DOC), aunque un receptor estándar puede responder con mensajes de ACK (MSA) según HL7; sobre RS-232, también se usa MLLP y CRC para integridad.
+4. Datos clínicos potencialmente transmitidos por WATO EX-35
+4.1 Alcance de datos según manual de operador
+El manual de operador WATO EX-35 describe que el equipo monitoriza:
+• Parámetros de ventilación: frecuencia respiratoria, volumen corriente (TV), volumen minuto (MV), modos ventilatorios (VCV, PCV, SIMV, PSV), presión pico y media de vía aérea, PEEP, etc.
+• Parámetros de gases: FiO2, EtCO2, FiCO2, concentraciones de gases anestésicos (halotano, isoflurano, sevoflurano, desflurano), N2O, MAC, etc., mediante módulos AG y CO2.
+• Datos de espirometría y curvas de presión/volumen/flujo.
+• Datos de paciente (ID, tamaño, datos demográficos).
+[No verificado] Sin embargo, el manual de operador no incluye una especificación directa de qué subconjunto de estos parámetros se envía por HL7.
+4.2 Alcance de datos según integración HL7 (documentación genérica Mindray)
+La guía de comunicación A-Series indica que la anestesia system envía "ventilation modes, status, parameters, alarms, alarm limits and patient information" mediante HL7 a sistemas de información.
+El mismo documento señala que como DOR en IHE PCD DEC exporta "measurements, settings, vent modes, status" periódicamente.
+Aplicado a WATO EX-35, esto sugiere que la interfaz HL7 entrega al menos: parámetros ventilatorios clave, parámetros de gases, modos ventilatorios, estados del ventilador, alarmas y límites de alarma, junto con identificadores de paciente.
+4.3 Tabla detallada de parámetros (nivel de certeza)
+La siguiente tabla consolida parámetros relevantes, indicando únicamente como "confirmado" aquellos para los que hay referencia explícita en documentación HL7 de Mindray (no específica de WATO EX-35 pero sí de dispositivos de anestesia/monitorización), y marcando el resto como inferidos o no confirmados.
+
+En ausencia de una "WATO EX-35 HL7 Interface Specification" pública, no es posible confirmar que cada parámetro mostrado en pantalla se transmita por HL7. Solo se puede afirmar con certeza que Mindray, en sus productos de anestesia, usa HL7 para enviar ventilation modes, status, parameters, alarms, alarm limits y patient information, sin listado exhaustivo por modelo.
+5. Alarmas y eventos en HL7
+5.1 Presencia de alarmas en la interfaz HL7
+La "Communication Protocol Interface Guide" de A-Series señala explícitamente que el sistema puede enviar "Alert data" además de "Observation data" y "Waveform data" por Ethernet, y "Alert data" y "Observation data" por puerto serie, usando un protocolo basado en HL7.
+El manual de operador de Mindray para A-Series indica que, al conectar el sistema de anestesia al sistema de información, se pueden transmitir modos de ventilación, parámetros, alarmas, límites de alarma e información de paciente vía HL7.
+Para WATO EX-35, es razonable asumir que las alarmas clínicas (por ejemplo Drive Gas Pressure Low, O2 Supply Failure, High Paw, Low MV, etc.) se exportan mediante HL7 como "alert data" con algún tipo de segmentación específica.
+5.2 Contenido típico de una alarma HL7 Mindray
+La documentación A-Series describe nomenclaturas para alertas, con códigos que representan tipo de alarma y severidad (High, Medium, Low), alineadas con niveles de alarma del dispositivo.
+Las tablas de alarmas del manual de servicio WATO EX-203035 clasifican alarmas técnicas y fisiológicas con niveles (H, M, L) y textos descriptivos, por ejemplo "Drive Gas Pressure Low" o "CO2 Comm Stop".
+En HL7, las alarmas podrían codificarse como un código de alarma (propietario Mindray) en un campo de observación (OBX-3) o segmento AL1, texto de alarma en OBX-5 o AL1-3, y severidad prioritaria (H/M/L) en componentes adicionales. No hay evidencia pública específica para WATO EX-35 que confirme el formato exacto.
+5.3 Diferenciación entre datos periódicos y eventos
+El export protocol de A-Series diferencia resultados no solicitados (periódicos) de secuencias de alerta, donde las alertas se envían en respuesta a eventos (alarmas activadas), no necesariamente sincronizadas con el intervalo periódico.
+En WATO EX-35, los datos periódicos de observación (parámetros) se envían con frecuencia fija; las alarmas generan mensajes adicionales en el momento de activación, permitiendo distinguir en el tráfico HL7 entre baseline periódica y eventos.
+6. Función "Export Data" y USB vs HL7
+6.1 Exportación de datos mediante USB
+El manual de operador WATO EX-35 menciona puertos USB y funciones de exportación/importación de datos, incluyendo "Export Data" para registros de paciente, datos de ventilación y posiblemente logs de uso.
+En otros productos Mindray (por ejemplo A-Series, monitores de paciente), la función "Export Data" suele generar archivos en formatos internos (por ejemplo .dat, .txt o estructuras propietarias) que contienen registros históricos, tendencias y eventos para análisis y respaldo.
+No se encuentra documentación pública que describa en detalle el formato de archivos USB específicos de WATO EX-35 (por ejemplo CSV, HL7, binario), por lo que su estructura exacta no puede verificarse.
+6.2 Comparación conceptual entre datos USB y HL7
+Los datos USB típicamente incluyen históricos completos de casos (tendencias, eventos, configuraciones) almacenados en el equipo, mientras que HL7 se centra en la transmisión en línea de datos (near real-time) hacia sistemas externos.
+[Inferencia] En WATO EX-35, es probable que la exportación USB proporcione un conjunto más rico de históricos (por ejemplo curvas de presión/volumen, registros de alarmas), mientras que HL7 envía un subconjunto seleccionado de parámetros, estados y alarmas necesarios para integración clínica.
+7. Información del dispositivo en mensajes HL7
+7.1 Identificadores de dispositivo en Mindray HL7
+La guía Mindray PDS HL7 describe cómo en ciertos campos (por ejemplo, ubicación en PV1 o componentes de cama) se codifica la información de "Office Name", "bed id", "IP" y "IPSeq" dentro de subcomponentes, lo que permite identificar el origen de los datos.
+En mensajes HL7 estándares, el campo MSH-3 (Sending Application) y MSH-4 (Sending Facility) se usan habitualmente para identificar el dispositivo o el sistema que genera el mensaje.
+[Inferencia] Para WATO EX-35, el identificador de dispositivo (modelo, número de serie, ID) se podría representar en MSH-3 como "WATO_EX35" o un nombre de aplicación configurado, y en PV1 o campos de cama/ubicación con subcomponentes que incluyen IP y ubicación física. No hay evidencia directa que liste número de serie o versión de software en HL7 para WATO EX-35; esto podría requerir un perfil propietario.
+7.2 Estado de conexión y otros identificadores
+La documentación eGateway y IHE PCD describe que es posible identificar el dispositivo por IP, dirección MAC en capa de red y por campos HL7 de ubicación.
+[Inferencia] Aunque el estado de conexión (online/offline) no suele aparecer como campo HL7, puede deducirse de la presencia/ausencia de mensajes, y el dispositivo puede identificarse en el tráfico por IP, puerto, y patrones de MSH (Sending Application/Facility).
+8. Documentación técnica relevante y piezas faltantes
+8.1 Documentación oficial localizada
+Se han identificado las siguientes piezas de documentación oficial relacionadas con Mindray y WATO EX-35:
+• WATO EX-35 Operator's Manual (Ruso): Mindray, 2015. Describe funcionamiento clínico, monitorización, puertos de comunicación (RS-232, Ethernet, USB), configuración de red y HL7 (IP de destino, puerto, compatibilidad).
+• WATO EX-35 Specifications: Mindray, ficha técnica. Resume puertos de comunicación (RS-232, DB9, Ethernet RJ-45, USB), características del ventilador y módulos.
+• WATO EX-203035 Service Manual: Mindray, manual de servicio (extractos adjuntos). Se centra en mantenimiento, calibración, alarmas y hardware; incluye referencias a módulo de red y activación de funciones de software, pero no parece contener una especificación HL7 completa.
+• WATO EX-65 Pro Operator's Manual (Español): Mindray, manual de operador. Muestra configuración de Ethernet y serie, selección de protocolo HL7/MR-WATO, parámetros de IP, puerto, intervalo, compatibilidad HL7 y SNTP.
+• A-Series Communication Protocol Interface Guide (DSP): Mindray DS USA, guía técnica. Especifica interfaz de comunicación para sistemas de anestesia A-Series, incluyendo HL7 basado en IHE PCD DEC, MLLP, estructura de mensajes, tipos de datos y configuración de serial/Ethernet.
+• Mindray Patient Data Share Protocol Programmer's Guide: Mindray, guía de programador. Describe protocolo PDS basado en HL7 v2.3.1, estructura de segmentos MSH, PID, OBX, campos y codificación de ubicación.
+• BS-400/420 HL7 Interface Manual: Mindray, manual HL7 para analizadores de laboratorio. Define mensajes ORU^R01, uso de MSH, PID, OBR, OBX, separadores y Version ID=2.3.1.
+• Mindray eGateway Integration Solution: Mindray, documentación de interoperabilidad. Indica soporte HL7 2.1-2.6 e IHE PCD, así como integración con dispositivos de anestesia.
+8.2 Documentación ausente o no pública necesaria para especificación exacta
+[No verificado] No se ha localizado públicamente un documento con título explícito, por ejemplo: "WATO EX-35 HL7 Interface Specification", "WATO EX-35 Communication Protocol Specification", "WATO EX-35 Data Communication Protocol" o "WATO EX-35 Integration Manual".
+Por analogía con A-Series, es razonable suponer que existen documentos internos Mindray como "WATO EX-35 Communication Protocol Interface Guide" (similar en estructura a "A Series Communication Protocol Interface Guide") o "WATO EX-35 HL7 Interface Manual"/"Mindray WATO EX Series HL7 Export Protocol".
+Estos documentos serían la pieza faltante crítica para conocer el listado exhaustivo de parámetros exportados, los códigos HL7/OBX utilizados (LOINC vs propietaria Mindray), la estructura detallada de cada mensaje y las reglas de frecuencia de transmisión y agrupación de observaciones.
+9. Comparación con HL7 estándar y extensiones Mindray
+9.1 Conformidad con HL7 v2.x
+Las guías HL7 de Mindray (PDS, BS-400, A-Series) se basan en HL7 v2.3.1, usando segmentos estándar (MSH, PID, PV1, OBR, OBX) y separadores "|^~\&".
+La documentación BS-400 HL7 indica que Version ID (MSH-12) se fija en "2.3.1", y que se utiliza ASCII como conjunto de caracteres.
+[Inferencia] Es muy probable que WATO EX-35 utilice HL7 v2.3.1 (o v2.5.x compatible) como base, cumpliendo la gramática estándar de segmentos, pero limitándose a un subconjunto necesario para dispositivos de anestesia.
+9.2 Implementaciones propietarias Mindray
+Mindray define un protocolo PDS propio basado en HL7, donde ciertos campos se utilizan de forma específica, por ejemplo subcomponentes en la cama para incluir IP y office name.
+El protocolo MR-WATO (para serie) es declarado como "for Mindray internal use only" y ofrece una alternativa no HL7 para comunicación con monitores Mindray.
+A-Series export protocol utiliza nomenclatura propietaria para códigos de observación (no LOINC), alineados con IHE PCD DEC pero definidos por Mindray. Para WATO EX-35, la estructura de mensajes HL7 se ajusta al estándar, pero los códigos de OBX-3 probablemente son propietarios Mindray (no LOINC), con catálogos internos; MR-WATO proporciona una alternativa distinta a HL7 para ciertos usos (monitores Mindray), no documentada públicamente.
+9.3 Uso de LOINC u otros sistemas de codificación
+Ninguna de las guías Mindray PDS, BS-400 o A-Series menciona la adopción de LOINC como sistema de códigos de OBX; en su lugar, describen códigos internos Mindray y nomenclaturas DEC para IHE PCD.
+Por tanto, no hay evidencia pública de que WATO EX-35 utilice LOINC para sus parámetros; lo más probable es que use códigos propietarios Mindray.
+10. Utilidad del tráfico HL7 para investigación de ciberseguridad
+10.1 Información observable mediante captura pasiva
+A partir de la estructura HL7 Mindray y del rol de DOR/DOC en IHE PCD, un observador pasivo de tráfico HL7 de WATO EX-35 podría obtener:
+• Parámetros clínicos periódicos (RR, TV, MV, presiones, FiO2, EtCO2, gases anestésicos) en OBX-5.
+• Datos demográficos del paciente en PID (ID, nombre, fecha de nacimiento, sexo).
+• Información de ubicación física (ward, bed, office name, IP) en PV1 y subcomponentes de la cama.
+• Identificación del dispositivo (Sending Application/Facility, IP origen, patrones de puerto).
+• Alarmas y límites de alarma como alert data en segmentos específicos o en OBX.
+10.2 Campos con información sensible
+Los campos que podrían considerarse información sensible incluyen PID-3 (Patient ID), PID-5 (nombre), PID-7 (fecha de nacimiento), PID-8 (sexo); PV1 (ubicación de paciente: ward, room, bed) y subcomponentes de cama con office name e IP; y datos clínicos en OBX (por ejemplo EtCO2, FiO2, MAC, presiones), que pueden revelar estado clínico del paciente.
+10.3 Metadatos para identificar el dispositivo
+Los metadatos relevantes para identificar WATO EX-35 en tráfico HL7 incluyen dirección IP origen y puerto HL7 configurado (p.ej. 192.168.23.x:1550), MSH-3/4 (Sending Application/Facility) con nombre de dispositivo o estación, y subcomponentes de cama (Office Name&bed id&IP&IPSeq) si se aplican.
+10.4 Patrones de tráfico y periodicidad
+La exportación de resultados no solicitados en Mindray A-Series se realiza a intervalos máximos de 10 s, con opción de configuraciones más cortas o largas. El parámetro "Interval" configurado en HL7/Network determina dicha periodicidad.
+[Inferencia] En WATO EX-35, se esperaría ver mensajes HL7 periódicos cada N segundos (N configurado en Interval), con un mensaje ORU^R01 (u equivalente PCD-01) conteniendo OBX múltiples, y mensajes de alerta/evento que aparecen fuera de esta cadencia cuando hay alarmas o cambios importantes. Estos patrones permiten construir una línea base de comportamiento normal, útil para detección de anomalías en investigación de ciberseguridad.
+11. Resumen de nivel de certeza y lagunas de información
+11.1 Conclusiones confirmadas por documentación oficial Mindray
+• WATO EX-35 dispone de puertos RS-232, Ethernet y USB como interfaces de comunicación.
+• El equipo se puede conectar a un sistema de información de anestesia mediante HL7, configurando IP de destino, puerto HL7, intervalo y compatibilidad de versión.
+• Mindray utiliza HL7 v2.3.1 (PDS, BS-400/420) con segmentos MSH, PID, OBR, OBX y separadores "|^~\&".
+• Los sistemas de anestesia Mindray (A-Series) actúan como Device Observation Reporter en IHE PCD DEC, enviando observaciones, estados, modos de ventilación, alarmas, alarm limits y patient information en HL7 a sistemas receptores (DOC).
+• La capa de transporte para HL7 en dispositivos Mindray emplea TCP/IP sobre Ethernet y MLLP (con opción CRC en RS-232), configurando baud rate, bits de datos, paridad y frecuencia de transmisión en serie.
+11.2 Conclusiones confirmadas solo por documentación técnica secundaria
+• La especificación detallada de HL7 de WATO EX-35 (lista de parámetros, códigos, estructura por mensaje) no aparece en documentación pública y es referida indirectamente en manuales de otros modelos WATO y A-Series.
+• Algunas descripciones de configuración HL7 para WATO EX-35 proceden de manuales traducidos o recursos de terceros, que aunque parecen legítimos, no equivalen a una especificación oficial HL7 de Mindray.
+11.3 Conclusiones inferidas (no verificadas específicamente para WATO EX-35)
+• WATO EX-35 probablemente utiliza HL7 v2.3.1 como base, con mensajes ORU^R01 alineados con el perfil IHE PCD-01 DEC.
+• Los segmentos presentes incluyen MSH, PID, PV1 (posible), OBR (opcional), OBX (múltiples), y posiblemente AL1/NTE para alertas.
+• Se exportan parámetros de ventilación (RR, TV, MV, presiones, PEEP), parámetros de gases (FiO2, EtCO2, FiCO2, AG, N2O, MAC), modos ventilatorios, estados del ventilador, alarmas y límites de alarma, más datos de paciente.
+• La frecuencia periódica de mensajes es configurable mediante "Interval" (valores típicos ~10 s), y se complementa con mensajes por evento.
+• Los códigos de observación en OBX son propietarios Mindray y no basados en LOINC.
+11.4 Información no encontrada / no verificable públicamente
+• Lista exhaustiva de campos HL7 específicos de WATO EX-35.
+• Ejemplos de mensajes HL7 reales generados por WATO EX-35 (no se han localizado en manuales públicos).
+• Documentos oficiales Mindray específicamente titulados "WATO EX-35 HL7 Interface" o "WATO EX-35 Communication Protocol Specification".
+• Confirmación explícita de qué parámetros monitorizados (por ejemplo espirometría completa, todos los eventos técnicos) se incluyen o excluyen de HL7.
+12. Tabla final de parámetros y nivel de confirmación
+La tabla siguiente resume los parámetros clave subjetivos a tu proyecto, indicando nivel de certeza respecto a su transmisión por HL7 en WATO EX-35.
+
+Sin acceso a documentación interna Mindray específica de WATO EX-35, no es posible ir más allá de este nivel de detalle sin caer en especulación.
+13. Respuesta a la pregunta central
+[Inferencia] Integrando toda la evidencia disponible:
+• Qué información entrega exactamente una Mindray WATO EX-35 mediante HL7: parámetros periódicos de ventilación y gases, modos y estado del ventilador, alarmas y límites de alarma, datos demográficos del paciente y metadatos de ubicación/dispositivo; la lista exacta por parámetro para EX-35 no se ha publicado.
+• Cómo está estructurada esa información: mensajes HL7 v2.3.1 (probables ORU^R01/PCD-01) con segmentos MSH, PID y múltiples OBX, separados por "|^~\&", encuadrados mediante MLLP sobre TCP/IP (Ethernet) o RS-232.
+• Con qué frecuencia se transmite: de forma no solicitada, con intervalo configurable (p.ej. hasta 10 s en A-Series, similar en WATO), más mensajes adicionales por eventos de alarma.
+• Qué elementos del tráfico pueden observarse desde un receptor de red: valores clínicos, identificadores de paciente, información de ubicación, identificadores de dispositivo, patrones de intervalos, secuencias de alarmas y cambios de estado, todo en texto ASCII codificado según HL7.
+Para pasar de este nivel de inferencia a una especificación exacta exige obtener de Mindray la "WATO EX-35 HL7/Communication Protocol Interface Guide" o un documento equivalente que liste campos y ejemplos de mensajes.
+
+ANEXO TÉCNICO: LECTURA WIRESHARK DEL TRÁFICO HL7 DE LA MINDRAY WATO EX-35 EN MODO STANDBY
+Objetivo de la sesión
+Documentar el comportamiento real de la salida HL7 de la Mindray WATO EX-35 en modo Standby, a partir de una captura de red obtenida en laboratorio, con énfasis en establecimiento de sesión, periodicidad, estructura de mensajes y utilidad forense para línea base de tráfico.
+Resumen ejecutivo de la captura
+La sesión confirmó operación HL7 activa del equipo mediante una conexión TCP persistente con intercambio de mensajes ORU^R01 y sus respectivos ACK. Se capturaron 43 mensajes HL7 ORU^R01, cada uno seguido por su confirmación de aplicación, lo que constituye un baseline real del comportamiento del equipo en modo Standby.
+La secuencia observada fue la siguiente:
+• t=3.4 s: intento desde puerto 2069 con patrón SYN, seguido de RST a los 46.6 s.
+• t=51.0 s: intento desde puerto 2070 mediante SYN.
+• t=82.6 s: SYN-ACK del receptor, coincidente con la apertura del puerto en el host receptor.
+• t=82.8 s: primer mensaje ORU^R01 de 972 bytes.
+• t=82.8 s: respuesta ACK con MSA|AA de 115 bytes.
+• A partir de ese momento: 43 ciclos exactos, cada 10.000 s.
+• t=509 s: finalización de la captura con la sesión aún activa.
+Comportamiento de la sesión TCP
+La captura mostró una única conexión TCP persistente sin cierre mediante FIN, sostenida por el intercambio periódico de mensajes HL7 cada 10 segundos. Este patrón define un estado estable del equipo en modo Standby.
+La secuencia observada contiene además la transición completa entre un estado sin recepción efectiva y una sesión establecida, lo cual es útil para modelado de máquina de estados finitos (FSM):
+• SIN_GATEWAY: intento fallido con patrón de reintentos y reinicio.
+• HANDSHAKE: establecimiento exitoso al habilitar el puerto receptor.
+• SESION_ESTABLECIDA_STANDBY: conexión persistente con ORU^R01 periódicos cada 10 s.
+Estructura HL7 observada
+El mensaje observado presenta la siguiente estructura representativa:
+MSH|^~\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||20260825141442-0500||ORU^R01^ORU_R01|1|P|2.6|||NE|AL||UNICODE UTF-8|||IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO
+PID|||^^^^PI||^^^^^^L|||
+PV1||I|^^^
+OBR|1|1^MINDRAY_WATOPRO-SERIES^...|1^...|70040^MDC_DEV_SYS_ANESTH^MDC|||20260825141442-0500|
+OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202836^MDC_EVT_STAT_STANDBY^MDC
+OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL
+OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT
+OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL|1.3.1.30007|30000^MDC_TRUE
+A partir de esta observación, la sesión documenta los siguientes rasgos del mensaje:
+• Versión HL7: 2.6.
+• Perfil de interoperabilidad: IHE PCD-01 (DEC).
+• OID del perfil: 1.3.6.1.4.1.19376.1.6.1.1.1.
+• Tipo de mensaje: ORU^R01.
+• Confirmación de aplicación requerida: MSH-16 = AL.
+• Identificador del sistema emisor: MINDRAY_WATOPRO-SERIES.
+• Identificador físico reportado por el equipo: 000F14002D3586ec con etiqueta EUI-64.
+• Identificación del dispositivo como sistema de anestesia: 70040^MDC_DEV_SYS_ANESTH^MDC.
+• Uso de nomenclatura IEEE/ISO 11073-10101 para conceptos MDC.
+• Presencia de espacio propietario MNDRY para eventos no cubiertos por la nomenclatura estándar.
+Segmentos observados y significado
+MSH
+El segmento MSH contiene separadores estándar HL7, aplicación emisora, identificador EUI-64 del equipo, marca temporal del emisor en MSH-7, tipo de mensaje ORU^R01^ORU_R01, control ID, Processing ID P, versión 2.6, requisito de ACK de aplicación AL, codificación UNICODE UTF-8 y perfil IHE_PCD_001.
+PID
+El segmento PID aparece presente, pero en esta sesión Standby no transporta datos demográficos sustantivos del paciente. La estructura vacía sigue formando parte del mensaje clínico emitido por el dispositivo.
+PV1
+El segmento PV1 también aparece presente con contenido mínimo. Indica que el mensaje conserva estructura hospitalaria compatible con integración clínica, aunque en esta sesión no aporta localización clínica detallada.
+OBR
+El segmento OBR identifica el conjunto de observaciones del dispositivo y lo clasifica como sistema de anestesia mediante MDC_DEV_SYS_ANESTH.
+OBX
+Los OBX observados en Standby son de tipo CWE y transportan estados discretos del equipo, no variables numéricas fisiológicas. En esta sesión se observaron al menos los siguientes estados:
+• OBX-1: 202886^MDC_EVT_STAT_DEV^MDC -> Estado del dispositivo: MDC_EVT_STAT_STANDBY.
+• OBX-2: 30002^MNDRY_EVT_STAT_MODE_DEV -> Modo del dispositivo: MNDRY_EVT_STAT_MODE_NORMAL.
+• OBX-3: 30005^MNDRY_EVT_PATIENT_TYPE -> Tipo de paciente: MDC_EVT_STAT_DEV_MODE_ADULT.
+• OBX-4: 30007^MNDRY_EVT_STAT_WARMER_ON_BOOL -> Estado lógico del calentador: MDC_TRUE.
+Periodicidad y baseline temporal
+La captura registró 43 mensajes ORU^R01 idénticos en contenido funcional, con variación únicamente en el timestamp del mensaje, el control ID y el tamaño puntual entre 968 y 971/972 bytes.
+Los tamaños observados fueron:
+• 971 bytes: 34 mensajes.
+• 968 bytes: 9 mensajes.
+• ACK: 115 y 117 bytes.
+La periodicidad fue exactamente de 10.000 s entre mensajes, con la sesión activa de inicio a fin. Este patrón define la línea base temporal del comportamiento HL7 del equipo en modo Standby.
+Interpretación funcional del contenido en Standby
+El primer OBX reporta explícitamente MDC_EVT_STAT_STANDBY, por lo que la sesión caracteriza el comportamiento del equipo en reposo operativo. El mensaje emitido en este estado describe estatus del sistema, modo del dispositivo, tipo de paciente y estado booleano de funciones auxiliares, pero no muestra en esta captura variables fisiológicas numéricas de ventilación o gases.
+Por tanto, el baseline de Standby queda definido como una telemetría HL7 centrada en estado operativo del sistema y no en parámetros clínicos dinámicos.
+Hallazgo forense de sincronización horaria
+La comparación entre tiempo de captura y tiempo de aplicación mostró un desfase constante de +17 min 10 s.
+• Timestamp del paquete (pcap): 13:57:32.
+• ACK del receptor: 13:57:32.
+• MSH-7 del WATO: 14:14:42.
+Este hallazgo implica que la correlación forense de eventos debe anclarse al timestamp de captura de red y no al timestamp de aplicación emitido por el dispositivo.
+Rastro de transporte y rol de red del equipo
+Durante la sesión también se observó actividad hacia los puertos 1550 y 80 desde puertos efímeros del host de análisis, con respuesta del equipo mediante FIN+RST+ACK y TTL 30. En esta captura, el equipo no se comportó como servidor en esos puertos; el patrón observado corresponde a uso del canal HL7 como destino saliente desde el WATO hacia el receptor.
+En la captura analizada, el equipo generó tráfico TCP asociado a la sesión HL7 y no se observaron emisiones adicionales relevantes atribuibles al WATO fuera de este flujo estable.
+Valor para modelado FSM y ciberseguridad
+La captura permite documentar formalmente tres estados observables en red:
+• 1. SIN_GATEWAY: patrón de intento fallido con reintentos y reinicio.
+• 2. HANDSHAKE: establecimiento exitoso de la sesión TCP al habilitar el puerto receptor.
+• 3. SESION_ESTABLECIDA_STANDBY: flujo periódico ORU^R01 cada 10 s con ACK por mensaje.
+Desde una perspectiva de caracterización de tráfico, esta sesión permite definir una firma temporal estable de 10 s, un patrón de conexión TCP persistente, un conjunto mínimo de segmentos HL7 presentes en reposo (MSH, PID, PV1, OBR, OBX) y una huella de autoidentificación del dispositivo mediante MINDRAY_WATOPRO-SERIES y EUI-64.
+
+ANEXO II: ANÁLISIS DEL ARCHIVO PDML — CAPTURA DE TRÁFICO HL7 EN MODO VENTILACIÓN (VCV)
+Origen y alcance del análisis
+Este anexo documenta el análisis directo de un archivo PDML (salida XML detallada de Wireshark, con disección completa de campos por protocolo) correspondiente a una nueva sesión de captura del tráfico HL7 de la Mindray WATO EX-35. A diferencia del Anexo I (modo Standby), esta captura registra al equipo operando en modo de ventilación mecánica controlada por volumen (VCV), lo que permite observar por primera vez el contenido numérico real de los parámetros clínicos transmitidos por HL7.
+1. Parámetros de sesión de red confirmados
+
+2. Identidad del receptor HL7 (confirmado por ACK real)
+Mensaje ACK capturado íntegro:
+MSH|^~\&|G18NODE|JAVERIANA|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||20260827094815||ACK|48|P|2.6
+MSA|AA|48
+• MSH-3 = G18NODE -> nombre de la aplicación receptora.
+• MSH-4 = JAVERIANA -> nombre de la instalación/organización.
+• MSA-1 = AA (Application Accept), MSA-2 = 48 (Message Control ID del ORU^R01 original).
+Se confirmaron múltiples ACKs consecutivos con IDs correlativos: 48, 55, 76, 84 — contador monotónico creciente compartido por todos los ORU^R01 de la sesión. Esto permite reconstruir el orden exacto de envío aunque los paquetes lleguen desordenados en la captura.
+3. Mensaje HL7 en modo Standby (contexto de comparación, ya documentado en Anexo I)
+MSH|^~\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||20260825141442-0500||ORU^R01^ORU_R01|1|P|2.6|||NE|AL||UNICODE UTF-8|||IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO
+PID|||^^^^PI||^^^^^^L|||
+PV1||I|^^^
+OBR|1|1^MINDRAY_WATOPRO-SERIES^...|1^...|70040^MDC_DEV_SYS_ANESTH^MDC|||20260825141442-0500|
+OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202836^MDC_EVT_STAT_STANDBY^MDC
+OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL
+OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT
+OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL|1.3.1.30007|30000^MDC_TRUE
+Solo 4 OBX, todos tipo CWE (código discreto), ~970 bytes. Sirve de referencia para contrastar con el hallazgo nuevo del modo VCV a continuación.
+4. Mensaje HL7 en modo VCV (hallazgo nuevo — equipo ventilando)
+La captura registra mensajes ORU^R01 sustancialmente más extensos que en modo Standby, con hasta 23 segmentos OBX por mensaje, de los cuales la mayoría transportan valores numéricos (tipo NM) o notación estructurada (tipo SN) en lugar de códigos discretos (tipo CWE). Esto confirma de forma directa que la WATO EX-35 transmite parámetros ventilatorios cuantitativos reales por HL7 cuando el equipo está activamente ventilando.
+4.1 Segmento de modo ventilatorio
+OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50005^MNDRY_VENT_MODE_VCV^99MNDRY
+OBX-5 reporta el modo ventilatorio activo mediante un código propietario Mindray (99MNDRY), con valor "MNDRY_VENT_MODE_VCV" — Ventilación Controlada por Volumen. Este es el primer campo HL7 confirmado que identifica directamente el modo ventilatorio configurado por el operador.
+4.2 Parámetros configurados por el operador (settings, OBX-11 = F)
+
+4.3 Parámetros medidos (mediciones fisiológicas dinámicas, OBX-11 = R)
+
+Hallazgo relevante: el volumen tidal espirado (OBX-17) varía ligeramente ciclo a ciclo (68, 69, 70, 66 mL en distintos mensajes con timestamps 10:03:16, 10:04:16, 10:05:06 y 10:09:36), lo cual es fisiológicamente coherente con la variabilidad normal de un pulmón de prueba o paciente real, y confirma que estos OBX representan mediciones en tiempo real y no valores estáticos repetidos por caché.
+No observados en esta sesión: gases anestésicos (AG), EtCO2, FiCO2, MAC. No se puede concluir que la WATO EX-35 nunca los transmita — solo que no aparecieron en estos ciclos, posiblemente porque el módulo de gases (AG/CO2) no estaba activo, no había vaporizador conectado, o el circuito de prueba no generaba estas mediciones durante la sesión.
+5. Manejo de sensor no disponible (FiO2)
+El OBX correspondiente a FiO2 (código 152196^MDC_CONC_AWAY_O2_INSP^MDC) se presenta sin valor numérico en OBX-5, con el campo OBX-8 (Abnormal Flags) marcado como "INV" y OBX-11 (Observation Result Status) marcado como "X" (resultado no disponible). Esto confirma empíricamente que:
+• La WATO EX-35 sí reserva un OBX dedicado para FiO2 dentro de su plantilla de mensaje HL7 en modo ventilación.
+• Cuando el sensor de O2 no está conectado, calibrado o disponible, el equipo transmite explícitamente el campo vacío con marca de invalidez, en lugar de omitir el OBX o repetir el último valor válido.
+• Esto es relevante para el proyecto: un receptor HL7 (o un analizador de tráfico) puede diferenciar entre "sensor no disponible" y "valor real de cero", evitando falsos negativos clínicos, y es también relevante para caracterización de tráfico, ya que la presencia del código OBX es constante aunque el valor no lo sea.
+6. Framing MLLP confirmado en payload TCP
+La inspección del payload TCP en hexadecimal confirma el uso del framing MLLP estándar: cada mensaje comienza con el byte 0x0B (<VT>, Start Block) inmediatamente antes de "MSH", y termina con la secuencia 0x1C 0x0D (<FS><CR>, End Block) inmediatamente después del último segmento OBX. Este patrón se repite de forma idéntica en todos los mensajes ORU^R01 observados, tanto en Standby (Anexo I) como en modo VCV, confirmando que el mecanismo de framing es constante independientemente del contenido o tamaño del mensaje.
+7. Periodicidad confirmada en modo VCV
+Se identificaron mensajes con timestamps de aplicación (MSH-7) en 10:03:16, 10:04:16, 10:05:06 y 10:09:36 (hora local del equipo), confirmando el mismo patrón de intervalo de 10.000 segundos ya documentado en el Anexo I para el modo Standby. La diferencia entre 10:05:06 y 10:09:36 (4 minutos 30 segundos) corresponde a múltiples ciclos de 10 s no capturados en el fragmento analizado, consistente con continuidad de la sesión, no con una interrupción del protocolo.
+8. Comparación cuantitativa entre modo Standby y modo VCV
+
+Esta comparación cuantitativa es directamente utilizable en el proyecto de grado para el modelado de una máquina de estados finitos (FSM) del tráfico de red: el tamaño del mensaje y la presencia de OBX numéricos constituyen un discriminador observable y no intrusivo del estado operativo del equipo (Standby vs. Ventilando), sin necesidad de interpretar el contenido clínico específico.
+9. Ruido de red identificado (a excluir del análisis del dispositivo)
+El análisis del PDML permitió además identificar tráfico ajeno al canal HL7 dentro de la misma captura, relevante para distinguir ruido de red del tráfico propio del dispositivo médico:
+• Tráfico SSDP/UDP: paquetes UDP desde 192.168.23.200 puerto efímero 57019 hacia 239.255.255.250 puerto 1900 (multicast SSDP, descubrimiento de dispositivos UPnP), con TTL=1, típico de anuncios de presencia de dispositivos en la red local. Este tráfico no se origina en la WATO EX-35 (proviene de la IP del receptor/estación de captura, no de 192.168.23.250) y debe excluirse del análisis de comportamiento del equipo médico.
+• El resto del tráfico TCP en el stream índice 0 corresponde exclusivamente a la conversación HL7 entre 192.168.23.250:2048 y 192.168.23.200:1550, sin mezcla de otros protocolos en ese flujo específico.
+Esta separación es importante para el proyecto de ciberseguridad: permite establecer un filtro de captura preciso (por ejemplo, ip.addr==192.168.23.250 and tcp.port==1550) que aísla el tráfico del dispositivo médico del ruido ambiental de la red, mejorando la fidelidad de cualquier línea base de comportamiento normal.
+10. Actualización de la línea base de comportamiento normal (consolidado Anexo I + Anexo II)
+Con base en las dos sesiones de captura disponibles (Standby y VCV), la línea base de comportamiento normal de la WATO EX-35 en la interfaz HL7 se actualiza así:
+• Una única sesión TCP persistente hacia el puerto 1550 del receptor configurado, sin reconexiones durante la operación normal, en ambos modos.
+• Un mensaje ORU^R01 cada 10.000 segundos exactos en ambos modos operativos (Standby y VCV), variación menor a 5 ms entre ciclos.
+• Un ACK de aplicación (MSA|AA) por cada ORU^R01, con Message Control ID correlativo y monotónico creciente.
+• Tamaño de mensaje variable según estado operativo: ~970 bytes en Standby (4 OBX de estado) y ~3.000-3.300 bytes en VCV (hasta 23 OBX incluyendo settings y mediciones) — discriminador no intrusivo del estado del equipo.
+• Identificador de dispositivo estable (MINDRAY_WATOPRO-SERIES + EUI-64 000F14002D3586ec) en MSH-3 de todo mensaje, independiente del estado operativo.
+• Nodo receptor HL7 identificado consistentemente como G18NODE / JAVERIANA en todos los ACK de la sesión.
+• Ausencia de tráfico HL7 saliente en los puertos 1550/80 como servidor: la WATO EX-35 es exclusivamente cliente TCP saliente en esta interfaz.
+Cualquier desviación de este patrón consolidado —mensajes fuera de cadencia, tamaños anómalos para el estado declarado, múltiples sesiones TCP simultáneas hacia el mismo puerto, o ausencia prolongada de ACK— constituye una anomalía detectable mediante monitoreo pasivo de red, sin necesidad de interactuar con el equipo.
+11. Pendientes para siguiente sesión de captura
+• Provocar una alarma real y capturar su formato HL7 exacto (no observado en las sesiones disponibles).
+• Capturar con módulo de gases activo para confirmar transmisión de AG/EtCO2/FiCO2/MAC por HL7.
+• Probar modo --no-ack para evaluar el comportamiento del equipo sin confirmación de aplicación.
+• Confirmar si el catálogo completo de códigos OBX del equipo incluye variantes adicionales no observadas en Standby ni en VCV (por ejemplo modos PCV, SIMV, PSV).

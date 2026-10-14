@@ -1,0 +1,23 @@
+INFORME DE ANÁLISIS DE CAPTURA DE RED
+Archivo: WATOPARANALIZAR.pcap
+
+1. Resumen ejecutivo
+Se analizó la captura WATOPARANALIZAR.pcap (1,664 paquetes, ≈25 minutos, 18 de agosto de 2026). El tráfico corresponde a dos dispositivos conectados directamente por cable Ethernet (sin router ni servidor DHCP de por medio): un laptop Windows y un ventilador con control por red (identificado en el análisis como "WATO").
+El hallazgo principal es que ambos dispositivos nunca llegan a comunicarse: el ventilador busca constantemente un equipo en la IP 192.168.23.200, mientras que el laptop terminó configurado en la subred 195.168.23.0/24 (195 en vez de 192). Esta discrepancia de un solo dígito impide que el ARP resuelva y, por lo tanto, que se intercambie cualquier paquete IP entre ambos.
+2. Datos generales de la captura
+3. Dispositivos identificados
+4. Protocolos presentes en la captura
+No se registró tráfico TCP en ningún momento. Todo lo capturado corresponde a protocolos de descubrimiento, autoconfiguración y mantenimiento de red (broadcast/multicast):
+5. Hallazgo principal: falla de comunicación con el ventilador
+El dispositivo con MAC 00:0f:14:35:86:ec (IP 192.168.23.250) envía 241 solicitudes ARP a lo largo de toda la captura, aproximadamente cada 2.6 segundos, todas con el mismo destino:
+who has 192.168.23.200?
+Ninguna de esas 241 solicitudes recibe respuesta. En paralelo, se reconstruyó la secuencia de direcciones IP que usó el laptop durante la captura:
+
+6. Recomendación
+Configurar la interfaz Ethernet del laptop con una IP fija en la subred 192.168.23.0/24 (por ejemplo 192.168.23.100), máscara 255.255.255.0, sin gateway.
+Verificar en la documentación o firmware del ventilador si 192.168.23.200 es la IP que espera para el equipo controlador, o si es configurable.
+Repetir la captura tras el cambio y confirmar que aparecen respuestas ARP y tráfico IP (probablemente UDP/TCP propio del protocolo de control del ventilador) entre ambas IPs.
+7. Otras observaciones menores
+El ventilador también envía dos solicitudes ARP hacia 210.72.145.44 y dos hacia 132.163.4.103 (direcciones públicas), probablemente un intento de contactar un servidor NTP o "check-in" en la nube al arrancar; sin gateway configurado, tampoco progresan.
+El laptop nunca recibió respuesta de un servidor DHCP real (no se capturó DHCPOFFER/DHCPACK), de ahí las direcciones APIPA (169.254.x.x) que aparecen al inicio y al final de la captura.
+El tráfico hacia 224.77.77.77:12177 (ASUS Armoury Crate) es independiente del problema anterior; corresponde al software de gestión ASUS del laptop y no está relacionado con el ventilador.

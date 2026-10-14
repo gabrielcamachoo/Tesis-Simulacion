@@ -1,0 +1,2953 @@
+=== SRS_Tesis.pdf ===
+--- Page 1 ---
+Pontificia Universidad Javeriana
+Facultad de Ingenier´ıa - Departamento de Sistemas
+Grupo de Investigaci´on SIDRE
+ESPECIFICACI´ON DE
+REQUERIMIENTOS DE
+SOFTWARE (SRS)
+Sistema de Detecci´on de Ransomware BIW en
+M´aquinas de Anestesia Mindray WATO EX-35
+Autores:
+Gabriel Alejandro Camacho Rivera
+David Santiago Pi˜neros Rodr´ıguez
+Santiago Avila Barbudo
+Director:
+Ing. Jhon Alberto Talero Patiarroyo
+Fecha: 8 de mayo de 2026
+Versi´on del Documento: 4.0 (Final)
+
+--- Page 2 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+Historial de Cambios
+Versi´on
+Fecha
+Secci´on
+modifi-
+cada
+Descripci´on de cam-
+bios
+Responsable
+1.0
+Mayo 2026
+Todas
+Creaci´on base del SRS
+(Esqueleto).
+Equipo
+2.0
+Mayo 2026
+2.1, 2.5, 3.2
+Integraci´on t´ecnica Min-
+dray WATO y protocolo
+HL7.
+Gabriel / Da-
+vid
+3.0
+Mayo 2026
+2.2 a 3.6
+Inclusi´on
+de
+Casos
+de
+Uso y Hardening de Se-
+guridad.
+Santiago
+/
+Gabriel
+4.0
+Mayo 2026
+2.1.5, 3.1.4, 3.2
+Expansi´on
+final
+FSM,
+alertas SIEM (Syslog) y
+mantenimiento.
+Equipo
+Tabla 1: Historial de cambios
+1
+
+--- Page 3 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+´Indice
+Historial de Cambios
+1
+´Indice
+2
+´Indice de tablas
+4
+1. Introducci´on
+5
+1.1. Prop´osito
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5
+1.2. Alcance
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5
+1.3. Definiciones, Acr´onimos y Abreviaciones . . . . . . . . . . . . . . . . . . . .
+5
+1.4. Referencias
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5
+1.5. Apreciaci´on Global . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+2. Descripci´on Global
+6
+2.1. Perspectiva del Producto . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.1.
+Interfaces con el Sistema y Hardware . . . . . . . . . . . . . . . . . .
+6
+2.1.2.
+Interfaces con el Usuario . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.3.
+Interfaces con el Software
+. . . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.4.
+Interfaces de Comunicaci´on
+. . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.5.
+Restricciones de Memoria
+. . . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.6.
+Operaciones y Adaptaci´on del Sitio . . . . . . . . . . . . . . . . . . .
+7
+2.2. Funciones del Producto . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.3. Caracter´ısticas del Usuario . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.4. Restricciones
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.5. Modelo del Dominio
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+8
+2.6. Suposiciones y Dependencias . . . . . . . . . . . . . . . . . . . . . . . . . . .
+8
+2.7. Distribuci´on de Requerimientos . . . . . . . . . . . . . . . . . . . . . . . . .
+8
+3. Requerimientos Espec´ıficos
+8
+3.1. Requerimientos de Interfaces Externas
+. . . . . . . . . . . . . . . . . . . . .
+8
+3.1.1.
+Interfaces con el Software
+. . . . . . . . . . . . . . . . . . . . . . . .
+8
+3.1.2.
+Interfaces de Comunicaciones
+. . . . . . . . . . . . . . . . . . . . . .
+8
+3.2. Caracter´ısticas del Producto de Software (Funcionales) . . . . . . . . . . . .
+9
+3.3. Requerimientos de Desempe˜no . . . . . . . . . . . . . . . . . . . . . . . . . .
+9
+3.4. Restricciones de Dise˜no . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+9
+3.5. Atributos del Sistema de Software No Funcionales . . . . . . . . . . . . . . .
+10
+3.5.1.
+Seguridad (Hardening del Nodo IDS) . . . . . . . . . . . . . . . . . .
+10
+3.5.2.
+Portabilidad y Mantenibilidad . . . . . . . . . . . . . . . . . . . . . .
+10
+3.6. Requerimientos de la Base de Datos . . . . . . . . . . . . . . . . . . . . . . .
+10
+4. Proceso de Ingenier´ıa de Requerimientos
+10
+5. Proceso de Verificaci´on
+10
+2
+
+--- Page 4 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+6. Anexos y Referencias
+11
+Referencias
+11
+3
+
+--- Page 5 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+´Indice de tablas
+1.
+Historial de cambios
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+1
+2.
+Acr´onimos y Definiciones Cl´ınicas . . . . . . . . . . . . . . . . . . . . . . . .
+5
+3.
+CU-01: Detecci´on de Inyecci´on HL7 . . . . . . . . . . . . . . . . . . . . . . .
+7
+4.
+Diccionario del Modelo de Dominio . . . . . . . . . . . . . . . . . . . . . . .
+8
+4
+
+--- Page 6 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+1.
+Introducci´on
+1.1.
+Prop´osito
+El prop´osito de este documento es especificar formalmente los requerimientos de software
+y hardware para el controlador embebido de seguridad no intrusivo (Bump-in-the-Wire o
+BIW). Este dispositivo est´a dise˜nado para la detecci´on temprana de ataques de ransomware
+y Amenazas Persistentes Avanzadas (APT). El proyecto utiliza la m´aquina de anestesia
+Mindray WATO EX-35 como plataforma experimental, interceptando y analizando el
+est´andar m´edico HL7.
+1.2.
+Alcance
+El sistema contempla el desarrollo de un motor de an´alisis determinista (sin emplear
+modelos estoc´asticos de IA/ML para evitar latencias altas) y un m´odulo de recolecci´on forense
+cross-layer. El dispositivo operar´a a nivel f´ısico entre la interfaz de red del WATO EX-
+35 y la red hospitalaria. Su funci´on es detectar inyecciones de comandos no autorizados o
+manipulaciones tipo Man-in-the-Middle (MitM) en los segmentos OBX (ObservationResult).
+El alcance excluye la modificaci´on de la red IT general del hospital y la alteraci´on del firmware
+original del ventilador.
+1.3.
+Definiciones, Acr´onimos y Abreviaciones
+Acr´onimo
+Definici´on
+ADR
+Anomaly Detection Rate (Tasa de Detecci´on de Anomal´ıas).
+BIW
+Bump-in-the-Wire (Arquitectura pasiva de intercepci´on de red).
+CPS
+Cyber-Physical Systems (Sistemas Ciberf´ısicos).
+HL7
+Health Level 7 (Est´andar de interoperabilidad cl´ınica).
+MitM
+Man-in-the-Middle (Ataque de intermediario en la red).
+ORU/OBX
+Segmentos HL7 para Transmisi´on de Resultados de Observaci´on M´edica.
+PEEP
+Positive End-Expiratory Pressure (Presi´on Positiva Final Espiratoria).
+SIEM
+Security Information and Event Management.
+Tabla 2: Acr´onimos y Definiciones Cl´ınicas
+1.4.
+Referencias
+Plan de Administraci´on de Proyecto (SPMP) V1.0 - Grupo SIDRE.
+Propuesta de Proyecto de Grado - Sistema de Detecci´on de Ransomware.
+An´alisis T´ecnico del Mindray WATO EX-35 - V1.
+IEC 62443, NIST SP 800-82, IEEE 2802-2022.
+5
+
+--- Page 7 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+1.5.
+Apreciaci´on Global
+El documento se divide en: la Secci´on 2, que describe el entorno general de operaci´on,
+perfiles de usuario y el modelo de dominio; la Secci´on 3, que detalla de forma at´omica los
+requerimientos funcionales y no funcionales; y las Secciones 4 a 6, referentes a los procesos
+de validaci´on aplicables en el entorno cl´ınico del Hospital Universitario San Ignacio (HUSI).
+2.
+Descripci´on Global
+2.1.
+Perspectiva del Producto
+El sistema es un producto biom´edico de seguridad clasificado en la capa Edge Computing.
+Soluciona el punto ciego de seguridad existente en el Nivel 1 del Modelo Purdue de arquitec-
+turas ICS/OT, protegiendo dispositivos ¸caja negra”que carecen de antivirus o cifrado TLS
+nativo.
+2.1.1.
+Interfaces con el Sistema y Hardware
+El nodo IDS estar´a conectado como puente f´ısico transparente (Bridge Layer 2) entre
+el Mindray WATO EX-35 y la red de ´area local (LAN) del quir´ofano/UCI. Se emplear´a
+hardware ARM (Raspberry Pi 4 8GB o Jetson Nano) con bajo consumo energ´etico (< 5W).
+Se requiere un adaptador USB a Ethernet adicional para lograr la topolog´ıa de puente.
+2.1.2.
+Interfaces con el Usuario
+El usuario (analista) interactuar´a mediante un panel de L´ınea de Comandos (CLI) de
+acceso seguro (SSH) para la configuraci´on inicial y la extracci´on de logs forenses. No se
+implementar´a interfaz gr´afica (GUI) en el propio nodo para ahorrar recursos.
+2.1.3.
+Interfaces con el Software
+Se utilizar´a libpcap (C/C++) o su envoltura scapy/pyshark (Python) enlazado a nivel
+de Kernel para la intercepci´on de sockets crudos (raw sockets). El sistema operativo base
+ser´a un Linux optimizado (RTOS o servidor minimalista).
+2.1.4.
+Interfaces de Comunicaci´on
+La comunicaci´on capturada operar´a sobre la pila TCP/IPv4 y UDP. El analizador de
+protocolos (DPI) procesar´a espec´ıficamente los mensajes HL7 ORUˆR01 y el protocolo de
+tiempo SNTP, ignorando el resto para maximizar la velocidad.
+2.1.5.
+Restricciones de Memoria
+El motor l´ogico FSM no utilizar´a estructuras de memoria din´amica de alto consumo. El
+consumo del demonio analizador no deber´a exceder de 2 GB de RAM para evitar la activaci´on
+del OOM Killer del sistema operativo Linux.
+6
+
+--- Page 8 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+2.1.6.
+Operaciones y Adaptaci´on del Sitio
+Operaci´on ininterrumpida (24/7). Para pruebas, el sistema se adaptar´a a un Sandbox
+aislado en el Centro de Simulaci´on del HUSI, utilizando ”pulmones de prueba.artificiales
+para evitar riesgos bio´eticos.
+2.2.
+Funciones del Producto
+Nombre CU
+CU-01: Detecci´on de Inyecci´on de Comandos (MitM)
+Actor
+Motor BIW (Sistema), Atacante (Ransomware/Actor Externo).
+Precondici´on
+WATO EX-35 en Estado S1 (Ventilaci´on Normal). BIW en modo
+escucha.
+Flujo Normal
+1. El atacante intercepta el tr´afico HL7 no cifrado de la red.
+2. El atacante inyecta un segmento OBX alterando la variable
+PEEP a niveles incompatibles con la vida (ej. > 30cmH2O).
+3. El nodo BIW captura la trama en tiempo real y parsea el pay-
+load.
+4. El motor FSM compara el valor OBX con el l´ımite de la Re-
+gla Clinica.
+5. El sistema detecta la violaci´on determinista y cambia a Estado
+S3 (An´omalo).
+6. El nodo emite una trampa Syslog al SIEM y guarda el
+Pcap Dump.
+Postcondici´on
+El evento queda registrado de forma inmutable con su hash. El
+flujo de red no se interrumpe (Fail-Open).
+Tabla 3: CU-01: Detecci´on de Inyecci´on HL7
+2.3.
+Caracter´ısticas del Usuario
+Ingeniero Cl´ınico / Analista de Ciberseguridad OT: Personal con conocimientos
+avanzados en administraci´on de sistemas Unix, ciberseguridad industrial, est´andares forenses
+y protocolos m´edicos.
+2.4.
+Restricciones
+Restricciones M´edicas: Queda estrictamente prohibida la alteraci´on del c´odigo fuen-
+te interno del Mindray WATO EX-35.
+Restricciones L´ogicas: Se proh´ıbe la inclusi´on de algoritmos de Machine Learning
+en la ruta cr´ıtica de evaluaci´on debido a la opacidad de los modelos y sus latencias
+estoc´asticas asociadas (30-50 ms).
+7
+
+--- Page 9 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+2.5.
+Modelo del Dominio
+ID
+Entidad
+Atributos
+Dato
+Objetivo
+MD-01
+Paquete HL7
+MAC Src,
+Pay-
+load OBX, Msg Type
+String
+Representa la trama de
+red interceptada.
+MD-02
+Estado FSM
+Estado Actual (S0-S3)
+Int
+Controla la m´aquina de
+estados del ventilador.
+MD-03
+Regla Clinica
+Parametro, Rango Min,
+Rango Max
+Float
+Define el Tolerance En-
+velope fisiol´ogico.
+MD-04
+Evidencia Log
+Hash SHA256,
+Pcap,
+Tipo Alerta
+File
+Almacena la evidencia
+inmutable del ataque.
+Tabla 4: Diccionario del Modelo de Dominio
+2.6.
+Suposiciones y Dependencias
+Suposiciones: El protocolo HL7 v2.x transmitido por el equipo biom´edico de pruebas
+no estar´a enmascarado ni cifrado mediante TLS/VPN. Dependencias: El proyecto depende
+fuertemente del acceso al entorno Sandbox provisto por el HUSI.
+2.7.
+Distribuci´on de Requerimientos
+Los requerimientos se implementar´an en tres grandes bloques arquitect´onicos:
+1. Intercepci´on de Red: Gesti´on de interfaces, captura de paquetes y hardware Bump-
+in-the-Wire.
+2. Evaluaci´on Determinista: Motor de Deep Packet Inspection (DPI) y validaci´on FSM.
+3. Forense y Alerta: Generaci´on de Syslogs y custodia de hashes.
+3.
+Requerimientos Espec´ıficos
+3.1.
+Requerimientos de Interfaces Externas
+3.1.1.
+Interfaces con el Software
+SW-01: El sistema emplear´a acceso a nivel de raw sockets usando las librer´ıas base de
+red del Kernel de Linux.
+3.1.2.
+Interfaces de Comunicaciones
+COM-01 (Syslog/SIEM): El sistema debe ser capaz de emitir notificaciones de segu-
+ridad hacia una direcci´on IP configurada (SIEM) a trav´es del puerto UDP 514 (Syslog) cada
+vez que el motor pase a estado S3.
+8
+
+--- Page 10 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+3.2.
+Caracter´ısticas del Producto de Software (Funcionales)
+ID Req.
+RF-01: Intercepci´on BIW (Fail-Open)
+Descripci´on El sistema debe enlazar l´ogicamente las interfaces (eth0, eth1). En caso
+de fallo cr´ıtico de software (Ej. Kernel Panic), el componente de red debe
+permitir un Fail-Open que asegure la continuidad de transmisi´on de datos
+vitales entre el ventilador y la central.
+Prioridad
+Cr´ıtica.
+ID Req.
+RF-02: DPI sobre HL7 (Texto Plano)
+Descripci´on El analizador debe localizar los mensajes ORU^R01 y extraer los valores de
+presi´on y volumen (OBX) contenidos en el payload, discriminando r´apida-
+mente paquetes innecesarios.
+Prioridad
+Alta.
+ID Req.
+RF-03: Validaci´on Determinista en M´aquina de Estados (FSM)
+Descripci´on El motor debe validar las secuencias de estado: Standby (S0) →Normal
+(S1) ↔Alarma (S2). Transiciones imposibles sin mediaci´on f´ısica o datos
+fuera del umbral (Tolerance Envelope) forzar´an el Estado de Ataque (S3).
+Prioridad
+Alta.
+ID Req.
+RF-04: Cadena de Custodia Inmutable (Forense)
+Descripci´on Al activarse una anomal´ıa, el sistema debe volcar un archivo .pcap de la
+ventana de red, firmarlo con un algoritmo hash (SHA-256) y registrar el
+evento con la estampa de tiempo SNTP sincronizada.
+Prioridad
+Media.
+3.3.
+Requerimientos de Desempe˜no
+RD-01 (Latencia): El proceso de evaluar un paquete HL7, desde su ingreso a eth0
+hasta su env´ıo por eth1, no debe superar el orden de microsegundos (≤500µs).
+RD-02 (Eficacia): El Anomaly Detection Rate (ADR) debe ser ≥90 % bajo inyec-
+ciones de prueba basadas en el framework MITRE ATT&CK (Ej. T´ecnica T0855).
+3.4.
+Restricciones de Dise˜no
+RES-01: El c´odigo debe ser optimizado en C/C++ o Python con rutinas precompila-
+das (Ej. Cython o librer´ıas C nativas) para ajustarse a la capacidad de procesamiento de
+procesadores ARM.
+9
+
+--- Page 11 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+3.5.
+Atributos del Sistema de Software No Funcionales
+3.5.1.
+Seguridad (Hardening del Nodo IDS)
+ANF-01 (Prevenci´on Movimiento Lateral): Para evitar que el hardware IDS sea
+vulnerado:
+Se desactivar´a v´ıa Blacklisting de Kernel el uso de m´odems Wi-Fi, Bluetooth y puertos
+USB de almacenamiento (usb-storage).
+Configuraci´on de iptables en modo Drop-All, permitiendo solo conexi´on SSH mediante
+llaves asim´etricas (Ed25519) sin autenticaci´on por contrase˜na.
+Ejecuci´on del demonio de red sin privilegios absolutos, usando la capacidad nativa de
+Linux CAP NET RAW.
+3.5.2.
+Portabilidad y Mantenibilidad
+ANF-02 (Portabilidad): El desarrollo seguir´a el est´andar POSIX, permitiendo la com-
+pilaci´on y ejecuci´on tanto en x86 64 (entorno de pruebas local) como en ARM64 (hardware
+final).
+ANF-03 (Mantenibilidad): El c´odigo fuente poseer´a documentaci´on estandarizada inline
+generable mediante Doxygen o Sphinx.
+3.6.
+Requerimientos de la Base de Datos
+BD-01: Dado el riesgo de corrupci´on en tarjetas SD/eMMC embebidas, no se usar´an
+motores pesados (Ej. PostgreSQL). Los registros se volcar´an en archivos de texto rotativos
+y metadatos en un esquema SQLite local (write-ahead logging activado).
+4.
+Proceso de Ingenier´ıa de Requerimientos
+Los requerimientos han sido elicitados analizando las brechas actuales documentadas en
+la bibliograf´ıa cient´ıfica de ciberseguridad ICS, validados t´ecnicamente por el director Jhon
+Talero y contrastados con normativas de despliegue hospitalario seguro.
+5.
+Proceso de Verificaci´on
+El cumplimiento ser´a verificado in-situ dentro del Centro de Simulaci´on Cl´ınica del HUSI,
+aplicando herramientas de inyecci´on de paquetes para probar la robustez de los requerimientos
+funcionales y evaluar matem´aticamente los requerimientos de desempe˜no (ADR, Latencia).
+10
+
+--- Page 12 ---
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+6.
+Anexos y Referencias
+Referencias
+[1] An´alisis T´ecnico del Mindray WATO EX-35 como Plataforma de Investigaci´on V1. Pon-
+tificia Universidad Javeriana.
+[2] Health Level Seven International (HL7), Messaging Standard Version 2.x.
+[3] IEEE Std 830-1998, Recommended Practice for Software Requirements Specifications.
+[4] Plan de Administraci´on de Proyecto (SPMP) V1.0. Grupo SIDRE.
+[5] NIST SP 800-82 Revision 3, Guide to Industrial Control Systems (ICS) Security.
+11
+
+
+=== SPMP_Tesis (1).pdf ===
+--- Page 1 ---
+Plan de Administraci´on de Proyecto
+(SPMP)
+Sistema de detecci´on de ransomware en ventiladores
+mec´anicos con un enfoque en ciberseguridad
+hospitalaria
+Equipo de Proyecto:
+Gabriel Alejandro Camacho Rivera
+David Santiago Pi˜neros Rodr´ıguez
+Santiago Avila Barbudo
+Director:
+Ing. Jhon Alberto Talero Patiarroyo
+Pontificia Universidad Javeriana
+Facultad de Ingenier´ıa - Departamento de Sistemas
+Bogot´a, D.C.
+8 de mayo de 2026
+
+--- Page 2 ---
+Historial de Cambios
+Fecha
+Descripci´on del Cambio
+Autor(es)
+8 de mayo de 2026
+Creaci´on del documento alineado a me-
+todolog´ıa h´ıbrida (IEEE 1074) y nor-
+mativas (IEC 62443). Se incluyen hitos
+y presupuesto.
+Equipo de Proyecto
+1
+
+--- Page 3 ---
+Prefacio
+Este documento describe el Plan de Administraci´on del Proyecto (SPMP) para el
+dise˜no, desarrollo y validaci´on de un controlador de hardware embebido no intrusi-
+vo orientado a la detecci´on temprana de ransomware en ventiladores mec´anicos. Este
+esfuerzo se enmarca en la creciente necesidad de proteger la infraestructura m´edica co-
+nectada (IoMT) ante el riesgo de impacto cin´etico en Unidades de Cuidados Intensivos
+(UCI). El documento define el modelo de ciclo de vida h´ıbrido, los estandares norma-
+tivos, el WBS y la gesti´on de riesgos para guiar al equipo de desarrollo y asegurar
+el cumplimiento de las metas frente al Grupo SIDRE y el Hospital Universitario San
+Ignacio (HUSI).
+2
+
+--- Page 4 ---
+´Indice
+Historial de Cambios
+1
+Prefacio
+2
+´Indice
+3
+´Indice de figuras
+4
+´Indice de tablas
+5
+1. Vista General del Proyecto
+6
+1.1. Visi´on del Producto . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+1.2. Prop´osito, Alcance y Objetivos
+. . . . . . . . . . . . . . . . . . . . . .
+6
+1.3. Entregables Principales . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+2. Contexto del Proyecto
+7
+2.1. Modelo de Ciclo de Vida . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.2. Interfaces Externas y Normativas . . . . . . . . . . . . . . . . . . . . .
+7
+2.3. Organigrama y Descripci´on de Roles
+. . . . . . . . . . . . . . . . . . .
+7
+3. Administraci´on del Proyecto
+8
+3.1. Descomposici´on de Actividades (WBS) y Cronograma . . . . . . . . . .
+8
+3.2. Asignaci´on de Presupuesto y Justificaci´on
+. . . . . . . . . . . . . . . .
+8
+4. Monitoreo y Control del Proyecto
+9
+4.1. Monitoreo y Control de Progreso (M´etricas) . . . . . . . . . . . . . . .
+9
+5. Procesos de Soporte
+10
+5.1. An´alisis y Administraci´on de Riesgos . . . . . . . . . . . . . . . . . . .
+10
+5.2. Administraci´on de Configuraci´on y Control de Cambios . . . . . . . . .
+10
+Referencias
+10
+3
+
+--- Page 5 ---
+´Indice de figuras
+4
+
+--- Page 6 ---
+´Indice de tablas
+1.
+Roles y Responsabilidades del Equipo . . . . . . . . . . . . . . . . . . .
+7
+2.
+WBS, Responsables y Cronograma (Hitos) . . . . . . . . . . . . . . . .
+8
+3.
+Presupuesto Hardware Proyecto . . . . . . . . . . . . . . . . . . . . . .
+9
+4.
+Tabla de Riesgos Principales . . . . . . . . . . . . . . . . . . . . . . . .
+10
+5
+
+--- Page 7 ---
+1.
+Vista General del Proyecto
+1.1.
+Visi´on del Producto
+Desarrollar un nodo de seguridad (IDS) especializado en hardware embebido (como
+Nvidia Jetson, Raspberry Pi o ESP32), de naturaleza pasiva y no intrusiva (Bump-in-
+the-wire), capaz de detectar anomal´ıas operativas y ataques de ransomware en ventila-
+dores mec´anicos mediante un motor determinista de latencia ultra baja, en concordancia
+con los principios de la Industria 5.0 en el sector salud.
+1.2.
+Prop´osito, Alcance y Objetivos
+Prop´osito: Construir y validar un controlador que act´ue como alerta temprana
+para mitigar el impacto cin´etico de amenazas persistentes sobre Sistemas Ciberf´ısicos
+(CPS) m´edicos de soporte vital, abordando el punto ciego de las defensas IT tradicio-
+nales frente a latencias ultra bajas y protocolos cl´ınicos.
+Alcance: El sistema se limitar´a a proteger equipos m´edicos de soporte respiratorio
+continuo (UCI y quir´ofano). El an´alisis comprender´a una captura de capa de red y re-
+gistros de se˜nales (PHY). No alterar´a firmware interno, ni aplicar´a modelos de ML/DL
+para inferencia, manteniendo un enfoque estrictamente determinista.
+Objetivos Espec´ıficos:
+1. Caracterizar el tr´afico, protocolos y se˜nales fisiol´ogicas de los ventiladores.
+2. Construir la l´ınea base (baseline) de comportamiento operativo normal.
+3. Dise˜nar las firmas y reglas de comparaci´on del algoritmo determinista.
+4. Implementar el m´odulo de alerta temprana y registro forense cruzado (red/f´ısico).
+5. Evaluar el rendimiento en entorno aislado y simulado en el HUSI, superando el
+90 % de eficacia de detecci´on (ADR).
+1.3.
+Entregables Principales
+D1. L´ınea Base (Baseline): Documento de perfilamiento operativo y caracte-
+rizaci´on del ventilador. (Mes 2)
+D2. Dise˜no L´ogico: Diagrama de flujo matem´atico y seudoc´odigo del motor
+determinista FSM. (Mes 3)
+D3. Prototipo de Hardware: Nodo de seguridad embebido pasivo funcional.
+(Mes 5)
+D4. M´odulo Forense: Sistema de registro multi-capa y logs inmutables. (Mes
+5)
+6
+
+--- Page 8 ---
+D5. Reporte de Eficacia: Validaci´on emp´ırica de m´etricas MITRE ATT&CK
+bajo entorno Sandbox HUSI. (Mes 6)
+2.
+Contexto del Proyecto
+2.1.
+Modelo de Ciclo de Vida
+El proyecto utilizar´a una Metodolog´ıa H´ıbrida:
+Base Estructural (IEEE 1074): Proveer´a la trazabilidad y formalidad docu-
+mental requerida para CPS.
+Pr´actica Iterativa-Incremental: Construcci´on gradual de la l´ınea base, del
+motor, del m´odulo forense y pruebas de estatus.
+Verificaci´on en ”V”: Todo componente dise˜nado se someter´a a una validaci´on
+de laboratorio directa.
+2.2.
+Interfaces Externas y Normativas
+Hospital Universitario San Ignacio (HUSI): Entidad colaboradora provee-
+dora del entorno Sandbox y simuladores Dr¨ager Evita V800.
+Est´andares Normativos: IEC 62443 / NIST SP 800-53, IEEE 2802-2022 (Equi-
+pos M´edicos), MITRE ATT&CK for ICS.
+2.3.
+Organigrama y Descripci´on de Roles
+Para la gesti´on del esfuerzo, se han asignado los siguientes roles entre los autores
+del proyecto:
+Integrante
+Rol Principal
+Responsabilidades Clave
+Gabriel
+Cama-
+cho
+Ing. de Hardware y
+Forense Digital
+Dise˜no
+del
+nodo
+embebido
+(Raspberry
+Pi/Jetson), validaci´on de la topolog´ıa Bump-
+in-the-wire y desarrollo del m´odulo de Siner-
+gia Total (Red-PHY logs).
+David Pi˜neros
+Analista de Ciber-
+seguridad (ICS)
+Definici´on de reglas deterministas (FSM),
+modelado de t´ecnicas de evasi´on (MITRE
+ATT&CK for ICS) y pruebas de inyec-
+ci´on/fuzzing.
+Santiago Avila
+Analista de Proto-
+colos IoMT
+Extracci´on de descriptores de red (Medi-
+bus.X), desarrollo del Baseline Document y
+mapeo de latencias de los ventiladores.
+Tabla 1: Roles y Responsabilidades del Equipo
+7
+
+--- Page 9 ---
+3.
+Administraci´on del Proyecto
+3.1.
+Descomposici´on de Actividades (WBS) y Cronograma
+El proyecto tiene una duraci´on estimada de un semestre acad´emico (6 meses).
+WBS
+Actividad
+Duraci´on
+Hito
+/
+En-
+tregable
+Responsable
+1.0
+Caracterizaci´on Cl´ınica
+Mes 1-2
+Baseline Do-
+cument
+Santiago
+1.1
+Captura pasiva de protocolos
+(Port Mirroring)
+2 Semanas
+Trazas pcap
+Santiago / Gabriel
+1.2
+Identificaci´on de latencias y
+rangos (PEEP, PIP)
+2 Semanas
+Matriz
+de
+se˜nales
+Santiago
+1.3
+An´alisis determinista normal
+(Tolerance Envelope)
+2 Semanas
+Perfil
+final
+(D1)
+David / Santiago
+2.0
+Dise˜no L´ogico FSM
+Mes 3
+Modelo FSM
+(D2)
+David
+2.1
+Reglas matem´aticas y l´ogicas
+de firmas de ataque
+2 Semanas
+´Arbol de deci-
+siones
+David
+2.2
+Mapeo
+contra
+Ransomware
+ICS
+2 Semanas
+Diagrama l´ogi-
+co
+David
+3.0
+Implementaci´on Hardwa-
+re
+Mes 4-5
+Prototipo
+(D3, D4)
+Gabriel
+3.1
+Configuraci´on ARM e inter-
+ceptaci´on (Nivel 1 Purdue)
+3 Semanas
+Nodo en escu-
+cha
+Gabriel
+3.2
+Programaci´on de Registro Fo-
+rense Cross-Layer
+3 Semanas
+Logs
+de
+Red/PHY
+Gabriel / Santiago
+4.0
+Validaci´on y Pruebas
+Mes 6
+Reporte Efi-
+cacia (D5)
+Equipo Completo
+4.1
+Pruebas
+MITRE
+en
+HUSI
+Sandbox (Inyecci´on T0855)
+2 Semanas
+Bater´ıa
+de
+pruebas
+David / Gabriel
+4.2
+Medici´on de latencia (µs) y
+ADR
+2 Semanas
+Reporte Final
+Equipo Completo
+Tabla 2: WBS, Responsables y Cronograma (Hitos)
+3.2.
+Asignaci´on de Presupuesto y Justificaci´on
+Dado que el HUSI proveer´a el acceso a los simuladores de ventilaci´on y el hardware
+biom´edico de pruebas, el presupuesto de inversi´on se concentra estrictamente en la
+investigaci´on, hardware y licenciamientos b´asicos.
+8
+
+--- Page 10 ---
+´Item
+Cantidad
+Costo Est. (COP)
+Microordenador ARM (Raspberry Pi 4
+/ Jetson Nano)
+1
+$ 600,000
+Microcontroladores
+Auxiliares
+(ESP32/ESP8266)
+2
+$ 60,000
+Componentes de Red y Adaptadores
+(Network Tap)
+1
+$ 150,000
+TOTAL ESTIMADO
+-
+$ 810,000
+Tabla 3: Presupuesto Hardware Proyecto
+4.
+Monitoreo y Control del Proyecto
+4.1.
+Monitoreo y Control de Progreso (M´etricas)
+Para el aseguramiento del progreso y efectividad se medir´an dos grupos de m´etricas:
+M´etricas de Proyecto: Cumplimiento de entregables frente a Carta Gantt (Des-
+viaci´on en Semanas).
+M´etricas de Calidad de Software (Pruebas Cl´ınicas):
+• Anomaly Detection Rate (ADR): Superior al 90 %.
+• Latencia L´ogica: Validaci´on de latencia determinista en el espectro de mi-
+crosegundos (µs).
+• Tasa de Falsos Positivos: Mantenida al 0 % frente a alarmas biol´ogicas reales.
+9
+
+--- Page 11 ---
+5.
+Procesos de Soporte
+5.1.
+An´alisis y Administraci´on de Riesgos
+Riesgo Identifi-
+cado
+Prob.
+Impacto
+Acci´on de Prevenci´on y
+Mitigaci´on
+Responsable
+Inaccesibilidad
+a
+ventiladores HU-
+SI
+Media
+Alto
+Prevenci´on: Asegurar agenda
+con meses de antelaci´on. Mi-
+tigaci´on: Uso de emuladores
+Medibus.
+Santiago
+Falsos
+Positivos
+bloquean ventila-
+ci´on real
+Baja
+Cr´ıtico
+Mitigaci´on: Refinar Tolerance
+Envelope. Evitar intervencio-
+nes activas (Drop) en fase ini-
+cial.
+David
+Cuello
+de
+bote-
+lla en recursos del
+ARM
+Baja
+Medio
+Prevenci´on: Dise˜no sin infe-
+rencia de IA pesada, l´ogi-
+ca booleana simple y cross-
+compilado en C++.
+Gabriel
+Tabla 4: Tabla de Riesgos Principales
+5.2.
+Administraci´on de Configuraci´on y Control de Cambios
+Cualquier alteraci´on a los par´ametros FSM o requerimientos de red debe quedar
+guardada en el repositorio de GitHub de la investigaci´on. Todos los cambios que im-
+pacten la latencia general del IDS deber´an someterse a una prueba de impacto cin´etico
+antes de entrar a la rama de despliegue (main).
+Referencias
+[1] IEEE Std 1074: Standard for Developing a Software Project Life Cycle Process.
+[2] IEC 62443: Industrial communication networks - Network and system security.
+[3] NIST SP 800-53: Security and Privacy Controls for Information Systems and Orga-
+nizations.
+[4] MITRE ATT&CK for Industrial Control Systems (ICS).
+[5] Pu et al. (2020), Bump-in-the-wire design for ICS Security.
+[6] Erba et al. (2020), Evasi´on de detectores en ICS y vulnerabilidad de IA.
+10
+
+
+=== VPP Propuesta para proyecto de grado (1).pdf ===
+--- Page 1 ---
+ 
+ 
+ 
+ 
+ 
+Ingeniería de Sistemas 
+3/16/2026 
+ 
+ 
+PROPUESTA PARA PROYECTO DE GRADO 
+TÍTULO  
+Sistema de detección de ransomware en ventiladores mecánicos con un enfoque en ciberseguridad hospitalaria 
+OBJETIVO GENERAL 
+Desarrollar un controlador de hardware embebido no intrusivo, fundamentado en un modelo determinista de aná-
+lisis de tráfico de red y señales, para la detección temprana de ataques de ransomware y el registro de evidencia 
+forense en equipos de soporte respiratorio crítico (ventiladores mecánicos y máquinas de anestesia), con el propó-
+sito de prevenir alteraciones operativas de impacto cinético, demostrando una eficacia de detección superior al 
+90% y latencias de alerta en el orden de los microsegundos sobre un entorno clínico simulado, para ser ejecutado 
+y concluido durante el segundo semestre de 2026. 
+ESTUDIANTE(S) 
+David Santiago Piñeros Rodriguez _____________________________________ 
+Documento 
+Celular 
+Teléfono fijo 
+Correo Javeriano 
+cc. 1032938115 
+320-442-2056 
+N/A 
+pinerosrdavid@javeriana.edu.co 
+Santiago Avila Barbudo __________________________________________ 
+Documento 
+Celular 
+Teléfono fijo 
+Correo Javeriano 
+cc. 1014978561 
+301-324-5136 
+N/A 
+santiagoavila@javeriana.edu.co 
+Gabriel Alejandro Camacho Rivera _____________________________________ 
+Documento 
+Celular 
+Teléfono fijo 
+Correo Javeriano 
+cc. 1011086894 
+312-367-7888 
+N/A 
+gabrielcamachor@javeriana.edu.co 
+DIRECTOR 
+Ing. Jhon Alberto Talero Patiarroyo__________________________________ 
+Documento 
+Celular 
+Teléfono fijo 
+Correo Javeriano 
+Empresa donde trabaja y cargo 
+cc. 11.225838 
+ 
+323-293-2204 
+3208320 
+ext 
+5338 
+jhon-talero@javeriana.edu.co;  
+Pontificia Universidad Javeriana; Profe-
+sor Departamento de Sistemas 
+CODIRECTORA 
+Dra. Jennifer Cárdenas Mancera _________________________________ 
+Documento 
+Celular 
+Teléfono fijo 
+Correo Javeriano 
+Empresa donde trabaja y cargo 
+cc. 52.935.858 
+ 
+3142371945 
+601 320 8320 
+Ext: 4657 
+Jcardenas@javeriana.edu.co;  
+Pontificia Universidad Javeriana 
+Cargo: Profesora Asistente, Facultad de 
+Medicina. 
+Coordinadora 
+Centro 
+de 
+Simulación Clínica 
+ 
+
+--- Page 2 ---
+ 
+ 
+ 
+ 
+ 
+Ingeniería de Sistemas 
+3/16/2026 
+ 
+
+--- Page 3 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 1  
+ 
+Contenido 
+1 VISIÓN GLOBAL...........................................................................................................2 
+1.1 ANTECEDENTES, PROBLEMA Y SOLUCIÓN PROPUESTA ...............................................2 
+1.1.1 Descripción de la problemática u oportunidad ......................................................... 2 
+1.1.2 Formulación del problema ......................................................................................... 2 
+1.1.3 Propuesta de solución ................................................................................................ 2 
+1.1.4 Justificación de la solución ........................................................................................ 2 
+1.2 DESCRIPCIÓN GENERAL DEL PROYECTO ....................................................................2 
+1.2.1 Objetivo general ......................................................................................................... 2 
+1.2.2 Objetivos Específicos ................................................................................................. 3 
+1.3 ENTREGABLES, ESTÁNDARES UTILIZADOS Y JUSTIFICACIÓN ......................................4 
+2 ANÁLISIS DE IMPACTO ................................................................................................5 
+3 PROCESO .....................................................................................................................6 
+3.1 FASE METODOLÓGICA 1 ............................................................................................6 
+3.1.1 Método........................................................................................................................ 6 
+3.1.2 Actividades ................................................................................................................. 6 
+3.1.3 Resultados esperados ................................................................................................. 6 
+3.2 FASE METODOLÓGICA 2 ............................................................................................7 
+3.2.1 Método........................................................................................................................ 7 
+3.2.2 Actividades ................................................................................................................. 7 
+3.2.3 Resultados esperados ................................................................................................. 7 
+3.3 FASE METODOLÓGICA N............................................................................................7 
+3.3.1 Método........................................................................................................................ 7 
+3.3.2 Actividades ................................................................................................................. 7 
+3.3.3 Resultados esperados .............
+--- Page 4 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 2  
+ 
+1 Visión global 
+1.1 Antecedentes, problema y solución propuesta 
+1.1.1 Descripción de la problemática u oportunidad 
+La evolución hacia la denominada Industria 5.0 ha impulsado una transformación sin prece-
+dentes en el sector salud, consolidando el uso del Internet de las Cosas Médicas (IoMT). Esta 
+hiperconectividad permite que los entornos hospitalarios modernos optimicen la monitoriza-
+ción de pacientes en tiempo real, faciliten diagnósticos precisos y administren tratamientos 
+basados en datos. Sin embargo, la integración de redes de comunicación en equipos clínicos 
+ha expandido drásticamente la superficie de ataque cibernético, exponiendo infraestructuras 
+críticas a vulnerabilidades previamente exclusivas de los entornos informáticos tradiciona-
+les. En este contexto, la ciberseguridad se ha convertido en un pilar ineludible para garanti-
+zar no solo la privacidad de la información, sino la continuidad operativa de los centros 
+médicos. 
+Dentro del panorama de amenazas, los hospitales se han convertido en uno de los objetivos 
+principales de los ciberdelincuentes mediante Amenazas Persistentes Avanzadas (APT) y 
+ataques de ransomware. A diferencia de otros sectores industriales donde el secuestro de 
+datos genera principalmente pérdidas financieras y de propiedad intelectual, en el ámbito 
+clínico compromete directamente los sistemas ciberfísicos (CPS) que sustentan la atención 
+médica. El ransomware moderno no se limita a cifrar historiales clínicos; posee la capaci-
+dad de realizar movimientos laterales a través de la red del hospital hasta alcanzar dispositi-
+vos operativos en el borde de la red (Edge Computing), bloqueando el acceso o alterando el 
+funcionamiento de los equipos. 
+A nivel de infraestructura, la convergencia entre las Tecnologías de la Información (IT) y las 
+Tecnologías de la Operación (OT) en los hospitales presenta un desafío particular. Muchos 
+dispositivos médicos fueron diseñados históricamente con un enfoque exclusivo en la seguri-
+dad clínica y el rendimiento fisiológico, careciendo de arquitecturas de ciberseguridad inte-
+gradas desde su diseño. Aunque existen estándares emergentes, como el IEEE 2802-2022, 
+que buscan establecer terminologías y evaluaciones de rendimiento para dispositivos médi-
+cos tecnológicos y basados en Inteligencia Artificial, la realidad es que un gran número de 
+equipos operan con protocolos de comunicación heredados, sin cifrado robusto ni mecanis-
+mos de autenticación fuertes. 
+En la cúspide de esta pirámide de criticidad se encuentran los ventiladores mecánicos (respi-
+radores). Estos dispositivos, fundamentales en las Unidades de Cuidados Intensivos (UCI), 
+han evolucionado de ser máquinas neumáticas aisladas a convertirse en sofisticados nodos 
+de red que transmiten telemetría constante al personal médico y, en algunos casos, permiten 
+la modificación remota de parámetros respiratorios. L
+--- Page 5 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 3  
+ 
+1.1.2 Formulación del problema 
+A pesar del creciente desarrollo de estrategias innovadoras de ciberseguridad, como la inte-
+gración de Inteligencia Artificial, el aprendizaje profundo y el aprendizaje por refuerzo para 
+mitigar riesgos cibernéticos, la aplicación de estas tecnologías en el sector salud suele cen-
+trarse en la protección de servidores, bases de datos y redes corporativas generales. Las 
+soluciones de seguridad perimetral tradicionales, e incluso los sistemas de detección de in-
+trusiones (IDS) convencionales, carecen de la especificidad necesaria para comprender las 
+firmas de tráfico de red, los tiempos de latencia ultra bajos y los patrones operativos norma-
+les de un ventilador mecánico. Esto genera un punto ciego sistemático en la ciberdefensa 
+hospitalaria frente a ataques sofisticados. 
+Por lo tanto, el problema específico radica en la extrema vulnerabilidad de los ventiladores 
+mecánicos conectados a redes hospitalarias frente a ataques de ransomware, originada por 
+la carencia de sistemas de identificación de amenazas que estén especializados en los pro-
+tocolos 
+y 
+parámetros 
+de 
+los 
+equipos 
+de 
+soporte 
+vital. Cuando 
+un 
+ataque 
+de ransomware logra evadir las defensas informáticas de la capa administrativa del hospital 
+y se propaga hacia la red de equipos médicos (IoMT), no existe un mecanismo de contención 
+o alerta temprana diseñado a la medida de los respiradores para evitar su inhabilitación. 
+La gravedad y relevancia de este problema son absolutas, ya que trasciende la simple pérdi-
+da de datos y se convierte en un riesgo inminente de daño físico o muerte (impacto cinético). 
+Si un ransomware altera los parámetros de presión, interrumpe el flujo de oxígeno, o blo-
+quea la interfaz de control de un ventilador impidiendo que el personal médico realice ajus-
+tes vitales, las consecuencias son fatales en cuestión de minutos. Abordar este problema me-
+diante el diseño de un sistema de detección temprana es esencial para cerrar la brecha entre 
+la seguridad de la información y la seguridad del paciente, garantizando que la digitaliza-
+ción de la atención médica crítica sea resiliente ante el cibercrimen. 
+ 
+ 
+1.1.3 Propuesta de solución 
+Área en la cual se encuentra enmarcada: La presente propuesta de solución se enmarca 
+principalmente en las áreas de Ingeniería de Sistemas enfocada hacia la ciberseguridad e 
+Ingeniería Mecatrónica aplicada a Sistemas Ciberfísicos (CPS), específicamente orientada al 
+Internet de las Cosas Médicas (IoMT). De igual manera, integra disciplinas complementarias 
+como el Análisis de Señales y la Informática Forense, fundamentales para la detección y 
+estudio de vulnerabilidades en entornos clínicos críticos. 
+Descripción general de la solución: Para mitigar la extrema vulnerabilidad de los equipos 
+de soporte vital frente a ataques de ransomware en entornos hospitalarios, se propone el 
+diseño y
+--- Page 6 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 4  
+ 
+La solución se enfocará específicamente en proteger equipos médicos críticos de soporte 
+respiratorio continuo. Para este alcance inicial, se han seleccionado como foco principal dos 
+de los dispositivos más indispensables y vulnerables del entorno hospitalario: los ventilado-
+res mecánicos (respiradores) operando en Unidades de Cuidados Intensivos (UCI) y los ven-
+tiladores de anestesia utilizadas en entornos quirúrgicos. Ambos equipos comparten caracte-
+rísticas críticas de control ciberfísico, por lo que la propuesta se centrará en ellos, descar-
+tando para esta fase de la investigación otros entornos de menor criticidad cinética, como los 
+equipos médicos ambulatorios. 
+El núcleo funcional de este controlador será un algoritmo de reconocimiento de ataques 
+diseñado a la medida para Sistemas de Control Industrial (ICS) en el ámbito médico. A dife-
+rencia de las tendencias actuales, este algoritmo se desarrollará sin la implementación de 
+Inteligencia Artificial (IA). En su lugar, basará su efectividad en un modelo determinista de 
+comparación de ataques y firmas conocidas de ransomware, sumado a un riguroso análisis 
+de señales y tráfico de red propio de los protocolos de los respiradores. Esto permitirá iden-
+tificar anomalías operativas y patrones de secuestro de datos con latencias ultra bajas y sin 
+el costo computacional de entrenar modelos de IA en el borde de la red. 
+Finalmente, la solución integrará un componente de informática forense. El sistema no solo 
+buscará generar alertas tempranas antes de que el ransomware logre cifrar o bloquear el 
+respirador, sino que registrará las trazas del ataque, el comportamiento anómalo de las se-
+ñales y los intentos de movimientos laterales en la red. Esta recolección de evidencia forense 
+será vital para el análisis posterior del incidente (post-mortem), permitiendo entender la 
+anatomía de los ataques dirigidos a ICS médicos y fortaleciendo las políticas de ciberdefensa 
+del entorno hospitalario. 
+1.1.4 Justificación de la solución 
+La presente propuesta de investigación se justifica desde la necesidad imperativa de salva-
+guardar la integridad operativa de los Sistemas Ciberfísicos (CPS) críticos en el entorno 
+hospitalario, específicamente los ventiladores mecánicos, frente a la creciente amenaza del 
+ransomware. La idoneidad de la solución planteada “un controlador externo de monitoreo 
+basado en un modelo determinista” se fundamenta en las siguientes dimensiones técnicas y 
+académicas: 
+  
+Pertinencia técnica y mitigación del riesgo cinético: La aplicación de estrategias convencio-
+nales de ciberseguridad o modelos basados en Inteligencia Artificial (IA) en el borde de la 
+red (Edge Computing) introduce costos computacionales y tiempos de latencia que son in-
+compatibles con la naturaleza de soporte vital de un ventilador mecánico. Al proponer un 
+algoritmo determinista enfocado en el análisis de s
+--- Page 7 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 5  
+ 
+Viabilidad arquitectónica en entornos clínicos restrictivos: Los dispositivos médicos operan 
+bajo estrictas normativas sanitarias y, con frecuencia, sobre arquitecturas heredadas (lega-
+cy). La modificación de su software interno o la instalación de agentes de seguridad endpoint 
+es inviable, ya que podría invalidar sus certificaciones o comprometer su rendimiento fisio-
+lógico. El diseño de una solución de hardware externa y no intrusiva (implementada sobre 
+plataformas embebidas) resuelve este impedimento de ingeniería. Permite auditar el tráfico y 
+proteger el equipo de manera pasiva y aislada, garantizando la viabilidad de su implementa-
+ción en las Unidades de Cuidados Intensivos (UCI) y quirófanos actuales. 
+  
+Aporte al conocimiento en ciberseguridad industrial (OT): Existe una brecha significativa en 
+la literatura actual respecto a la seguridad aplicada a los protocolos específicos del Internet 
+de las Cosas Médicas (IoMT). Esta propuesta trasciende la seguridad informática tradicio-
+nal (IT) al centrarse en la Tecnología de Operaciones (OT). El desarrollo de perfiles de trá-
+fico normalizados y la comprensión de las firmas de ataque orientadas a respiradores consti-
+tuirán un aporte directo al estado del arte en la protección de infraestructuras críticas. 
+  
+Aporte a la informática forense y análisis post incidente: De forma complementaria a la mi-
+tigación en tiempo real, la arquitectura propuesta integra un módulo de registro continuo 
+para la captura sistemática de trazas de red y la caracterización de señales anómalas. La 
+preservación de esta evidencia digital resulta indispensable tanto para la investigación aca-
+démica aplicada como para la auditoría operativa. Al disponer de telemetría forense precisa, 
+las instituciones hospitalarias podrán diseccionar la anatomía y la cadena de ataque (Cyber 
+Kill Chain) dirigidas específicamente a sistemas de control biomédicos. Esto no solo facilita 
+el análisis retrospectivo, sino que cataliza la formulación de arquitecturas de ciberdefensa 
+proactivas y resilientes, alineadas con los paradigmas de seguridad de la Industria 5.0. 
+  
+En síntesis, la investigación es pertinente y adecuada porque aborda un vacío crítico en la 
+ciberseguridad hospitalaria mediante una aproximación de ingeniería pragmática, determi-
+nista y no intrusiva, priorizando la continuidad operativa de la máquina y garantizando la 
+seguridad del paciente. 
+1.2 Descripción general del proyecto 
+1.2.1 Objetivo general 
+Desarrollar un controlador de hardware embebido no intrusivo, fundamentado en un modelo 
+determinista de análisis de tráfico de red y señales, para la detección temprana de ataques 
+de ransomware y el registro de evidencia forense en equipos de soporte respiratorio crítico 
+(ventiladores mecánicos y máquinas de anestesia), con el propósito de prevenir alteraciones 
+operativas de impacto cinético, demostrando una e
+--- Page 8 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 6  
+ 
+1.2.2 Objetivos Específicos 
+Para alcanzar el objetivo general, el proyecto se apoyará en el cumplimiento de las siguien-
+tes metas parciales: 
+• 
+Caracterizar el comportamiento de red y las señales de control de los ventiladores 
+mecánicos y máquinas de anestesia en estado operativo normal y bajo estrés, crean-
+do 
+una 
+línea 
+base 
+(baseline) 
+de 
+protocolos 
+médicos. 
+ 
+• 
+Diseñar el algoritmo determinista de detección de intrusiones sin uso de IA, capaz de 
+comparar firmas de ransomware conocidas y detectar movimientos laterales o alte-
+raciones en los tiempos de latencia ultra bajos de los equipos de soporte vital, entre-
+gando 
+el 
+modelo 
+lógico. 
+ 
+• 
+Implementar el algoritmo y un módulo de registro forense sobre una plataforma de 
+hardware embebido (Raspberry Pi), garantizando su funcionamiento como un nodo 
+de monitoreo pasivo (no intrusivo) que preserve las trazas del ataque para análisis 
+post 
+mortem. 
+ 
+• 
+Evaluar el rendimiento y la eficacia del controlador externo mediante la inyección 
+de tráfico anómalo y simulación de ataques de ransomware (en un entorno de labo-
+ratorio aislado/sandbox), verificando que la latencia de alerta temprana se encuen-
+tre en el orden de los microsegundos, estableciendo esta validación como hito de cie-
+rre. 
+ 
+ 
+1.3 Entregables, estándares utilizados y justificación 
+ 
+El desarrollo del sistema se fundamenta en cinco entregables críticos que garantizan la inte-
+gridad del ventilador mecánico mediante una arquitectura de seguridad por diseño, validada 
+bajo marcos normativos internacionales. 
+ 
+Componente 
+Marco de 
+Referencia 
+Justificación / Aporte 
+Documento de 
+Caracterización 
+de Protocolos 
+IoMT y Línea 
+Base de Tráfico 
+NIST SP 
+800-82, 
+Arquitectura 
+PERA 
+Permite definir el estado operacional "normal" 
+(Nivel 0 y 1 de Purdue) mediante la inspección 
+pasiva de protocolos médicos como Medibus.X, 
+fundamental para la detección de anomalías. 
+Diseño Lógico del 
+Algoritmo Deter-
+IEC 62443-
+3-3 
+Implementa requerimientos de seguridad del 
+sistema (SR) para detectar comandos maliciosos 
+
+--- Page 9 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 7  
+ 
+minista de Detec-
+ción 
+en microsegundos, evitando la latencia y los 
+riesgos de evasión propios de modelos probabil-
+ísticos. 
+Prototipo de Nodo 
+de Seguridad 
+(Hardware Em-
+bebido) 
+IEEE 2802-
+2022, NIST 
+SP 800-82 
+Provee una plataforma física no intrusiva (Bump-
+in-the-wire) que garantiza el monitoreo sin alterar 
+el rendimiento clínico ni invalidar certificaciones 
+del fabricante. 
+Módulo de Regis-
+tro Forense Multi-
+capa (Cross-
+Layer) 
+Rondeau et 
+al. (2019), 
+NIST SP 
+800-86 
+Facilita la correlación entre anomalías de red y el 
+estado físico (PHY) del ventilador, asegurando la 
+trazabilidad completa del incidente para análisis 
+post-mortem. 
+Protocolo de Val-
+idación y Reporte 
+de Eficacia en 
+Entorno Simulado 
+MITRE 
+ATT&CK for 
+ICS, IEC 
+62443 
+(ZCR 5) 
+Establece una metodología rigurosa para evalu-
+ar la tasa de detección frente a inyecciones de 
+tráfico anómalo en el Centro de Simulación Clí-
+nica. 
+ 
+1.4 1. Documento de Caracterización de Protocolos IoMT y 
+Línea Base de Tráfico 
+Este entregable trasciende la simple captura de paquetes; consiste en el modelado semántico 
+de los protocolos de comunicación utilizados por ventiladores como el Mindray Wato EX-35. 
+La caracterización se fundamenta en la Arquitectura de Referencia Empresarial Purdue 
+(PERA), ubicando al ventilador en el Nivel 0 (proceso físico) y sus interfaces de comunica-
+ción en el Nivel 1 (control básico). Siguiendo el estándar NIST SP 800-82 (Guide to Indus-
+trial Control Systems Security), se diseñará un nodo de monitoreo pasivo que extraiga des-
+criptores específicos de protocolos como Medibus y Medibus.X, determinando frecuencias de 
+actualización de parámetros y rangos permitidos de presión y volumen. 
+El proceso de ingeniería implica la construcción de una línea base de tráfico mediante inge-
+niería inversa pasiva, lo que permite identificar la "firma" del comportamiento normal del 
+sistema. Esta firma es vital para diferenciar una fluctuación fisiológica del paciente de un 
+intento de desbordamiento de búfer o una inyección de comandos característica de un ataque 
+de ransomware. Sin este perfilamiento profundo, cualquier sistema de detección sería pro-
+penso a altos niveles de falsos positivos, lo cual es inadmisible en una Unidad de Cuidados 
+Intensivos (UCI). 
+ 
+2. Diseño Lógico del Algoritmo Determinista de Detección 
+La elección de un enfoque determinista responde a una crítica técnica fundamental hacia la 
+Inteligencia Artificial (IA) en entornos críticos. Según Erba et al. (2020), los detectores ba-
+sados en IA como Autoencoders o LSTM, son vulnerables a "ataques de ocultamiento" (con-
+
+--- Page 10 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 8  
+ 
+cealment attacks), donde un atacante manipula las señales para que el modelo reconstruya 
+datos anómalos como normales. El algoritmo propuesto operará bajo reglas estrictas de 
+comparación de estados mediante Máquinas de Estado Finito (FSM), alineado con el están-
+dar IEC 62443-3-3 (System Security Requirements and Security Levels), garantizando que 
+cada comando recibido por el ventilador sea validado contra el estado físico actual del dis-
+positivo en microsegundos. 
+Este diseño evitará el impacto cinético al detectar intentos de alteración de parámetros críti-
+cos antes de que se ejecuten mecánicamente. La justificación para prescindir de la IA reside 
+en la necesidad de latencia ultra-baja y explicabilidad total: ante un evento de seguridad, el 
+personal médico debe comprender qué regla se activó, sin la opacidad de una "caja negra" 
+probabilística, cumpliendo así con los principios de fiabilidad técnica requeridos para este 
+proyecto. 
+ 
+3. Prototipo de Nodo de Seguridad (Hardware Embebido) 
+El prototipo físico se implementará en plataformas ARM (Nvidia Jetson o Raspberry Pi), 
+aprovechando su capacidad para el procesamiento de señales en tiempo real con bajo con-
+sumo energético. La elección de hardware embebido se fundamenta en el estándar IEEE 
+2802-2022 (Standard for the Evaluation of Medical Device Security), el cual exige que los 
+dispositivos de seguridad sean tan robustos como el equipo que protegen. El nodo operará en 
+modo "escucha" mediante un Network Tap o Port Mirroring, asegurando la no intrusividad 
+operativa. 
+Esta arquitectura pasiva constituye un requisito de seguridad clínica innegociable. Modificar 
+el software interno del ventilador para incluir agentes de seguridad invalidaría la garantía 
+del fabricante y las certificaciones sanitarias vigentes (INVIMA / FDA). Por tanto, el nodo 
+actúa como una barrera externa de hardware que intercepta el tráfico en el Nivel 1 de Pur-
+due, proporcionando una capa de defensa aislada que no puede ser comprometida directa-
+mente mediante ataques al sistema operativo del ventilador. 
+ 
+4. Módulo de Registro Forense Multi-capa (Cross-Layer) 
+Inspirado en el concepto de "Sinergia Total" propuesto por Rondeau et al. (2019), este mó-
+dulo no solo almacenará trazas de red, sino que las correlacionará con las señales físicas 
+(PHY) del ventilador. La investigación forense multi-capa permite determinar si una anoma-
+lía en la red provocó un cambio físico real en el dispositivo o si el ataque fue contenido con 
+éxito. El módulo seguirá los lineamientos del NIST SP 800-86 (Guide to Integrating Forensic 
+Techniques into Incident Response) para la recolección de evidencia digital de manera le-
+galmente admisible, facilitando el análisis post-mortem de movimientos laterales dentro de la 
+red hospitalaria. 
+Técnicamente, el registro almacenará metadatos de las tramas de comunicación y los estados 
+lógicos de 
+--- Page 11 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 9  
+ 
+ 
+5. Protocolo de Validación y Reporte de Eficacia en Entorno 
+Simulado 
+La validación se realizará en el Centro de Simulación Clínica del Hospital Universitario San 
+Ignacio (HUSI), utilizando ventiladores reales en entornos de prueba controlados. Se em-
+pleará el marco MITRE ATTACK for ICS para diseñar escenarios de ataque realistas, inclu-
+yendo la inyección de comandos no autorizados (T0855 - Unauthorized Command Message) 
+y ataques de denegación de servicio (DoS). Este proceso se alinea con la gestión de riesgos 
+estipulada en el estándar IEC 62443 (ZCR 5), que exige la evaluación detallada del riesgo 
+cibernético mediante pruebas de penetración y simulaciones de impacto. 
+El reporte final cuantificará la eficacia del sistema mediante tres métricas principales: la 
+tasa de detección de anomalías (ADR), la latencia de respuesta y la ausencia de impacto en 
+el flujo normal de datos clínicos. Esta metodología garantiza que el controlador sea capaz de 
+identificar amenazas en microsegundos, antes de que el ransomware pueda iniciar el cifrado 
+o la alteración mecánica, proporcionando la justificación empírica necesaria para demostrar 
+la viabilidad técnica del proyecto ante jurados y stakeholders institucionales. 
+ 
+
+--- Page 12 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 10  
+ 
+2 Análisis de impacto 
+ 2.1 Impacto Social: Seguridad del Paciente y Confianza en la 
+Era de la Industria 5.0 
+La proliferación del Internet de las Cosas Médicas (IoMT) ha difuminado la barrera entre el 
+riesgo cibernético y el riesgo biológico. En el contexto de los dispositivos de soporte vital, 
+como los ventiladores mecánicos, un ciberataque no se limita a la exfiltración de datos o la 
+vulneración de la privacidad; se traduce inexorablemente en un "impacto cinético". Este 
+fenómeno ocurre cuando la alteración maliciosa de los comandos lógicos de un dispositivo 
+provoca un cambio físico destructivo en el entorno real, como la modificación no autorizada 
+de la Presión Positiva al Final de la Espiración (PEEP) o la interrupción abrupta del flujo 
+de oxígeno. Al implementar un algoritmo determinista de latencia ultra-baja, este proyecto 
+mitiga de raíz el impacto cinético, previniendo eventos adversos fatales y asegurando que las 
+decisiones clínicas no sean saboteadas por actores maliciosos. 
+En este sentido, la protección de la infraestructura crítica hospitalaria constituye una de-
+fensa directa del derecho fundamental a la salud y a la vida. Las Unidades de Cuidado Inten-
+sivo (UCI) operan bajo márgenes de error minúsculos, donde una latencia inducida por un 
+ataque de denegación de servicio (DoS) o el secuestro de un proceso mediante ransomware 
+puede resultar letal en cuestión de minutos. Adicionalmente, este proyecto actúa como 
+catalizador para la generación de confianza en el proceso de digitalización enmarcado en la 
+Industria 5.0: demostrar que es posible salvaguardar la vida humana frente a amenazas 
+cibernéticas avanzadas mediante arquitecturas de seguridad por diseño restaurará y consol-
+idará la confianza pública en la modernización clínica, demostrando que la automatización y 
+la conectividad no tienen por qué comprometer la seguridad física. 
+ 
+2.2 Impacto Técnico y Científico: Soberanía, Sinergia Cross-
+Layer y Estado del Arte 
+Desde una perspectiva científica, este proyecto aborda un vacío sustancial en la literatura 
+contemporánea respecto a la ciberseguridad industrial (OT) y el IoMT. Históricamente, las 
+soluciones de detección de intrusiones se han enfocado en sistemas informáticos tradicion-
+ales, dejando a los Sistemas Ciberfísicos (CPS) altamente expuestos. Asimismo, la tendencia 
+de depender de modelos de Inteligencia Artificial (IA) ha demostrado ser insuficiente en en-
+tornos de misión crítica; como evidencia , los detectores de anomalías basados en IA son 
+altamente susceptibles a "ataques de ocultamiento" (concealment attacks), donde los adver-
+sarios manipulan selectivamente un subconjunto de sensores para evadir la detección algo-
+rítmica y reconstruir datos anómalos como normales. El enfoque determinista propuesto en 
+este proyecto elimina esta vulnerabilidad, aportando un modelo de toma de decisiones invio-
+lable y de
+--- Page 13 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 11  
+ 
+aire, se convierten en señales eléctricas de control. Este paradigma se alinea con la investi-
+gación de , quienes demostraron que el uso de "huellas físicas" (physical fingerprints) —
+como el consumo de potencia en robots industriales— es el método más efectivo para de-
+tectar ataques de repetición (replay attacks) que intentan enmascarar actividades maliciosas. 
+Al aplicar este concepto a la ventilación mecánica, se establece una huella electromecánica 
+inalterable que correlaciona de forma simbiótica la telemetría física con la inspección pro-
+funda de paquetes (DPI). 
+ 
+2.3 Impacto Organizacional: Resiliencia, Acreditación y Con-
+tinuidad Operativa en el HUSI 
+Para el Hospital Universitario San Ignacio (HUSI), la adopción de este sistema se alinea con 
+su misión de brindar atención segura y de la más alta calidad, constituyéndose en un apoyo 
+directo para el sostenimiento y avance de su Acreditación en Salud. Entes acreditadores 
+internacionales, como la Joint Commission, y entidades nacionales, como el ICONTEC, han 
+comenzado a exigir la ciberseguridad de los dispositivos médicos conectados como un 
+estándar crítico e innegociable de la seguridad del paciente. Al desplegar este controlador 
+de hardware, el HUSI demuestra proactividad y liderazgo en el cumplimiento de estos 
+rigurosos estándares, blindando su infraestructura contra vulnerabilidades que escapan al 
+control perimetral tradicional. 
+A nivel de continuidad operativa, el impacto del proyecto es determinante. El ransomware 
+busca generar paros operativos catastróficos para forzar el pago de extorsiones; el secuestro 
+de equipos de soporte respiratorio paralizaría inmediatamente la capacidad del hospital 
+para operar quirófanos o admitir pacientes críticos en la UCI. La capacidad del algoritmo 
+propuesto para detectar y bloquear estas intrusiones en microsegundos garantiza que la 
+operación médica no sufra interrupciones, protegiendo la sostenibilidad institucional frente a 
+amenazas de extorsión cibernética y preservando la continuidad de la atención en los mo-
+mentos de mayor criticidad clínica. 
+Eje de Impacto 
+Corto Plazo 
+(Validación y 
+Pruebas) 
+Mediano Plazo 
+(Despliegue Ini-
+cial) 
+Largo Plazo (Es-
+tandarización) 
+Social (Seguri-
+dad del Pa-
+ciente) 
+Validación se-
+gura y sin ries-
+go humano en 
+el Centro de 
+Simulación Clí-
+nica del HUSI. 
+Mitigación activa 
+del impacto cinético 
+en UCIs, garanti-
+zando el derecho a 
+la vida y la salud. 
+Consolidación de la con-
+fianza pública en la digi-
+talización hospitalaria en 
+el marco de la Industria 
+5.0. 
+Técnico y 
+Científico 
+Modelado de la 
+línea base op-
+erativa y la 
+"huella física" 
+Demostración de la 
+superioridad del 
+modelo determinis-
+ta cross-layer frente 
+Establecimiento de un 
+nuevo paradigma so-
+berano y no intrusivo 
+para la ciberseguridad 
+
+--- Page 14 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 12  
+ 
+de los venti-
+ladores médi-
+cos. 
+a detectores basa-
+dos en IA. 
+IoMT. 
+Organizacional 
+(HUSI) 
+Identificación 
+temprana de 
+vulnerabilidades 
+de red en un 
+entorno clínico 
+controlado. 
+Prevención de pa-
+ros operativos por 
+ransomware, 
+asegurando la con-
+tinuidad en qui-
+rófanos y UCIs. 
+Cumplimiento avanzado 
+de estándares de se-
+guridad del paciente 
+para acreditadores co-
+mo ICONTEC y Joint 
+Commission. 
+ 
+
+--- Page 15 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 13  
+ 
+3 Proceso 
+3.1 Fase metodológica 1 Caracterización y Modelado de la Lí-
+nea Base (Meses 1–2) 
+ 
+Esta fase establece la verdad fundamental (ground truth) del comportamiento operativo nor-
+mal de los ventiladores mecánicos mediante inspección pasiva de sus protocolos de comuni-
+cación, sin intervenir ni alterar el funcionamiento del dispositivo clínico. 
+3.1.1 Método 
+Adaptación del análisis pasivo de protocolos industriales y médicos (Network Sniffing) y 
+mapeo empírico de estados físicos mediante ingeniería inversa pasiva. En concordancia con 
+las directrices de, se emplea una arquitectura de monitoreo no intrusiva alineada con el Ni-
+vel 1 de la Arquitectura de Referencia Empresarial Purdue (PERA), garantizando que ningún 
+tráfico adicional sea inyectado en el bus de comunicación del dispositivo. 
+3.1.2 Actividades 
+En colaboración con el Hospital Universitario San Ignacio (HUSI), se realizará la captura 
+pasiva de tráfico de red utilizando arquitecturas de replicación de puertos (Port Mirroring) 
+en los enlaces de comunicación de ventiladores de alta gama (e.g., Mindray Wato EX-35). 
+Esta fase exige la disección profunda de los paquetes de datos para identificar y estructurar 
+las tramas correspondientes a protocolos propietarios y estandarizados, como Medibus.X y 
+HL7. 
+Posterior a la captura, se procederá con la identificación y extracción de variables críticas 
+de soporte vital. Esto incluye la correlación de los payloads de red con parámetros electro-
+mecánicos como la Presión Positiva al Final de la Espiración (PEEP), la Presión Pico Inspi-
+ratoria (PIP), el volumen tidal y las tasas de flujo. Se aislarán las rutinas de comunicación 
+normales para mapear con precisión matemática los intervalos de actualización y los umbra-
+les fisiológicos preprogramados por los especialistas clínicos. La actividad culmina con el 
+procesamiento de esta telemetría para construir un perfil de comportamiento determinista, 
+sentando las bases absolutas para discernir entre fluctuaciones operativas legítimas e inten-
+tos de manipulación maliciosa. 
+ 
+3.1.3 Resultados esperados 
+Documento técnico de Línea Base (Baseline Document) y una matriz exhaustiva de firmas 
+normales de operación que correlaciona tramas de red con estados físicos (PHY). Estos re-
+sultados corresponden al cumplimiento total del Objetivo Específico 1: caracterizar el com-
+portamiento de red y las señales de control del ventilador mecánico. 
+3.2 Fase metodológica 2 Diseño Lógico del Algoritmo Deter-
+minista (Mes 3) 
+Esta fase traduce la matriz de firmas obtenida en la Fase 1 en un motor de detección de in-
+trusiones de naturaleza determinista, evitando deliberadamente los enfoques probabilísticos 
+basados en Inteligencia Artificial debido a sus vulnerabilidades documentadas en entornos 
+de misión crítica. 
+
+--- Page 16 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 14  
+ 
+3.2.1 Método 
+Modelado formal mediante Máquinas de Estados Finitos (FSM, Finite State Machines) para 
+la evaluación de transiciones de comandos, garantizando un determinismo absoluto y laten-
+cia ultra-baja. El diseño se alinea con los requerimientos de seguridad del sistema (SR) 
+definidos en el estándar IEC 62443-3-3, que establece los niveles de seguridad para sistemas 
+de automatización y control industrial. 
+3.2.2 Actividades 
+El diseño del motor de detección se aleja deliberadamente de los enfoques probabilísticos. 
+Como advierten, los modelos de aprendizaje automático (e.j., Autoencoders o LSTM) imple-
+mentados en entornos industriales son altamente susceptibles a "ataques de ocultamiento" 
+(constrained concealment attacks), donde los adversarios manipulan un subconjunto de vari-
+ables para obligar a la IA a clasificar el estado anómalo como benigno. Para erradicar este 
+riesgo, se diseñará un algoritmo basado en FSM que operará mediante reglas matemáticas 
+inviolables. 
+Se definirán los umbrales de alerta crítica traduciendo la matriz de firmas de la Fase 1 en un 
+árbol de decisiones lógicas en hardware. Como ejemplo ilustrativo, el algoritmo determinará 
+instantáneamente que una orden de red para cerrar la válvula de exhalación mientras la 
+turbina de inspiración opera al 100% constituye un estado mecánicamente ilegal, represen-
+tando un intento de ataque cinético. La arquitectura de detección será optimizada a nivel de 
+ciclos de reloj del procesador para garantizar que el análisis de coincidencia de firmas se 
+ejecute en el orden de los microsegundos. 
+3.2.3 Resultados esperados 
+Modelo lógico-matemático del algoritmo determinista, diagrama de flujo de decisiones 
+críticas y seudocódigo optimizado. Estos artefactos corresponden al cumplimiento total del 
+Objetivo Específico 2: diseñar una lógica de detección capaz de evaluar firmas y compor-
+tamientos de red en tiempo real. 
+3.3 Fase metodológica Implementación en Hardware y Módulo 
+Forense (Meses 4–5) 
+ 
+Esta fase materializa el diseño lógico en un prototipo físico funcional e implementa el módu-
+lo de registro forense multi-capa (cross-layer), superando las limitaciones de las herramien-
+tas forenses tradicionales que ignoran la capa física (PHY). 
+3.3.1 Método 
+Ingeniería de sistemas embebidos en arquitecturas ARM y despliegue del paradigma de 
+"Sinergia Total" mediante forense multi-capa (cross-layer forensics) propuesto en. La 
+topología física adoptará el esquema Bump-in-the-wire, configuración que garantiza la no 
+intrusividad operativa. 
+3.3.2 Actividades 
+El diseño lógico será cross-compilado y desplegado sobre un sistema en Chip (SoC) de ar-
+quitectura ARM (e.g., Nvidia Jetson o Raspberry Pi), seleccionado por su alta capacidad de 
+procesamiento paralelo y bajo consumo de energía. Esta configuración no intrusiva garanti-
+za que el nodo intercepte y analice el tráfico de manera trans
+--- Page 17 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 15  
+ 
+quitectura Purdue, eliminando la necesidad de modificar el firmware nativo del ventilador y 
+protegiendo las certificaciones regulatorias del equipo clínico (INVIMA / FDA). 
+Simultáneamente, se implementará el módulo de registro continuo. Fundamentado en , el 
+módulo capturará la capa de red (bits y protocolos) y la cruzará estructuralmente con la 
+capa física (PHY), adoptando el concepto de "huellas físicas" (physical fingerprints) anali-
+zado en . El módulo forense cross-layer guardará logs inmutables que correlacionan el in-
+stante exacto en que se recibe un comando de red sospechoso con la alteración elec-
+tromecánica resultante en el ventilador, proporcionando evidencia digital irrefutable para el 
+análisis post-mortem. 
+ 
+3.3.3 Resultados esperados 
+Prototipo funcional pasivo (SoC programado) y módulo de logging forense multi-capa op-
+erativo. Estos entregables corresponden al cumplimiento total del Objetivo Específico 3: 
+implementar el algoritmo en hardware embebido con capacidad de registro forense inte-
+grado. 
+3.4 Fase metodológica Validación y Pruebas de Estrés en 
+Sandbox (Mes 6) 
+ 
+ 
+Esta fase corresponde a la rama ascendente de verificación del Modelo en V, evaluando el 
+desempeño del prototipo frente a ataques reales en un entorno clínico simulado y seguro. 
+3.4.1 Método 
+Pruebas de penetración e inyección de tráfico anómalo (Fuzzing y Replay Attacks) estructu-
+radas bajo el marco internacional MITRE ATTACK for ICS, alineadas con los requisitos de 
+gestión de riesgos por zonas y conductos del estándar IEC 62443-3-2. 
+3.4.2 Actividades 
+El prototipo será trasladado al Centro de Simulación Clínica del HUSI para su validación 
+final en un ecosistema de laboratorio seguro (Sandbox). Se ejecutarán baterías de pruebas 
+de estrés inyectando payloads maliciosos que simulan ransomware especializado y ataques 
+cibercinéticos, incluyendo el secuestro de sesiones, la manipulación de comandos de actu-
+ación (T0855 - Unauthorized Command Message) y la inyección de datos falsos en los sen-
+sores de retroalimentación. 
+Durante estas pruebas, se monitorizará rigurosamente la Tasa de Detección de Anomalías 
+(ADR, Anomaly Detection Rate), estableciendo como métrica de éxito un ADR superior al 
+90% tanto para alteraciones físicas (PAA) como para ataques de acceso remoto (RAA), sin 
+incurrir en falsos positivos que puedan entorpecer la labor médica. Se utilizarán osciloscopi-
+os y analizadores lógicos externos para medir empíricamente la latencia del nodo, verifican-
+do que el tiempo entre la inyección del paquete malicioso y la generación de la alerta forense 
+no supere la barrera de los microsegundos. 
+ 
+
+--- Page 18 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 16  
+ 
+ 
+3.4.3 Resultados esperados 
+Reporte de validación técnica con evaluación de eficacia bajo MITRE ATT&CK for ICS (mé-
+tricas ADR y latencia), y consolidación del hito de cierre del proyecto para sustentación. 
+Estos resultados corresponden al cumplimiento total del Objetivo Específico 4: validar la 
+eficacia del sistema en un entorno de simulación clínica controlado. 
+ 
+ 
+ 
+  
+  
+
+--- Page 19 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 17  
+ 
+4 Aspectos generales del proyecto 
+4.1 Compromiso de apoyo de la Institución  
+El desarrollo de la presente investigación cuenta con el respaldo y la colaboración estratégica 
+del Hospital Universitario San Ignacio (HUSI), gestionada a través de su Centro de Simula-
+ción Clínica. Tras la fase de retroalimentación recibida en la exposición de pósteres de la 
+facultad, se ha formalizado el contacto con la Dirección de dicho centro para garantizar el 
+acceso supervisado a ventiladores mecánicos de alta gama, específicamente de la línea Dräger 
+(incluyendo el modelo Evita V800), cuya arquitectura de control es fundamental para la vali-
+dación del sistema. 
+El apoyo institucional consiste en el préstamo de estos equipos para la captura pasiva de datos 
+en un entorno de pruebas tipo Sandbox, permitiendo la caracterización de protocolos opera-
+tivos y la posterior validación de ataques de ransomware simulados mediante inyección de 
+tráfico anómalo. Dado que el controlador de hardware diseñado es de naturaleza no intrusiva 
+y las pruebas se realizan exclusivamente en simuladores de alta fidelidad fuera del área asis-
+tencial, se garantiza la total ausencia de riesgo para pacientes reales. El compromiso formali-
+zado de estas actividades se detalla en la Carta de Apoyo Institucional adjunta en los anexos 
+de este documento. 
+4.2 Derechos patrimoniales 
+En estricto cumplimiento con la normativa de Propiedad Intelectual de la Pontificia Univer-
+sidad Javeriana, se establecen las siguientes disposiciones para los productos derivados de 
+este trabajo de grado: 
+a) 
+Derechos 
+morales: 
+Los derechos morales de autoría, entendidos como el reconocimiento de la paternidad inte-
+lectual de la obra, pertenecen de forma exclusiva e irrenunciable a los estudiantes: 
+• 
+David Santiago Piñeros Rodríguez 
+• 
+Santiago Ávila Barbudo 
+• 
+Gabriel Alejandro Camacho Rivera 
+b) 
+Derechos 
+patrimoniales: 
+La titularidad de los derechos patrimoniales corresponde íntegramente a la Pontificia Univer-
+sidad Javeriana. Esta asignación se fundamenta en que el proyecto ha sido gestionado con el 
+soporte de la infraestructura universitaria y bajo la tutoría técnica del Ing. Jhon Alberto 
+Talero Patiarroyo, docente del Departamento de Ingeniería de Sistemas y director del proyec-
+to, vinculando los resultados al grupo de investigación SIDRE. 
+c) 
+Licenciamiento 
+y 
+custodia: 
+Los productos de software y algoritmos resultantes contarán con una licencia de uso acadé-
+mico y de investigación científica gestionada por la Universidad, la cual permitirá su utili-
+zación en procesos de docencia y futuros desarrollos dentro de la institución. Por su parte, la 
+propiedad del prototipo físico tangible, el controlador de hardware embebido basado en 
+plataformas ARM, quedará en custodia permanente del grupo de investigación SIDRE, con 
+el fin de servir como base tecnológica para fases posteriores de valida
+--- Page 20 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 18  
+ 
+5 Marco teórico 
+5.1 Fundamentos y conceptos relevantes para el proyecto. 
+5.1 Fundamentos y Conceptos Relevantes para el Proyecto 
+5.1.1 Convergencia IT/OT y el Paradigma de la Industria 5.0 en Entornos Clínicos 
+El Internet de las Cosas Médicas (IoMT) consolida la hiperconectividad de dispositivos bio-
+médicos que, históricamente, operaban en arquitecturas aisladas (air-gapped). Esta conver-
+gencia entre las Tecnologías de la Información (IT) y la Tecnología de Operación (OT) ha 
+disuelto el perímetro de seguridad clásico, exponiendo la red clínica a vectores de ataque 
+transversales. En el marco de la Industria 5.0, esta conectividad trasciende la mera digitali-
+zación para cimentarse en pilares de resiliencia sistémica y un diseño profundamente centra-
+do en el ser humano (human-centric). 
+La integración de este controlador de hardware a la red hospitalaria no busca, en ninguna 
+circunstancia, reemplazar o automatizar el juicio del personal médico, sino dotarlo de una 
+infraestructura tecnológica inviolable. El objetivo estratégico de la Industria 5.0 en este pro-
+yecto es garantizar, mediante capas de seguridad resilientes, que la máquina responda inequí-
+voca y exclusivamente a la intención terapéutica del especialista, blindando el ecosistema de 
+cuidado crítico contra cualquier manipulación o secuestro de control externo. 
+ 
+5.1.2 Sistemas Ciberfísicos (CPS) y Protocolos de Ventilación Mecánica 
+Una máquina de anestesia de soporte vital avanzado, como el Mindray Wato EX-35, consti-
+tuye un Sistema Ciberfísico (CPS) de criticidad extrema. En esta arquitectura, la interdepen-
+dencia entre el núcleo lógico-digital y el estrato de actuación neumática es absoluta. El flujo 
+de datos que el controlador analizará corresponde a protocolos de comunicación industrial-
+médica estandarizados, fundamentalmente Medibus y su evolución arquitectónica, Medi-
+bus.X. Estos protocolos operan como el estándar de facto para la transmisión bidireccional de 
+telemetría de alta resolución y la inyección de comandos de ajuste ventilatorio. 
+Sin embargo, su diseño adolece de mecanismos de cifrado nativo y de autenticación cripto-
+gráfica robusta en el origen, transmitiendo comandos críticos de soporte vital en texto plano. 
+Es precisamente esta vulnerabilidad estructural a nivel de protocolo —inaceptable bajo los 
+estándares de amenaza contemporáneos— la que hace técnica y éticamente imperativa la 
+implementación de una capa de monitoreo externa y no intrusiva, capaz de validar las tramas 
+antes de su ejecución electromecánica. 
+ 
+5.1.3 Ransomware OT y la Materialización del Impacto Cinético 
+La transmutación del ransomware desde el entorno IT corporativo hacia los ecosistemas OT 
+introduce el paradigma del Impacto Cinético, definido como la materialización de daño físi-
+co y biológico a partir de vectores de compromiso digital. En el dominio de la ventilación 
+mecánica, 
+--- Page 21 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 19  
+ 
+Al alterar maliciosamente las ganancias de este lazo de control, el ransomware corrompe la 
+lógica cibernética encargada de mantener la homeostasis respiratoria del paciente. En conse-
+cuencia, la ejecución de comandos espurios que inyectan volúmenes no calculados o evitan la 
+liberación de presión se traduce directamente en barotrauma (ruptura del tejido pulmonar 
+por sobrepresión extrema) o volutrauma (sobredistensión alveolar macroscópica). El cibera-
+taque deja de ser un incidente de pérdida de datos para convertirse en un evento biológica-
+mente destructivo. 
+ 
+5.1.4 Limitaciones de la Inteligencia Artificial: Detección Determinista vs. Probabilística 
+Frente a la sofisticación de estas amenazas cibercinéticas, la adopción de Sistemas de Detec-
+ción de Intrusiones (IDS) basados en Inteligencia Artificial (IA) y aprendizaje profundo reve-
+la deficiencias inaceptables para escenarios de vida o muerte. Como demuestran rigurosa-
+mente, los detectores de anomalías fundamentados en modelos de reconstrucción probabilís-
+tica son severamente vulnerables a "ataques de ocultamiento" (constrained concealment atta-
+cks). Un adversario puede manipular estratégicamente un subconjunto ínfimo de variables, 
+forzando a la red neuronal a reconstruir y clasificar un estado malicioso como un perfil opera-
+tivo benigno. Adicionalmente, la latencia inherente a la inferencia de estos modelos y su na-
+turaleza estocástica de "caja negra" impiden la explicabilidad requerida en la medicina clíni-
+ca. 
+En contraposición, el enfoque determinista propuesto, basado en Máquinas de Estados Fini-
+tos (FSM), asegura una validación binaria e instantánea en el orden de los microsegundos. 
+Las FSM evalúan el tráfico contra límites termodinámicos y fisiológicos matemáticamente 
+irrefutables, erradicando la incertidumbre del análisis probabilístico y bloqueando la inyec-
+ción antes de la perturbación del lazo PID. 
+ 
+5.1.5 Sinergia Forense Multi-capa (Cross-Layer) y Trazabilidad Física 
+Para que este determinismo sea infalible y blinde al CPS contra técnicas de evasión de tele-
+metría, es mandatorio implementar un modelo de "Sinergia Total" mediante un análisis 
+forense cross-layer (multi-capa). Con base en los fundamentos teóricos expuestos en , se 
+establece una correlación indisoluble entre la detección de anomalías a nivel de red (inspec-
+ción de bits y tramas del protocolo Medibus.X) y la constatación empírica en la capa física 
+inferior (PHY). El análisis propuesto no se limita a la capa lógica; se extiende a la monitori-
+zación de las variaciones electromecánicas intrínsecas del ventilador. 
+Esta verificación cruzada entre la semántica del comando de red y la inercia del estado físico, 
+por ejemplo, el amperaje demandado por una válvula en respuesta a una trama de red, anula 
+cualquier intento de falsificación de variables por parte del ransomware, consolidando un 
+esquema de mon
+--- Page 22 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 20  
+ 
+5.2 Análisis de alternativas de solución 
+El diseño de una arquitectura de defensa para Sistemas Ciberfísicos (CPS) médicos, donde la 
+latencia es un factor determinante en la preservación de la vida, exige evaluar la eficacia de 
+las soluciones actuales frente a las amenazas de impacto cinético. 
+5.2.1 Alternativas de solución e impacto 
+ 
+Alternativa A: Implementación de IDS/IPS Perimetrales de IT (Deep Packet Inspection) 
+Esta solución se fundamenta en el despliegue de sensores perimetrales que analizan el tráfico 
+en las capas superiores de la red hospitalaria. No obstante, estas herramientas sufren de una 
+"ceguera semántica" crítica frente a protocolos de tecnología de operación (OT) e Internet 
+de las Cosas Médicas (IoMT). Al estar optimizados para firmas de TI, carecen de la capaci-
+dad para interpretar el payload de protocolos como Medibus.X, permitiendo que comandos 
+maliciosos sintácticamente correctos pero letales atraviesen el perímetro sin ser detectados, 
+generando una falsa sensación de seguridad que no previene el daño físico directo al pacien-
+te. 
+ 
+Alternativa B: Detección de Anomalías basada en Inteligencia Artificial (Autoenco-
+ders/LSTM) 
+El uso de modelos de aprendizaje profundo busca perfilar estadísticamente el tráfico para 
+identificar intrusiones. Sin embargo, en el contexto de infraestructura crítica, estos sistemas 
+presentan vulnerabilidades matemáticas inaceptables. Erba et al. han demostrado fehacien-
+temente que los detectores basados en IA son susceptibles a "ataques de ocultamiento con 
+restricciones" (constrained concealment attacks), donde el adversario manipula un subcon-
+junto ínfimo de variables para obligar a la red neuronal a clasificar un ataque como un 
+comportamiento benigno. Además de esta susceptibilidad a la evasión, la latencia inherente 
+a la inferencia probabilística y la opacidad del modelo de "caja negra" impiden la toma de 
+decisiones deterministas en microsegundos, esenciales para evitar la desestabilización de la 
+homeostasis respiratoria. 
+ 
+Alternativa C: End-point Protection (Agentes Host-based) en el Firmware del Ventilador 
+Esta alternativa propone instalar agentes de seguridad directamente en el sistema operativo 
+del dispositivo médico. Esta aproximación es inviable debido a que, como señalan Pogliani 
+et al., los sistemas de control y manufactura suelen ser "sistemas legados" (legacy systems) 
+diseñados bajo paradigmas de confianza total, con recursos de CPU estrictamente asignados 
+a la tarea de control. Instalar un agente consumiría ciclos de procesamiento vitales, amena-
+zando la estabilidad del lazo de control PID encargado de la ventilación. Para el Hospital 
+Universitario San Ignacio (HUSI), esta alternativa representa un riesgo administrativo y 
+legal inaceptable, ya que la modificación del firmware original del fabricante invalida auto-
+máticamente las certificaciones de biosegurid
+--- Page 23 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 21  
+ 
+5.2.2 Comparación de alternativas 
+Para determinar la viabilidad técnica de la defensa, se contrastan las arquitecturas evalua-
+das frente a la solución postulada en esta investigación. 
+ 
+  
+Criterio de 
+Evaluación 
+IDS Perime-
+tral (IT) 
+Detección IA / 
+ML 
+Agente 
+*Host-
+based* 
+Propuesta: Con-
+trolador Deter-
+minista 
+Latencia de 
+Detección 
+Media (milise-
+gundos) 
+Alta / Variable 
+Baja (a 
+costa de 
+CPU) 
+Ultra-baja (mi-
+crosegundos) 
+No Intrusivid-
+ad 
+Alta 
+Alta 
+Nula (modi-
+fica el 
+CPS) 
+Alta (arquitectura 
+Bump-in-the-wire) 
+Resiliencia a 
+Evasión 
+Baja (proto-
+colos OT) 
+Baja (ataques 
+de ocultami-
+ento) 
+Media 
+Muy alta (basado 
+en límites físicos) 
+Cumplimiento 
+Normativo 
+Cumple 
+Cumple 
+Incumple 
+(invalida 
+INVIMA / 
+FDA) 
+Cumple (de-
+sacoplado del 
+firmware) 
+Capacidad 
+Forense 
+Limitada (solo 
+red) 
+Limitada y 
+probabilística 
+Limitada 
+(logs de 
+SO) 
+Sinergia Total 
+(Red + PHY ) 
+ 
+ Argumentación y Cierre de la Sección: 
+El análisis comparativo demuestra que las soluciones convencionales fallan al no integrar la 
+realidad física del dispositivo médico en su motor de decisión. La validación puramente digi-
+tal es insuficiente para detener el impacto cinético. Siguiendo la tesis de Pu et al., quienes 
+demostraron que las "huellas físicas" (physical fingerprints) son el método más robusto para 
+autenticar comandos en sistemas de misión crítica, nuestra propuesta traslada este paradig-
+ma a la ventilación mecánica. 
+ 
+Al implementar un Controlador Determinista Externo, logramos una "Sinergia Total" me-
+diante un análisis cross-layer (multi-capa) que correlaciona de forma indisoluble la inspec-
+ción de bits en la red con la constatación empírica en la capa física (PHY) del ventilador. 
+Esta arquitectura no solo es técnicamente superior por su respuesta en microsegundos, sino 
+
+--- Page 24 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 22  
+ 
+que es la única opción ética y legalmente viable bajo el paradigma de la Industria 5.0; pro-
+tege la vida del paciente mediante una resiliencia extrema, sin degradar el rendimiento del 
+CPS médico y sin violar las garantías del fabricante ni las normativas sanitarias vigentes. 
+
+--- Page 25 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 23  
+ 
+6 Referencias 
+6. Referencias 
+[1] A. Abakumov and V. Kharchenko, "Combining IMECA analysis and penetration testing to 
+assess the cybersecurity of industrial robotic systems," in Proceedings of the 2022 IEEE 12th 
+International Conference on Dependable Systems, Services and Technologies, DESSERT 
+2022, 2022. doi: 10.1109/DESSERT58054.2022.10018823.  
+ 
+[2] B. A. Abishek, T. Kavyashree, R. Jayalakshmi, S. Tharunkumar, and R. Raffik, "Collabo-
+rative Robots and Cyber Security in Industry 5.0," in 2nd International Conference on Ad-
+vancements in Electrical, Electronics, Communication, Computing and Automation, ICAECA 
+2023, 2023. doi: 10.1109/ICAECA56562.2023.10200319.  
+ 
+[3] K. A. Abuhasel, "A Linear Probabilistic Resilience Model for Securing Critical Infras-
+tructure in Industry 5.0," IEEE Access, vol. 11, pp. 80863-80873, 2023. doi: 
+10.1109/ACCESS.2023.3300650.  
+ 
+[4] A. Adel, "Future of industry 5.0 in society: human-centric solutions, challenges and pros-
+pective research areas," Journal of Cloud Computing, vol. 11, no. 1, Dec. 2022. doi: 
+10.1186/s13677-022-00314-5.  
+ 
+[5] M. M. Alani and M. Alloghani, "Security Challenges in the Industry 4.0 Era," in Industry 
+4.0 and Engineering for a Sustainable Future, Springer International Publishing, 2019, pp. 
+117-136. doi: 10.1007/978-3-030-12953-8_8.  
+ 
+[6] R. Alguliyev and R. Shikhaliyev, "Computer networks cybersecurity monitoring based on 
+CNN-LSTM model," in 18th IEEE International Conference on Application of Information 
+and 
+Communication 
+Technologies, 
+AICT 
+2024, 
+2024. 
+doi: 
+10.1109/AICT61888.2024.10740422.  
+ 
+[7] A. M. Alnajim, S. Habib, M. Islam, S. M. Thwin, and F. Alotaibi, "A Comprehensive Sur-
+vey of Cybersecurity Threats, Attacks, and Effective Countermeasures in Industrial Internet 
+of Things," Technologies, vol. 11, no. 6, Dec. 2023. doi: 10.3390/technologies11060161.  
+ 
+[8] A. Alqudhaibi, M. Albarrak, S. Jagtap, N. Williams, and K. Salonitis, "Securing industry 
+4.0: Assessing cybersecurity challenges and proposing strategies for manufacturing mana-
+gement," 
+Cyber 
+Security 
+and 
+Applications, 
+vol. 
+3, 
+Dec. 
+2025. 
+doi: 
+10.1016/j.csa.2024.100067.  
+ 
+
+--- Page 26 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 24  
+ 
+[9] S. Alshehri, H. Alaidaros, M. Arafah, and S. H. Bakry, "A New Cybersecurity Assessment 
+Framework for Private Networks," in 4th IEEE International Conference on Computational 
+Intelligence and Communication Networks, 2022. doi: 10.1109/cicn.2022.123.  
+ 
+[10] W. A. AlZoubi et al., "Optimized Detection of SQL Injection Attacks Using Machine 
+Learning: Enhancing Accuracy and Explainability in Cybersecurity," in 2025 IEEE 5th In-
+ternational Conference on AI in Cybersecurity (ICAIC), Nov. 2025, pp. 73-81. doi: 
+10.1109/cyber-ai66431.2025.11233720.  
+ 
+[11] B. M. Ampel, S. Samtani, H. Zhu, H. Chen, and J. F. Nunamaker, "Improving Threat 
+Mitigation Through a Cybersecurity Risk Management Framework: A Computational Design 
+Science Approach," Journal of Management Information Systems, vol. 41, no. 1, pp. 236-265, 
+Jan. 2024. doi: 10.1080/07421222.2023.2301178.  
+ 
+[12] Angraini, R. A. Alias, and Okfalisa, "Information security policy compliance: Systematic 
+literature review," Procedia Computer Science, vol. 161, no. 3, pp. 1216-1224, Jun. 2019. 
+doi: 10.1016/j.procs.2019.11.235.  
+ 
+[13] M. F. Arroyabe, C. F. A. Arranz, I. F. de Arroyabe, and J. C. F. de Arroyabe, "The effect 
+of IT security issues on the implementation of industry 4.0 in SMEs: Barriers and challen-
+ges," Technological Forecasting and Social Change, vol. 199, Feb. 2024. doi: 
+10.1016/j.techfore.2023.123051.  
+ 
+[14] R. A. Awad, M. H. Rais, M. Rogers, I. Ahmed, and V. Paquit, "Towards generic memory 
+forensic framework for programmable logic controllers," Forensic Science International: 
+Digital Investigation, vol. 44, Mar. 2023. doi: 10.1016/j.fsidi.2023.301513.  
+ 
+[15] A. Ayub, N. Zubair, H. Yoo, W. Jo, and I. Ahmed, "Gadgets of Gadgets in Industrial 
+Control Systems: Return Oriented Programming Attacks on PLCs," in Proceedings of the 
+2023 IEEE International Symposium on Hardware Oriented Security and Trust, HOST 2023, 
+2023, pp. 215-226. doi: 10.1109/HOST55118.2023.10132957.  
+ 
+[16] A. J. G. de Azambuja et al., "Artificial Intelligence-Based Cyber Security in the Context 
+of 
+Industry 
+4.0—A 
+Survey," 
+Electronics, 
+vol. 
+12, 
+no. 
+8, 
+Apr. 
+2023. 
+doi: 
+10.3390/electronics12081920.  
+ 
+[17] H. Babbar, S. Rani, and W. Boulila, "Fortifying the Connection: Cybersecurity Tactics 
+for WSN-Driven Smart Manufacturing in the Era of Industry 5.0," IEEE Open Journal of the 
+Communications Society, vol. 6, pp. 3417-3428, 2025. doi: 10.1109/OJCOMS.2024.3428531.  
+
+--- Page 27 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 25  
+ 
+ 
+[18] I. Babeshko and F. D. Giandomenico, "Safety and Cybersecurity Assessment Techniques 
+for Critical Industries: A Mapping Study," IEEE Access, vol. 11, pp. 83781-83793, 2023. doi: 
+10.1109/ACCESS.2023.3297446.  
+ 
+[19] P. S. Bharathi and M. M. Raj, "Graph Neural Networks for Intrusion Detection in Next-
+Generation 6G Networks: A Cybersecurity Perspective," in Proceedings of 6th International 
+Conference on Intelligent Communication Technologies and Virtual Mobile Networks, ICICV 
+2025, 2025, pp. 1306-1312. doi: 10.1109/ICICV64824.2025.11085785.  
+ 
+[20] D. M. Bhuktar, R. Ranjan, S. K. Singh, and S. Bansod, "Real-Time Cyber Threats and 
+Unauthorized Access Detection Using Embedded AI," in 2025 International Conference on 
+Computing Technologies and Data Communication, ICCTDC 2025, 2025. doi: 
+10.1109/ICCTDC64446.2025.11158799.  
+ 
+[21] M. Bozdal and Z. Pourmirza, "Enhancing Cybersecurity in Hydrogen Energy Systems: A 
+Simulation Environment for Benchmarking Datasets," in 2025 IEEE 13th International Con-
+ference on Smart Energy Grid Engineering, SEGE 2025, 2025, pp. 287-291. doi: 
+10.1109/SEGE65970.2025.11203732.  
+ 
+[22] F. Brancati, D. Mongelli, F. Mariotti, and P. Lollini, "A cybersecurity risk assessment 
+methodology for industrial automation control systems," International Journal of Information 
+Security, vol. 24, no. 2, Apr. 2025. doi: 10.1007/s10207-025-00990-9.  
+ 
+[23] A. Chaudhuri, R. K. Behera, and P. K. Bala, "Factors impacting cybersecurity trans-
+formation: An Industry 5.0 perspective," Computers & Security, vol. 150, no. 2, Mar. 2025. 
+doi: 10.1016/j.cose.2024.104267.  
+ 
+[24] S. Chinthala, "Adversarial Machine Learning in Cybersecurity: Attacks, Defenses, Ro-
+bustness, and Explainability," in 2026 IEEE 5th International Conference on AI in Cyberse-
+curity (ICAIC), Feb. 2026, pp. 1-4. doi: 10.1109/ICAIC67076.2026.11395871.  
+ 
+[25] M. Cook, A. Marnerides, C. Johnson, and D. Pezaros, "A Survey on Industrial Control 
+System Digital Forensics: Challenges, Advances and Future Directions," IEEE Communica-
+tions 
+Surveys 
+and 
+Tutorials, 
+vol. 
+25, 
+no. 
+3, 
+pp. 
+1705-1747, 
+2023. 
+doi: 
+10.1109/COMST.2023.3264680.  
+ 
+
+--- Page 28 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 26  
+ 
+[26] A. Corallo, M. Lazoi, M. Lezzi, and A. Luperto, "Cybersecurity awareness in the context 
+of the Industrial Internet of Things: A systematic literature review," Computers in Industry, 
+vol. 137, May 2022. doi: 10.1016/j.compind.2022.103614.  
+ 
+[27] G. Czeczot, I. Rojek, D. Mikołajewski, and B. Sangho, "AI in IIoT Management of Cy-
+bersecurity for Industry 4.0 and Industry 5.0 Purposes," Electronics, vol. 12, no. 18, Sep. 
+2023. doi: 10.3390/electronics12183800.  
+ 
+[28] M. Diaz-Cacho, P. Falcón, J. M. Acevedo, and A. P. Domínguez, "Educational project 
+for remote access to industrial networks," in IEEE Global Engineering Education Conferen-
+ce, EDUCON, 2024. doi: 10.1109/EDUCON60312.2024.10578673.  
+ 
+[29] F. Djebbar and K. Nordstrom, "A Comparative Analysis of Industrial Cybersecurity 
+Standards," 
+IEEE 
+Access, 
+vol. 
+11, 
+pp. 
+85315-85332, 
+2023. 
+doi: 
+10.1109/ACCESS.2023.3303205.  
+ 
+[30] A. Erba et al., "Constrained Concealment Attacks against Reconstruction-based Ano-
+maly Detectors in Industrial Control Systems," in ACM International Conference Proceeding 
+Series, Dec. 2020, pp. 480-495. doi: 10.1145/3427228.3427660.  
+ 
+[31] A. Fernández-Miguel et al., "From Resilience to Cognitive Adaptivity: Redefining Hu-
+man–AI Cybersecurity for Hard-to-Abate Industries in the Industry 5.0–6.0 Transition," In-
+formation, vol. 16, no. 10, Oct. 2025. doi: 10.3390/info16100881.  
+ 
+[32] L. A. Garcia et al., "Hey, My Malware Knows Physics! Attacking PLCs with Physical 
+Model Aware Rootkit," in 24th Annual Network and Distributed System Security Symposium, 
+NDSS 2017, 2017. doi: 10.14722/ndss.2017.23313.  
+ 
+[33] K. Goebel and S. Rane, "AI in Industrial IoT Cybersecurity [Industrial and Governmen-
+tal Activities]," IEEE Computational Intelligence Magazine, vol. 19, no. 1, pp. 14-15, Feb. 
+2024. doi: 10.1109/MCI.2023.3332547.  
+ 
+[34] S. S. Gujar, "Optimizing Threat Mitigation in Critical Infrastructure through AI-Driven 
+Cybersecurity Solutions," in 2024 Global Conference on Communications and Information 
+Technologies, GCCIT 2024, 2024. doi: 10.1109/GCCIT63234.2024.10862689.  
+ 
+
+--- Page 29 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 27  
+ 
+[35] D. T. Ha et al., "Explainable Anomaly Detection for Industrial Control System Cyberse-
+curity," in IFAC-PapersOnLine, vol. 55, no. 10, pp. 1183-1188, 2022. doi: 
+10.1016/j.ifacol.2022.09.550.  
+ 
+[36] Y. Handayati, T. Kurniawan, and G. Yudoko, "The Challenges of Industry 4.0 Transfor-
+mation," in 2024 10th International Conference on Computing, Engineering and Design, 
+ICCED 2024, 2024. doi: 10.1109/ICCED64257.2024.10983736.  
+ 
+[37] M. A. Hassan, G. Samara, and M. A. Fadda, "IoT Forensic Frameworks (DFIF, IoT-
+DOTS, FSAIoT): A Comprehensive Study," International Journal of Advances in Soft Compu-
+ting and its Applications, vol. 14, no. 1, pp. 72-86, 2022. doi: 10.15849/IJASCA.220328.06.  
+ 
+[38] M. A. Hassan et al., "Systematic Analysis of Risks in Industry 5.0 Architecture," Applied 
+Sciences, vol. 14, no. 4, Feb. 2024. doi: 10.3390/app14041466.  
+ 
+[39] G. Hristov, I. Stankov, and D. Mladenova, "CyberAttacks and robotics," in 2023 31st 
+National Conference with International Participation, TELECOM 2023, 2023. doi: 
+10.1109/TELECOM59629.2023.10409708.  
+ 
+[40] M. Ibrahim, R. Elhafiz, and A. Al-Wadi, "Reinforcement Learning-Based Attack Graph 
+Analysis for Wastewater Treatment Plant," IEEE Transactions on Industry Applications, vol. 
+59, no. 6, pp. 7858-7867, Nov. 2023. doi: 10.1109/TIA.2023.3298289.  
+ 
+[41] M. Ileana, P. Petrov, and V. Milev, "Intelligent Intrusion Detection in IoT with Explai-
+nable AI and Distributed Web Systems," in 2025 IEEE 5th International Conference on AI in 
+Cybersecurity (ICAIC), Nov. 2025, pp. 124-127. doi: 10.1109/cyber-ai66431.2025.11233693.  
+ 
+[42] M. Izzetil, E. A. Wardani, A. Fitriah, and A. Hamdani, "Basic Analysis of Cybersecurity 
+in Facing Digital Threats in the Industrial Era 5.0," Journal of Artificial Intelligence and 
+Engineering Applications, vol. 5, no. 2, 2026. [Online]. Available: https://ioinformatic.org/.  
+ 
+[43] K. Jithendra, S. Kishor, K. Prasad, and S. Sharook, "Enhanced Cybersecurity Frame-
+work: Comparative Analysis of ML Techniques, Ensemble Methods, and Distributed Lear-
+ning for Superior Threat Detection," in Proceedings of the 4th International Conference on 
+Innovative Mechanisms for Industry Applications, ICIMIA 2025, 2025, pp. 1293-1298. doi: 
+10.1109/ICIMIA67127.2025.11200964.  
+ 
+
+--- Page 30 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 28  
+ 
+[44] B. Korn, D. Suerich, A. Seward, and M. Padmanabhan, "An Industry Plan for Cyberse-
+curity IE: Industrial Engineering," in ASMC (Advanced Semiconductor Manufacturing Con-
+ference) Proceedings, 2025. doi: 10.1109/ASMC64512.2025.11010241.  
+ 
+[45] R. Kour, R. Karim, P. Dersin, and N. Venkatesh, "Cybersecurity for Industry 5.0: trends 
+and gaps," Frontiers in Computer Science, vol. 6, 2024. doi: 10.3389/fcomp.2024.1434436.  
+ 
+[46] M. Kuri et al., "Agent AI in Cybersecurity: A Novel Multi-Agent Architecture for Proac-
+tive Phishing Detection," in 2026 IEEE 5th International Conference on AI in Cybersecurity 
+(ICAIC), Jan. 2026, pp. 1-8. doi: 10.1109/ictbig68706.2025.11323696.  
+ 
+[47] N. Laan, R. Gupta, A. W. Koehler, and W. V. Hill, "Implementing Cybersecurity for 
+Industrial Connected Products: How to use Standards to Protect Operational Technology," 
+IEEE Industry Applications Magazine, vol. 31, no. 4, pp. 18-26, 2025. doi: 
+10.1109/MIAS.2025.3559862.  
+ 
+[48] K. Lamshöft, T. Neubert, J. Hielscher, C. Vielhauer, and J. Dittmann, "Knock, knock, 
+log: Threat analysis, detection & mitigation of covert channels in syslog using port scans as 
+cover," Forensic Science International: Digital Investigation, vol. 40, Apr. 2022. doi: 
+10.1016/j.fsidi.2022.301335.  
+ 
+[49] S. Longari et al., "Janus: A Trusted Execution Environment Approach for Attack Detec-
+tion in Industrial Robot Controllers," IEEE Transactions on Emerging Topics in Computing, 
+2024. doi: 10.1109/TETC.2024.3390435.  
+ 
+[50] J. Lopez Jr., N. C. Liefer, M. A. Temple, and C. R. Busho, "Enhancing critical infras-
+tructure and key resources (CIKR) Level-0 physical process security using field device dis-
+tinct native attribute features," IEEE Transactions on Information Forensics and Security, 
+vol. 13, no. 5, pp. 1215-1229, 2018. doi: 10.1109/TIFS.2017.2779447.  
+ 
+[51] B. Madupati et al., "Cybersecurity Challenges in AI-Driven Dynamic Spectrum Mana-
+gement for Next-Generation Wireless Systems," in 2025 International Conference on Artifi-
+cial 
+Intelligence 
+and 
+Machine 
+Vision, 
+AIMV 
+2025, 
+2025. 
+doi: 
+10.1109/AIMV66517.2025.11203769.  
+ 
+[52] S. H. Mekala, Z. Baig, A. Anwar, and S. Zeadally, "Cybersecurity for Industrial IoT 
+(IIoT): Threats, countermeasures, challenges and future directions," Computer Communica-
+tions, vol. 208, pp. 294-320, Aug. 2023. doi: 10.1016/j.comcom.2023.06.020.  
+
+--- Page 31 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 29  
+ 
+ 
+[53] S. K. Mishra and K. B. Yadav, "Multi-Layered Cybersecurity for Smart Power Grids 
+Using AI and Machine Learning for Real-Time Threat Detection and Prevention," in 2025 
+IEEE 2nd International Conference on Green Industrial Electronics and Sustainable Techno-
+logies (GIEST), Oct. 2025, pp. 1-5. doi: 10.1109/GIEST66547.2025.11387477.  
+ 
+[54] M. Mishra, R. R. Pradhan, K. Agrawalla, and R. Bokka, "AI for Cybersecurity Threat 
+Detection: A Machine Enabled Computing Perspective," in 3rd International Conference on 
+Advancements in Smart, Secure and Intelligent Computing, ASSIC 2025, 2025. doi: 
+10.1109/ASSIC64892.2025.11158640.  
+ 
+[55] F. Z. Moussa and K. Zine-Dine, "Cybersecurity Investments and Cyberattacks in Watts–
+Strogatz Networks," in 2025 8th International Conference on Advanced Communication Te-
+chnologies 
+and 
+Networking 
+(CommNet), 
+Dec. 
+2025, 
+pp. 
+1-4. 
+doi: 
+10.1109/CommNet68224.2025.11288818.  
+ 
+[56] J. Mulder et al., "Analysis of field devices used in industrial control systems," IFIP Ad-
+vances in Information and Communication Technology, vol. 390 AICT, pp. 45-57, 2012. doi: 
+10.1007/978-3-642-35764-0_4.  
+ 
+[57] P. Nakhonthai and K. Chimmanee, "Digital Forensic Analysis of Ransomware Attacks 
+on Industrial Control Systems: A Case Study in Factories," in 6th International Conference 
+on 
+Information 
+Technology, 
+InCIT 
+2022, 
+2022, 
+pp. 
+416-421. 
+doi: 
+10.1109/InCIT56086.2022.10067356.  
+ 
+[58] V. Narayanan and R. B. Bobba, "Learning based anomaly detection for industrial arm 
+applications," in Proceedings of the ACM Conference on Computer and Communications 
+Security, Oct. 2018, pp. 13-23. doi: 10.1145/3264888.3264894.  
+ 
+[59] N. Nelufule et al., "Cybersecurity in Smart Grids using Machine Learning: A Systematic 
+Literature Review," in 2026 IEEE 5th International Conference on AI in Cybersecurity 
+(ICAIC), Jan. 2026, pp. 139-146. doi: 10.1109/icicnis66685.2025.11315506.  
+ 
+[60] G. Nidhishree and K. Vidyalakshmi, "Comprehensive Analysis on Anomaly Detection in 
+Cybersecurity Dataset using Deep Learning Algorithms," in International Conference on 
+Distributed Systems, Computer Networks and Cybersecurity, ICDSCNC 2024, 2024. doi: 
+10.1109/ICDSCNC62492.2024.10939461.  
+ 
+
+--- Page 32 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 30  
+ 
+[61] F. U. Ojika et al., "The Role of AI in Cybersecurity: A Cross-Industry Model for Inte-
+grating Machine Learning and Data Analysis for Improved Threat Detection," Int. j. adv. 
+multidisc. res. stud, vol. 4, no. 6, pp. 1427-1448, 2024.  
+ 
+[62] A. Polamarasetti et al., "Enhancing Cybersecurity in Industrial Through AI-Based Traf-
+fic Monitoring IoT Networks and Classification," International Journal of Artificial Intelli-
+gence, Data Science, and Machine Learning, vol. 3, pp. 73-81, 2022. doi: 10.63282/3050-
+9262.ijaidsml-v3i3p108.  
+ 
+[63] M. Pogliani et al., "Security of controlled manufacturing systems in the connected fac-
+tory: the case of industrial robots," Journal of Computer Virology and Hacking Techniques, 
+vol. 15, pp. 161-175, 2019. doi: 10.1007/s11416-019-0329-2.  
+ 
+[64] J. Poornimha and P. R. P. Rani, "HIBA-Siamese BiLSTM: A Deep Learning-Based In-
+trusion Detection System for Enhancing IoT Cybersecurity," in 2025 6th International Confe-
+rence on Communication, Computing & Industry 6.0 (C2I6), Dec. 2025, pp. 1-6. doi: 
+10.1109/C2I666499.2025.11366969.  
+ 
+[65] M. Pordelkhaki, S. Fouad, and M. Josephs, "Intrusion Detection for Industrial Control 
+Systems by Machine Learning using Privileged Information," in Proceedings - 2021 IEEE 
+International Conference on Intelligence and Security Informatics, ISI 2021, 2021. doi: 
+10.1109/ISI53945.2021.9624757.  
+ 
+[66] H. Prasad, U. Prasad, and P. Paul, "Explainable AI for Cybersecurity: Implementing 
+Interpretable Models for Real-Time Threat Detection," in 2025 International Conference on 
+Communication 
+and 
+Smart 
+Devices 
+(ICCoSD), 
+Jul. 
+2025, 
+pp. 
+1-6. 
+doi: 
+10.1109/ICCoSD66074.2025.11348330.  
+ 
+[67] H. Pu et al., "Detecting replay attacks against industrial robots via power fingerprin-
+ting," in SenSys 2020 - Proceedings of the 2020 18th ACM Conference on Embedded Net-
+worked Sensor Systems, Nov. 2020, pp. 285-297. doi: 10.1145/3384419.3430775.  
+ 
+[68] S. A. Qasim, J. Lopez, and I. Ahmed, "Automated Reconstruction of Control Logic for 
+Programmable Logic Controller Forensics," Lecture Notes in Computer Science, vol. 11723 
+LNCS, no. 2, pp. 402-422, Apr. 2019. doi: 10.1007/978-3-030-30215-3_20.  
+ 
+[69] S. A. Qasim, J. M. Smith, and I. Ahmed, "Control Logic Forensics Framework using 
+Built-in Decompiler of Engineering Software in Industrial Control Systems," Forensic Scien-
+ce International: Digital Investigation, vol. 33, Jul. 2020. doi: 10.1016/j.fsidi.2020.301013.  
+
+--- Page 33 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 31  
+ 
+ 
+[70] G. Raicu and A. Raicu, "CYBERSECURITY STRATEGIES IN INDUSTRY 4.0," Interna-
+tional Journal of Modern Manufacturing Technologies, vol. 14, no. 3, pp. 233-238, 2022. doi: 
+10.54684/ijmmt.2022.14.3.233.  
+ 
+[71] R. J. Raimundo and A. T. Rosário, "Cybersecurity in the Internet of Things in Industrial 
+Management," Applied Sciences, vol. 12, no. 3, Feb. 2022. doi: 10.3390/app12031598.  
+ 
+[72] M. H. Rais, Y. Li, and I. Ahmed, "Dynamic-thermal and localized filament-kinetic atta-
+cks on fused filament fabrication based 3D printing process," Additive Manufacturing, vol. 
+46, Oct. 2021, pp. 177-186. doi: 10.1016/j.addma.2021.102200.  
+ 
+[73] M. H. Rais, R. A. Awad, J. Lopez, and I. Ahmed, "JTAG-based PLC memory acquisition 
+framework for industrial control systems," Forensic Science International: Digital Investiga-
+tion, vol. 37, Jul. 2021. doi: 10.1016/j.fsidi.2021.301196.  
+ 
+[74] M. H. Rais, R. A. Awad, J. Lopez, and I. Ahmed, "Memory forensic analysis of a pro-
+grammable logic controller in industrial control systems," Forensic Science International: 
+Digital Investigation, vol. 40, Apr. 2022. doi: 10.1016/j.fsidi.2022.301339.  
+ 
+[75] A. J. M. Rani et al., "Investigating AI-Enabled Threat Intelligence for Preventative Cy-
+bersecurity: Real-Time Threat Detection and Response," in 2025 International Conference 
+on Information, Implementation, and Innovation in Technology, I2ITCON 2025, 2025. doi: 
+10.1109/I2ITCON65200.2025.11210514.  
+ 
+[76] N. Rawindaran et al., "Enhancing Cyber Security Governance and Policy for SMEs in 
+Industry 5.0: A Comparative Study between Saudi Arabia and the United Kingdom," Digital, 
+vol. 3, no. 3, pp. 200-231, Sep. 2023. doi: 10.3390/digital3030014.  
+ 
+[77] N. Rawindaran, A. Jayal, and E. Prakash, "Digital Transformation in Industry 5.0: A 
+resilient cybersecurity solutions for Small Medium Enterprises (SMEs)," in International 
+Conference on Artificial Intelligence, Computer, Data Sciences, and Applications, ACDSA 
+2025, 2025. doi: 10.1109/ACDSA65407.2025.11166275.  
+ 
+[78] N. Rawindaran, A. Jayal, and E. Prakash, "Cybersecurity Framework: Addressing Resi-
+liency in Welsh SMEs for Digital Transformation and Industry 5.0," Journal of Cybersecurity 
+and Privacy, vol. 5, no. 2, Jun. 2025. doi: 10.3390/jcp5020017.  
+ 
+
+--- Page 34 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 32  
+ 
+[79] D. R. Reising, M. A. Temple, and J. A. Jackson, "Authorized and rogue device discrimi-
+nation using dimensionally reduced RF-DNA fingerprints," IEEE Transactions on Informa-
+tion 
+Forensics 
+and 
+Security, 
+vol. 
+10, 
+no. 
+6, 
+pp. 
+1180-1192, 
+2015. 
+doi: 
+10.1109/TIFS.2015.2400426.  
+ 
+[80] M. Reith, C. Carr, and G. Gunsch, "An examination of digital forensic models," Interna-
+tional Journal of Digital Evidence, vol. 1, no. 3, pp. 1-12, 2002.  
+ 
+[81] C. M. Rondeau, M. A. Temple, and J. Lopez, "Industrial IoT cross‐layer forensic inves-
+tigation," WIREs Forensic Science, vol. 1, no. 1, Jan. 2019. doi: 10.1002/wfs2.1322.  
+ 
+[82] S. Safavi et al., "From Black Box to Trustworthy AI: A Secure Framework for Explaina-
+ble Cybersecurity Decision-Making," in 3rd International Conference on Advancements in 
+Smart, 
+Secure 
+and 
+Intelligent 
+Computing, 
+ASSIC 
+2025, 
+2025. 
+doi: 
+10.1109/ASSIC64892.2025.11158699.  
+ 
+[83] M. F. Safitra, M. Lubis, and H. Fakhrurroja, "Counterattacking Cyber Threats: A Fra-
+mework for the Future of Cybersecurity," Sustainability, vol. 15, no. 18, Sep. 2023. doi: 
+10.3390/su151813369.  
+ 
+[84] T. Sajid and O. A. Latif, "Explainable AI for Real-Time Object detection in Autonomous 
+Driving," in Proceedings - 2024 International Conference on Artificial Intelligence, Metaver-
+se and Cybersecurity, ICAMAC 2024, 2024. doi: 10.1109/ICAMAC62387.2024.10829286.  
+ 
+[85] G. V. Santangelo, V. G. Colacino, and M. Marchetti, "Analysis, prevention and detec-
+tion of ransomware attacks on Industrial Control Systems," in 2021 IEEE 20th International 
+Symposium on Network Computing and Applications, NCA 2021, 2021. doi: 
+10.1109/NCA53618.2021.9685713.  
+ 
+[86] B. Santos, R. L. C. Costa, and L. Santos, "Cybersecurity in Industry 5.0: Open Challen-
+ges and Future Directions," in 2024 21st Annual International Conference on Privacy, Secu-
+rity and Trust, PST 2024, 2024. doi: 10.1109/PST62714.2024.10788065.  
+ 
+[87] T. H. Sardar, B. Pandey, and L. Aldasheva, "LLM-Powered Autonomous Security 
+Agents for Next-Generation Cyber Defence," in 2026 IEEE 5th International Conference on 
+AI in Cybersecurity (ICAIC), Feb. 2026, pp. 1-5. doi: 10.1109/ICAIC67076.2026.11395792.  
+ 
+
+--- Page 35 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 33  
+ 
+[88] M. Savenko and I. Sedoshkin, "AI-Driven Frontend Cybersecurity for Swift and ReactJS 
+Applications Using Public Phishing and Malicious Web Datasets," in 2026 IEEE 5th Interna-
+tional Conference on AI in Cybersecurity (ICAIC), Feb. 2026, pp. 1-8. doi: 
+10.1109/ICAIC67076.2026.11395660.  
+ 
+[89] M. Schmitt, "Securing the digital world: Protecting smart infrastructures and digital 
+industries with artificial intelligence (AI)-enabled malware and intrusion detection," Journal 
+of Industrial Information Integration, vol. 36, Dec. 2023. doi: 10.1016/j.jii.2023.100520.  
+ 
+[90] J. Schneider et al., "Prudent design principles for digital tampering experiments," Fo-
+rensic 
+Science 
+International: 
+Digital 
+Investigation, 
+vol. 
+40, 
+Apr. 
+2022. 
+doi: 
+10.1016/j.fsidi.2022.301334.  
+ 
+[91] K. R. S. Murugan, R. N. S. Ram, and K. Khamar, "AI-Driven Network Anomaly Detec-
+tion for Enhanced Cybersecurity and Performance," in Proceedings of the 9th International 
+Conference on Communication and Electronics Systems, ICCES 2024, 2024, pp. 855-859. 
+doi: 10.1109/ICCES63552.2024.10859874.  
+ 
+[92] S. Senthivel, S. Dhungana, H. Yoo, I. Ahmed, and V. Roussev, "Denial of engineering 
+operations attacks in industrial control systems," CODASPY 2018 - Proceedings of the 8th 
+ACM Conference on Data and Application Security and Privacy, vol. 2018-January, pp. 319-
+329, Mar. 2018. doi: 10.1145/3176258.3176319.  
+ 
+[93] Z. A. Shaikh et al., "A New Trend in Cryptographic Information Security for Industry 
+5.0: A Systematic Review," IEEE Access, vol. 12, pp. 7156-7169, 2024. doi: 
+10.1109/ACCESS.2024.3351485.  
+ 
+[94] A. Sharma, H. Babbar, and A. K. Vats, "Enhanced Ransomware Detection Using Gra-
+dient Boosting Algorithms: A Cybersecurity Dataset Approach," in 2024 5th IEEE Global 
+Conference 
+for 
+Advancement 
+in 
+Technology, 
+GCAT 
+2024, 
+2024. 
+doi: 
+10.1109/GCAT62922.2024.10923841.  
+ 
+[95] S. Surisetti, S. N. Bhavanam, V. Oruganti, and M. V. Devi, "Intrusion Detection System 
+in Internet of Things-Empowered Cybersecurity by Using Various Algorithms," in 2024 2nd 
+IEEE International Conference on Data Science and Network Security, ICDSNS 2024, 2024. 
+doi: 10.1109/ICDSNS62112.2024.10691223.  
+ 
+[96] J. M. Takacs and M. Pogatsnik, "A systematic review of Human Aspects in Industry 4.0 
+and 5.0: Cybersecurity Awareness and Soft Skills," in INES 2023 - 27th IEEE International 
+
+--- Page 36 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 34  
+ 
+Conference on Intelligent Engineering Systems 2023, Proceedings, 2023, pp. 33-40. doi: 
+10.1109/INES59282.2023.10297768.  
+ 
+[97] Y. Tao, M. Li, J. Xiao, and Y. Yao, "Research on the Cybersecurity Classified Protection 
+Model and Technology of 5G Application System," in 2025 International Conference on 
+Computer Science, Technology and Engineering, ICCSTE 2025, 2025, pp. 100-106. doi: 
+10.1109/ICCSTE65902.2025.11138318.  
+ 
+[98] B. A. Tingare et al., "Responsible AI on National Cybersecurity Strategy with Enhance-
+ment of Cybersecurity in Education," in International Conference on Intelligent and Innova-
+tive Practices in Engineering and Management 2024, IIPEM 2024, 2024. doi: 
+10.1109/IIPEM62726.2024.10925807.  
+ 
+[99] V. M. Torres, J. R. Diaz, E. S. Portugal, and J. Cornejo, "Prediction of Cyberattacks 
+using Machine Learning in the Financial Sector: Technical Review," in 2025 5th Internatio-
+nal Conference on AI in Cybersecurity (ICAIC), Dec. 2025, pp. 1-6. doi: 
+10.1109/ismsit67332.2025.11267822.  
+ 
+[100] M. Toussaint, S. Krima, and H. Panetto, "Industry 4.0 data security: A cybersecurity 
+frameworks review," Journal of Industrial Information Integration, vol. 39, May 2024. doi: 
+10.1016/j.jii.2024.100604.  
+ 
+[101] O. Veprytska and V. Kharchenko, "AI powered attacks against AI powered protection: 
+Classification, scenarios and risk analysis," in Proceedings of the 2022 IEEE 12th Interna-
+tional Conference on Dependable Systems, Services and Technologies, DESSERT 2022, 
+2022. doi: 10.1109/DESSERT58054.2022.10018770.  
+ 
+[102] T. Waheed and E. Marchetti, "The Impact of IOT Cybersecurity Testing in the Perspec-
+tive of Industry 5.0," in International Conference on Web Information Systems and Technolo-
+gies, WEBIST - Proceedings, 2023, pp. 480-487. doi: 10.5220/0012235800003584.  
+ 
+[103] G. S. Walia and P. Deepalakshmi, "Artificial Intelligence-Powered Cybersecurity Solu-
+tions: Strengthening the Defense of Cloud Infrastructure with Machine Learning and Predic-
+tive Threat Analytics," in 2025 Global Conference in Emerging Technology, GINOTECH 
+2025, 2025. doi: 10.1109/GINOTECH63460.2025.11076903.  
+ 
+[104] C. N. Wang, F. C. Yang, N. T. M. Vo, and V. T. T. Nguyen, "Wireless Communications 
+for Data Security: Efficiency Assessment of Cybersecurity Industry—A Promising Application 
+for UAVs," Drones, vol. 6, no. 11, Nov. 2022. doi: 10.3390/drones6110363.  
+
+--- Page 37 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 35  
+ 
+ 
+[105] Y. Wang et al., "Automotive Cybersecurity Vulnerability Assessment Using the Com-
+mon Vulnerability Scoring System and Bayesian Network Model," IEEE Systems Journal, vol. 
+17, no. 2, pp. 2880-2891, Jun. 2023. doi: 10.1109/JSYST.2022.3230097.  
+ 
+[106] A. Wankhade, T. Wankhede, A. Yadav, and R. N. Bhimanpallewar, "SAFENET AI- AI -
+Powered Intrusion Prevention System," in 2025 IEEE Pune Section International Conference 
+(PuneCon), Dec. 2025, pp. 1-5. doi: 10.1109/PuneCon67554.2025.11377588.  
+ 
+[107] B. Wyrzykowska et al., "Intelligent Energy Management Systems in Industry 5.0: Cy-
+bersecurity Applications in Examples," Energies, vol. 17, no. 23, Dec. 2024. doi: 
+10.3390/en17235871.  
+ 
+[108] I. R. Yadav and K. Wanjale, "Intelligent Cybersecurity for IoT: AI and Big Data in 
+Threat Mitigation," in 2025 IEEE 5th International Conference on AI in Cybersecurity 
+(ICAIC), Dec. 2025, pp. 1-3. doi: 10.1109/iccubea65967.2025.11284011.  
+ 
+[109] H. Yoo and I. Ahmed, "Control logic injection attacks on industrial control systems," 
+IFIP Advances in Information and Communication Technology, vol. 562, pp. 33-48, 2019. 
+doi: 10.1007/978-3-030-22312-0_3.  
+ 
+[110] J. Yu, A. V. Shvetsov, and S. H. Alsamhi, "Leveraging Machine Learning for Cyberse-
+curity Resilience in Industry 4.0: Challenges and Future Directions," IEEE Access, vol. 12, 
+pp. 159579-159596, 2024. doi: 10.1109/ACCESS.2024.3482987.  
+ 
+[111] G. Zachos et al., "Generating IoT Edge Network Datasets based on the TON_IoT Te-
+lemetry Dataset," in IEEE International Workshop on Computer Aided Modeling and Design 
+of Communication Links and Networks, CAMAD, vol. 2021-October, 2021. doi: 
+10.1109/CAMAD52502.2021.9617799.  
+ 
+[112] Y. Zhao et al., "TFedSec-HI: Transformer-Driven Federated Security for IoT-Enabled 
+Healthcare Industry 5.0 on Non-IID Data," IEEE Internet of Things Journal, vol. 12, no. 22, 
+pp. 46204-46214, 2025. doi: 10.1109/JIOT.2025.3605756.  
+ 
+[113] R. Zhu, B. Zhang, J. Mao, Q. Zhang, and Y. T. Tan, "A methodology for determining 
+the image base of ARM-based industrial control system firmware," International Journal of 
+Critical 
+Infrastructure 
+Protection, 
+vol. 
+16, 
+pp. 
+26-35, 
+Mar. 
+2017. 
+doi: 
+10.1016/j.ijcip.2016.12.002.  
+
+--- Page 38 ---
+Pontificia Universidad Javeriana 
+Propuesta para Proyecto de grado - Pregrado 
+ 
+Página 36  
+ 
+ 
+[114] T. Zhukabayeva et al., "Cybersecurity Solutions for Industrial Internet of Things–Edge 
+Computing Integration: Challenges, Threats, and Future Directions," Sensors, vol. 25, no. 1, 
+Jan. 2025. doi: 10.3390/s25010213.  
+ 
+[115] N. Zubair, A. Ayub, H. Yoo, and I. Ahmed, "PEM: Remote forensic acquisition of PLC 
+memory in industrial control systems," Forensic Science International: Digital Investigation, 
+vol. 40, Apr. 2022. doi: 10.1016/j.fsidi.2022.301336. 
+ 
+ 
+
+
+=== SDD-plantilla.pdf ===
+--- Page 1 ---
+Descripció n del Disen ó del Sóftware 
+A continuación encontrará los elementos requeridos para su entrega del documento de 
+Descripción del Diseño del Software. Todos los párrafos del color de este texto son las 
+instrucciones para completar cada sección. Deben ser removidos del documento a entregar. 
+Todos los párrafos de color azul son indicaciones para completar cada sección. Remuévalos 
+antes de entregar el documento. 
+ 
+ 
+
+--- Page 2 ---
+1. Historial de Cambios 
+Propósito: Describir brevemente los cambios que ha sufrido el documento, con el fin de llevar 
+una adecuada administración de configuración. 
+Contenido: Una tabla que indique los cambios que ha sufrido el documento. Debe incluir, al 
+menos: fecha del cambio, descripción del cambio y persona(s) que realizaron el cambio. 
+ 
+ 
+
+--- Page 3 ---
+2. Tabla de Contenidos 
+Propósito: Que el lector encuentre rápidamente una sección específica del documento 
+
+--- Page 4 ---
+3. Lista de Figuras 
+Propósito: Que el lector encuentre rápidamente una figura específica del documento  
+
+--- Page 5 ---
+4. Lista de Tablas 
+Propósito: Que el lector encuentre rápidamente una tabla específica del documento 
+ 
+ 
+ 
+
+--- Page 6 ---
+5. Introducción 
+Propósito: que el lector determine si vale la pena seguir leyendo 
+Contenido: Breve descripción del contenido del documento. Breve descripción de la audiencia, 
+es decir, quiénes se verían beneficiados por la lectura de este documento 
+ 
+
+--- Page 7 ---
+6. Arquitectura 
+Propósito: que el desarrollador entienda la arquitectura del sistema, es decir, la definición de 
+estructura y comportamiento del sistema con un alto nivel de abstracción. 
+Contenido: Ver sub-secciones 
+Referencias: [1], [2] 
+6.1. Vista Lógica del Sistema 
+Propósito: que el desarrollador sepa cuáles con los componentes más gruesos del sistema, sin 
+preocuparse cómo serán instalados en el hardware. 
+Contenido: Diagrama de Componentes que describa los principales componentes del software 
+y sus interfaces, junto con texto o tablas que expliquen cada parte del diagrama. Si se utilizan 
+algunos patrones arquitectónicos (por ejemplo MVC), éstos deberían ser evidentes en el 
+diagrama. 
+El diagrama debe incluir como componentes todas las librerías, máquinas virtuales y cualquier 
+otro software requerido por el sistema para su funcionamiento. 
+Referencias: [4], sección The Development Architecture y The Logical Architecture 
+6.2. Vista Física del Sistema 
+Propósito: que el desarrollador sepa cuáles son los componentes físicos (hardware) más 
+importante del sistema y dónde los componentes de software serán instalados. 
+Contenido: Un Diagrama de Despliegue, junto con texto o tablas que expliquen cada parte del 
+diagrama que no haya sido descrita en la sección 6.1. 
+Este diagrama debe incluir los mismos componentes que aparecen en la sección 6.1, pero sin 
+describir interfaces, sino enfatizando los lugares donde estarían instalados todos los 
+componentes. Por ese motivo, algunos componentes como librerías, máquinas virtuales, etc., 
+los cuales pueden ser instalados en múltiples computadores, podrían aparecer múltiples veces  
+en este diagrama. 
+Referencias: [4], secciones The Physical Architecture 
+6.3. Vista de Procesos del Sistema 
+Propósito: que el desarrollador sepa cuáles son los principales procesos en los cuales el usuario 
+interactúa con el sistema. 
+Contenido: Representar a través de diagramas de actividades las principales acciones que los 
+usuarios realizan en el sistema. Estos diagramas deben ser consistentes con el Diagrama de 
+Navegabilidad de la interfaz gráfica. Los diagramas deben ir acompañados de texto o tablas 
+que expliquen cada parte del diagrama. 
+Los diagramas a utilizar pueden ser de los siguientes tipos: 
+
+--- Page 8 ---
+ 
+- 
+Diagramas de Actividad 
+- 
+Diagrama BPMN 
+- 
+Diagrama de Estados (del sistema completo) 
+Puede utilizar más de un tipo de diagrama, pero sin ser redundante en la información 
+presentada. Por ejemplo, evite hacer un diagrama de Actividad y uno de Estados que 
+representen las mismas acciones. 
+Referencias: [4] 
+ 
+
+--- Page 9 ---
+7. Diseño Detallado 
+Propósito: Mostrar los detalles más importantes del diseño de bajo nivel del sistema. 
+Contenido: Ver subsecciones 
+7.1. Estructura del Sistema 
+Propósito: Que el desarrollador comprenda los detalles de la estructura de todos los 
+componentes de software del sistema. Proveer una guía para implementar las clases utilizadas 
+en el software. 
+Contenido: Para cada componente de software identificado en la sección 6.2, un diagrama de 
+clases acompañado de texto o tablas que lo expliquen. Todas las clases, métodos y 
+asociaciones deben estar explicados. 
+7.2. Comportamiento del Sistema 
+Propósito: Que el desarrollador entienda los detalles de cómo cambia el sistema en el tiempo. 
+Proveer una guía para implementar los métodos más complejos de las clases del software. 
+Contenido: Para cada acción compleja descrita en la sección 6.3, un diagrama de secuencia, de 
+comunicación o de estados que describa cómo se realiza dicha acción. Dichos diagramas de 
+secuencia deben utilizar instancias y métodos de las clases descritas en 7.1. 
+Incluya diagramas de secuencia sólo para aquellas acciones que sean suficientemente 
+complejas. Por ejemplo, si una acción involucra sólo una o dos llamadas a métodos, no vale la 
+pena describirla en un diagrama. 
+No describa en estos diagramas lo que sucede dentro de las librerías que Ud. utilice y que no 
+sean de su creación. 
+7.3. Persistencia 
+Propósito: Que el desarrollador entienda cómo se van a almacenar los datos del sistema en 
+forma persistente. Proveer una guía para crear las bases de datos, archivos u otros medios de 
+almacenamiento persistentes utilizados por el software. 
+Contenido: Diagramas que describan la forma en que la información será almacenada, ya sea 
+en bases de datos, archivos, etc. Los diagramas que se pueden usar son: Diagramas E-R, 
+Diagramas Relacionales o Diagramas de Clases con estereotipos [5]. Los elementos de los 
+diagramas deben ser descritos en párrafos o tablas. 
+7.4. Interfaz de Usuario 
+Propósito: Que el desarrollador entienda todos los detalles de la interfaz de usuario. 
+Contenido: Diagramas que expliquen las principales pantallas de la interfaz gráfica y la 
+navegación entre ellas. Por ejemplo, diagramas de navegación, diagramas de estado, 
+Diagramas de Flujo de Interfaz de Usuario [6]. Todos los diagramas deben ir acompañados de 
+texto o tablas que expliquen sus componentes 
+
+--- Page 10 ---
+Nota: El concepto de interfaz de usuario es más general que el de interfaz gráfica, por lo cual 
+en una situación real podría ser necesario describir aspectos adicionales al de la interfaz 
+gráfica. Para efectos de esta entrega sólo se le pide especificar esto último. 
+
+--- Page 11 ---
+8. Referencias 
+Indique aquí todas las referencias bibliográficas utilizadas en el documento. Utilice formato 
+IEEE o APA para definirlas. Para administrar automáticamente las referencias, se recomienda el 
+uso de la herramienta Zotero (www.zotero.org). 
+ 
+ 
+ 
+---- 
+Referencias usadas en el formato 
+[1] ISO/IEC/IEEE 42010 
+[2] IEEE Std 1016-2009 
+[3] 
+RUP. 
+Software 
+Architecture 
+Document 
+http://www.ts.mah.se/RUP/RationalUnifiedProcess/webtmpl/templates/a_and_d/rup_sad.ht
+m  
+[4] Philippe Kruchten, Architectural Blueprints—The “4+1” View Model of Software 
+Architecture. http://www.cs.ubc.ca/~gregor/teaching/papers/4+1view-architecture.pdf  
+[5] 
+Scott 
+Ambler, 
+UML 
+Data 
+Modeling 
+Profile. 
+http://www.agiledata.org/essays/umlDataModelingProfile.html  
+[6] 
+Scott 
+Ambler, 
+User 
+Interface 
+Flow 
+Diagrms. 
+http://www.agilemodeling.com/artifacts/uiFlowDiagram.htm  
+

@@ -1,0 +1,432 @@
+Pontificia Universidad Javeriana
+Facultad de Ingenier´ıa - Departamento de Sistemas
+Grupo de Investigaci´on SIDRE
+ESPECIFICACI´ON DE
+REQUERIMIENTOS DE
+SOFTWARE (SRS)
+Sistema de Detecci´on de Ransomware BIW en
+M´aquinas de Anestesia Mindray WATO EX-35
+Autores:
+Gabriel Alejandro Camacho Rivera
+David Santiago Pi˜neros Rodr´ıguez
+Santiago Avila Barbudo
+Director:
+Ing. Jhon Alberto Talero Patiarroyo
+Fecha: 8 de mayo de 2026
+Versi´on del Documento: 4.0 (Final)
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+Historial de Cambios
+Versi´on
+Fecha
+Secci´on
+modifi-
+cada
+Descripci´on de cam-
+bios
+Responsable
+1.0
+Mayo 2026
+Todas
+Creaci´on base del SRS
+(Esqueleto).
+Equipo
+2.0
+Mayo 2026
+2.1, 2.5, 3.2
+Integraci´on t´ecnica Min-
+dray WATO y protocolo
+HL7.
+Gabriel / Da-
+vid
+3.0
+Mayo 2026
+2.2 a 3.6
+Inclusi´on
+de
+Casos
+de
+Uso y Hardening de Se-
+guridad.
+Santiago
+/
+Gabriel
+4.0
+Mayo 2026
+2.1.5, 3.1.4, 3.2
+Expansi´on
+final
+FSM,
+alertas SIEM (Syslog) y
+mantenimiento.
+Equipo
+Tabla 1: Historial de cambios
+1
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+´Indice
+Historial de Cambios
+1
+´Indice
+2
+´Indice de tablas
+4
+1. Introducci´on
+5
+1.1. Prop´osito
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5
+1.2. Alcance
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5
+1.3. Definiciones, Acr´onimos y Abreviaciones . . . . . . . . . . . . . . . . . . . .
+5
+1.4. Referencias
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5
+1.5. Apreciaci´on Global . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+2. Descripci´on Global
+6
+2.1. Perspectiva del Producto . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.1.
+Interfaces con el Sistema y Hardware . . . . . . . . . . . . . . . . . .
+6
+2.1.2.
+Interfaces con el Usuario . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.3.
+Interfaces con el Software
+. . . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.4.
+Interfaces de Comunicaci´on
+. . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.5.
+Restricciones de Memoria
+. . . . . . . . . . . . . . . . . . . . . . . .
+6
+2.1.6.
+Operaciones y Adaptaci´on del Sitio . . . . . . . . . . . . . . . . . . .
+7
+2.2. Funciones del Producto . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.3. Caracter´ısticas del Usuario . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.4. Restricciones
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.5. Modelo del Dominio
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+8
+2.6. Suposiciones y Dependencias . . . . . . . . . . . . . . . . . . . . . . . . . . .
+8
+2.7. Distribuci´on de Requerimientos . . . . . . . . . . . . . . . . . . . . . . . . .
+8
+3. Requerimientos Espec´ıficos
+8
+3.1. Requerimientos de Interfaces Externas
+. . . . . . . . . . . . . . . . . . . . .
+8
+3.1.1.
+Interfaces con el Software
+. . . . . . . . . . . . . . . . . . . . . . . .
+8
+3.1.2.
+Interfaces de Comunicaciones
+. . . . . . . . . . . . . . . . . . . . . .
+8
+3.2. Caracter´ısticas del Producto de Software (Funcionales) . . . . . . . . . . . .
+9
+3.3. Requerimientos de Desempe˜no . . . . . . . . . . . . . . . . . . . . . . . . . .
+9
+3.4. Restricciones de Dise˜no . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+9
+3.5. Atributos del Sistema de Software No Funcionales . . . . . . . . . . . . . . .
+10
+3.5.1.
+Seguridad (Hardening del Nodo IDS) . . . . . . . . . . . . . . . . . .
+10
+3.5.2.
+Portabilidad y Mantenibilidad . . . . . . . . . . . . . . . . . . . . . .
+10
+3.6. Requerimientos de la Base de Datos . . . . . . . . . . . . . . . . . . . . . . .
+10
+4. Proceso de Ingenier´ıa de Requerimientos
+10
+5. Proceso de Verificaci´on
+10
+2
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+6. Anexos y Referencias
+11
+Referencias
+11
+3
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+´Indice de tablas
+1.
+Historial de cambios
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+1
+2.
+Acr´onimos y Definiciones Cl´ınicas . . . . . . . . . . . . . . . . . . . . . . . .
+5
+3.
+CU-01: Detecci´on de Inyecci´on HL7 . . . . . . . . . . . . . . . . . . . . . . .
+7
+4.
+Diccionario del Modelo de Dominio . . . . . . . . . . . . . . . . . . . . . . .
+8
+4
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+1.
+Introducci´on
+1.1.
+Prop´osito
+El prop´osito de este documento es especificar formalmente los requerimientos de software
+y hardware para el controlador embebido de seguridad no intrusivo (Bump-in-the-Wire o
+BIW). Este dispositivo est´a dise˜nado para la detecci´on temprana de ataques de ransomware
+y Amenazas Persistentes Avanzadas (APT). El proyecto utiliza la m´aquina de anestesia
+Mindray WATO EX-35 como plataforma experimental, interceptando y analizando el
+est´andar m´edico HL7.
+1.2.
+Alcance
+El sistema contempla el desarrollo de un motor de an´alisis determinista (sin emplear
+modelos estoc´asticos de IA/ML para evitar latencias altas) y un m´odulo de recolecci´on forense
+cross-layer. El dispositivo operar´a a nivel f´ısico entre la interfaz de red del WATO EX-
+35 y la red hospitalaria. Su funci´on es detectar inyecciones de comandos no autorizados o
+manipulaciones tipo Man-in-the-Middle (MitM) en los segmentos OBX (ObservationResult).
+El alcance excluye la modificaci´on de la red IT general del hospital y la alteraci´on del firmware
+original del ventilador.
+1.3.
+Definiciones, Acr´onimos y Abreviaciones
+Acr´onimo
+Definici´on
+ADR
+Anomaly Detection Rate (Tasa de Detecci´on de Anomal´ıas).
+BIW
+Bump-in-the-Wire (Arquitectura pasiva de intercepci´on de red).
+CPS
+Cyber-Physical Systems (Sistemas Ciberf´ısicos).
+HL7
+Health Level 7 (Est´andar de interoperabilidad cl´ınica).
+MitM
+Man-in-the-Middle (Ataque de intermediario en la red).
+ORU/OBX
+Segmentos HL7 para Transmisi´on de Resultados de Observaci´on M´edica.
+PEEP
+Positive End-Expiratory Pressure (Presi´on Positiva Final Espiratoria).
+SIEM
+Security Information and Event Management.
+Tabla 2: Acr´onimos y Definiciones Cl´ınicas
+1.4.
+Referencias
+Plan de Administraci´on de Proyecto (SPMP) V1.0 - Grupo SIDRE.
+Propuesta de Proyecto de Grado - Sistema de Detecci´on de Ransomware.
+An´alisis T´ecnico del Mindray WATO EX-35 - V1.
+IEC 62443, NIST SP 800-82, IEEE 2802-2022.
+5
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+1.5.
+Apreciaci´on Global
+El documento se divide en: la Secci´on 2, que describe el entorno general de operaci´on,
+perfiles de usuario y el modelo de dominio; la Secci´on 3, que detalla de forma at´omica los
+requerimientos funcionales y no funcionales; y las Secciones 4 a 6, referentes a los procesos
+de validaci´on aplicables en el entorno cl´ınico del Hospital Universitario San Ignacio (HUSI).
+2.
+Descripci´on Global
+2.1.
+Perspectiva del Producto
+El sistema es un producto biom´edico de seguridad clasificado en la capa Edge Computing.
+Soluciona el punto ciego de seguridad existente en el Nivel 1 del Modelo Purdue de arquitec-
+turas ICS/OT, protegiendo dispositivos ¸caja negra”que carecen de antivirus o cifrado TLS
+nativo.
+2.1.1.
+Interfaces con el Sistema y Hardware
+El nodo IDS estar´a conectado como puente f´ısico transparente (Bridge Layer 2) entre
+el Mindray WATO EX-35 y la red de ´area local (LAN) del quir´ofano/UCI. Se emplear´a
+hardware ARM (Raspberry Pi 4 8GB o Jetson Nano) con bajo consumo energ´etico (< 5W).
+Se requiere un adaptador USB a Ethernet adicional para lograr la topolog´ıa de puente.
+2.1.2.
+Interfaces con el Usuario
+El usuario (analista) interactuar´a mediante un panel de L´ınea de Comandos (CLI) de
+acceso seguro (SSH) para la configuraci´on inicial y la extracci´on de logs forenses. No se
+implementar´a interfaz gr´afica (GUI) en el propio nodo para ahorrar recursos.
+2.1.3.
+Interfaces con el Software
+Se utilizar´a libpcap (C/C++) o su envoltura scapy/pyshark (Python) enlazado a nivel
+de Kernel para la intercepci´on de sockets crudos (raw sockets). El sistema operativo base
+ser´a un Linux optimizado (RTOS o servidor minimalista).
+2.1.4.
+Interfaces de Comunicaci´on
+La comunicaci´on capturada operar´a sobre la pila TCP/IPv4 y UDP. El analizador de
+protocolos (DPI) procesar´a espec´ıficamente los mensajes HL7 ORUˆR01 y el protocolo de
+tiempo SNTP, ignorando el resto para maximizar la velocidad.
+2.1.5.
+Restricciones de Memoria
+El motor l´ogico FSM no utilizar´a estructuras de memoria din´amica de alto consumo. El
+consumo del demonio analizador no deber´a exceder de 2 GB de RAM para evitar la activaci´on
+del OOM Killer del sistema operativo Linux.
+6
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+2.1.6.
+Operaciones y Adaptaci´on del Sitio
+Operaci´on ininterrumpida (24/7). Para pruebas, el sistema se adaptar´a a un Sandbox
+aislado en el Centro de Simulaci´on del HUSI, utilizando ”pulmones de prueba.artificiales
+para evitar riesgos bio´eticos.
+2.2.
+Funciones del Producto
+Nombre CU
+CU-01: Detecci´on de Inyecci´on de Comandos (MitM)
+Actor
+Motor BIW (Sistema), Atacante (Ransomware/Actor Externo).
+Precondici´on
+WATO EX-35 en Estado S1 (Ventilaci´on Normal). BIW en modo
+escucha.
+Flujo Normal
+1. El atacante intercepta el tr´afico HL7 no cifrado de la red.
+2. El atacante inyecta un segmento OBX alterando la variable
+PEEP a niveles incompatibles con la vida (ej. > 30cmH2O).
+3. El nodo BIW captura la trama en tiempo real y parsea el pay-
+load.
+4. El motor FSM compara el valor OBX con el l´ımite de la Re-
+gla Clinica.
+5. El sistema detecta la violaci´on determinista y cambia a Estado
+S3 (An´omalo).
+6. El nodo emite una trampa Syslog al SIEM y guarda el
+Pcap Dump.
+Postcondici´on
+El evento queda registrado de forma inmutable con su hash. El
+flujo de red no se interrumpe (Fail-Open).
+Tabla 3: CU-01: Detecci´on de Inyecci´on HL7
+2.3.
+Caracter´ısticas del Usuario
+Ingeniero Cl´ınico / Analista de Ciberseguridad OT: Personal con conocimientos
+avanzados en administraci´on de sistemas Unix, ciberseguridad industrial, est´andares forenses
+y protocolos m´edicos.
+2.4.
+Restricciones
+Restricciones M´edicas: Queda estrictamente prohibida la alteraci´on del c´odigo fuen-
+te interno del Mindray WATO EX-35.
+Restricciones L´ogicas: Se proh´ıbe la inclusi´on de algoritmos de Machine Learning
+en la ruta cr´ıtica de evaluaci´on debido a la opacidad de los modelos y sus latencias
+estoc´asticas asociadas (30-50 ms).
+7
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+2.5.
+Modelo del Dominio
+ID
+Entidad
+Atributos
+Dato
+Objetivo
+MD-01
+Paquete HL7
+MAC Src,
+Pay-
+load OBX, Msg Type
+String
+Representa la trama de
+red interceptada.
+MD-02
+Estado FSM
+Estado Actual (S0-S3)
+Int
+Controla la m´aquina de
+estados del ventilador.
+MD-03
+Regla Clinica
+Parametro, Rango Min,
+Rango Max
+Float
+Define el Tolerance En-
+velope fisiol´ogico.
+MD-04
+Evidencia Log
+Hash SHA256,
+Pcap,
+Tipo Alerta
+File
+Almacena la evidencia
+inmutable del ataque.
+Tabla 4: Diccionario del Modelo de Dominio
+2.6.
+Suposiciones y Dependencias
+Suposiciones: El protocolo HL7 v2.x transmitido por el equipo biom´edico de pruebas
+no estar´a enmascarado ni cifrado mediante TLS/VPN. Dependencias: El proyecto depende
+fuertemente del acceso al entorno Sandbox provisto por el HUSI.
+2.7.
+Distribuci´on de Requerimientos
+Los requerimientos se implementar´an en tres grandes bloques arquitect´onicos:
+1. Intercepci´on de Red: Gesti´on de interfaces, captura de paquetes y hardware Bump-
+in-the-Wire.
+2. Evaluaci´on Determinista: Motor de Deep Packet Inspection (DPI) y validaci´on FSM.
+3. Forense y Alerta: Generaci´on de Syslogs y custodia de hashes.
+3.
+Requerimientos Espec´ıficos
+3.1.
+Requerimientos de Interfaces Externas
+3.1.1.
+Interfaces con el Software
+SW-01: El sistema emplear´a acceso a nivel de raw sockets usando las librer´ıas base de
+red del Kernel de Linux.
+3.1.2.
+Interfaces de Comunicaciones
+COM-01 (Syslog/SIEM): El sistema debe ser capaz de emitir notificaciones de segu-
+ridad hacia una direcci´on IP configurada (SIEM) a trav´es del puerto UDP 514 (Syslog) cada
+vez que el motor pase a estado S3.
+8
+Creado por: Grupo SIDRE - Ingenier´ıa de Sistemas PUJ
+SRS
+3.2.
+Caracter´ısticas del Producto de Software (Funcionales)
+ID Req.
+RF-01: Intercepci´on BIW (Fail-Open)
+Descripci´on El sistema debe enlazar l´ogicamente las interfaces (eth0, eth1). En caso
+de fallo cr´ıtico de software (Ej. Kernel Panic), el componente de red debe
+permitir un Fail-Open que asegure la continuidad de transmisi´on de datos
+vitales entre el ventilador y la central.
+Prioridad
+Cr´ıtica.
+ID Req.
+RF-02: DPI sobre HL7 (Texto Plano)
+Descripci´on El analizador debe localizar los mensajes ORU^R01 y extraer los valores de
+presi´on y volumen (OBX) contenidos en el payload, discriminando r´apida-
+mente paquetes innecesarios.
+Prioridad
+Alta.
+ID Req.
+RF-03: Validaci´on Determinista en M´aquina de Estados (FSM)
+Descripci´on El motor debe validar las secuencias de estado: Standby (S0) →Normal
+(S1) ↔Alarma (S2). Transiciones imposibles sin mediaci´on f´ısica o datos
+fuera del umbral (Tolerance Envelope) forzar´an el Estado de Ataque (S3).
+Prioridad
+Alta.
+ID Req.
+RF-04: Cadena de Custodia Inmutable (Forense)
+Descripci´on Al activarse una anomal´ıa, el sistema debe volcar un archivo .pcap de la
+ventana de red, firmarlo con un algoritmo hash (SHA-256) y registrar el
+evento con la estampa de tiempo SNTP sincronizada.
+Prioridad
+Media.
+3.3.
+Requerimientos de Desempe˜no
+RD-01 (Latencia): El proceso de evaluar un paquete HL7, desde su ingreso a eth0
+hasta su env´ıo por eth1, no debe superar el orden de microsegundos (≤500µs).
+RD-02 (Eficacia): El Anomaly Detection Rate (ADR) debe ser ≥90 % bajo inyec-
+ciones de prueba basadas en el framework MITRE ATT&CK (Ej. T´ecnica T0855).
+3.4.
+Restricciones de Dise˜no
+RES-01: El c´odigo debe ser optimizado en C/C++ o Python con rutinas precompila-
+das (Ej. Cython o librer´ıas C nativas) para ajustarse a la capacidad de procesamiento de
+procesadores ARM.
+9
