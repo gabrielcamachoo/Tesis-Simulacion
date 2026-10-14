@@ -92,3 +92,54 @@ class TestLatencyBenchSmoke:
         assert rep["threshold_us"] == 500.0
         assert rep["verdict_p95_vs_threshold"] in ("PASS", "FAIL")
         assert rep["entorno"]["es_raspberry_pi"] is False
+
+
+class TestRunMatrix:
+    def test_wilson_ci_perfecto(self):
+        from run_matrix import wilson_ci
+        lo, hi = wilson_ci(30, 30)
+        assert 0.85 < lo < 1.0
+        assert hi == 1.0
+
+    def test_wilson_ci_cero(self):
+        from run_matrix import wilson_ci
+        lo, hi = wilson_ci(0, 30)
+        assert lo == 0.0
+        assert 0.0 < hi < 0.2
+
+    def test_wilson_ci_n_cero(self):
+        from run_matrix import wilson_ci
+        assert wilson_ci(0, 0) == (0.0, 1.0)
+
+    def test_wilson_ci_parcial(self):
+        from run_matrix import wilson_ci
+        lo, hi = wilson_ci(27, 30)  # 90%
+        assert 0.70 < lo < 0.95 < hi < 1.0
+
+    def test_aggregate_suma_y_adr(self, tmp_path):
+        from run_matrix import aggregate
+        ev1 = {"tp": 5, "fp": 0, "fn": 1, "tn": 2, "injections_total": 6,
+               "alerts_total": 5, "normal_messages": 2,
+               "per_scenario": {"A01": {"name": "x", "expected_rule": "R-ID-001",
+                                        "mitre_ics": "T1", "injected": 3,
+                                        "detected": 3, "missed": 0},
+                                "A02": {"name": "y", "expected_rule": "R-SEQ-001",
+                                        "mitre_ics": "T1", "injected": 3,
+                                        "detected": 2, "missed": 1}}}
+        ev2 = dict(ev1)
+        (tmp_path / "a").mkdir()
+        (tmp_path / "b").mkdir()
+        import json
+        (tmp_path / "a" / "evaluation.json").write_text(json.dumps(ev1))
+        (tmp_path / "b" / "evaluation.json").write_text(json.dumps(ev2))
+        agg = aggregate([tmp_path / "a", tmp_path / "b"])
+        assert agg["global"]["tp"] == 10
+        assert agg["global"]["fn"] == 2
+        assert agg["global"]["injections"] == 12
+        assert abs(agg["global"]["adr"] - 10 / 12) < 1e-9
+        a01 = agg["per_scenario"]["A01"]
+        assert a01["injected"] == 6 and a01["detected"] == 6
+        assert a01["adr"] == 1.0 and a01["meets_90"] is True
+        a02 = agg["per_scenario"]["A02"]
+        assert a02["injected"] == 6 and a02["detected"] == 4
+        assert a02["adr"] < 0.90 and a02["meets_90"] is False

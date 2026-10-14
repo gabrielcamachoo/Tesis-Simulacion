@@ -161,6 +161,8 @@ def main() -> int:
     out = Path(args.out) if args.out else (
         ROOT / "analysis_output" / "validation" /
         f"latency_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    if not out.is_absolute():
+        out = ROOT / out
     out.parent.mkdir(parents=True, exist_ok=True)
 
     if args.config:
