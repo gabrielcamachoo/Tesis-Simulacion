@@ -45,8 +45,8 @@ DEFAULT_RULES = [
         description="Aplicación emisora (MSH-3) no incluida en baseline",
         category="ID",
         default_severity="HIGH",
-        mitre_technique="T0855",
-        mitre_justification="Suplantación de identidad lógica del dispositivo médico",
+        mitre_technique="T1692.002",
+        mitre_justification="Mensaje de reporte con aplicación emisora no autorizada (ATT&CK ICS v20 T1692.002 Reporting Message; sustituye a T0855)",
         limitations="Solo detecta valores no en baseline; no valida autenticidad criptográfica"
     ),
     Rule(
@@ -55,8 +55,8 @@ DEFAULT_RULES = [
         description="Institución emisora (MSH-4) no incluida en baseline",
         category="ID",
         default_severity="MEDIUM",
-        mitre_technique="T0855",
-        mitre_justification="Suplantación de institución/origen organizacional",
+        mitre_technique="T1692.002",
+        mitre_justification="Mensaje de reporte con institución emisora no autorizada (T1692.002; sustituye a T0855)",
         limitations="MSH-4 a menudo vacío en WATO; baja discriminación"
     ),
     Rule(
@@ -65,8 +65,8 @@ DEFAULT_RULES = [
         description="IP de origen TCP no permitida",
         category="NET",
         default_severity="HIGH",
-        mitre_technique="T0855",
-        mitre_justification="Conexión desde host no autorizado (MITRE T0855: Unauthorized Command Message)",
+        mitre_technique="T1692.002",
+        mitre_justification="Mensaje desde host fuera del baseline (T1692.002, analítica AN2044; sustituye a T0855)",
         limitations="IP spoofing posible en redes sin autenticación L2"
     ),
     Rule(
@@ -75,8 +75,8 @@ DEFAULT_RULES = [
         description="Framing MLLP inválido (delimitadores, longitud, estructura)",
         category="MLLP",
         default_severity="HIGH",
-        mitre_technique="T0887",
-        mitre_justification="Manipulación de framing para evasión de parser o DoS",
+        mitre_technique="T1692.002",
+        mitre_justification="Trama MLLP no autorizada para evadir el parser (T1692 cubre evasión; T0887 es Wireless Sniffing)",
         limitations="Solo valida estructura básica; no detecta todos los casos de fragmentación maliciosa"
     ),
     Rule(
@@ -85,8 +85,8 @@ DEFAULT_RULES = [
         description="Mensaje sin segmento MSH",
         category="HL7",
         default_severity="HIGH",
-        mitre_technique="T0887",
-        mitre_justification="Mensaje malformado para evasión o corrupción",
+        mitre_technique="T1692.002",
+        mitre_justification="Mensaje de reporte no autorizado malformado, sin MSH (T1692.002)",
         limitations="Parser ya requiere MSH; detección redundante con parsing"
     ),
     Rule(
@@ -95,8 +95,8 @@ DEFAULT_RULES = [
         description="Tipo de mensaje (MSH-9) no en baseline",
         category="HL7",
         default_severity="HIGH",
-        mitre_technique="T0857",
-        mitre_justification="Inyección de tipo de mensaje no autorizado (ADT, ORM, etc.)",
+        mitre_technique="T1692.002",
+        mitre_justification="Inyección de tipo de mensaje no autorizado (ADT, ORM) (T1692.002; T0857 hoy redirige a Modify Firmware)",
         limitations="Baseline solo tiene ORU^R01; otros tipos legítimos podrían aparecer en RUNNING"
     ),
     Rule(
@@ -105,8 +105,8 @@ DEFAULT_RULES = [
         description="Secuencia de segmentos HL7 no permitida",
         category="HL7",
         default_severity="HIGH",
-        mitre_technique="T0887",
-        mitre_justification="Reordenación maliciosa de segmentos (ej. OBX antes de MSH)",
+        mitre_technique="T1692.002",
+        mitre_justification="Reordenación maliciosa de segmentos en mensaje de reporte (T1692.002; T0887 es Wireless Sniffing)",
         limitations="Baseline STANDBY tiene secuencia fija; RUNNING puede variar"
     ),
     Rule(
@@ -115,8 +115,8 @@ DEFAULT_RULES = [
         description="Message Control ID (MSH-10) duplicado en sesión",
         category="SEQ",
         default_severity="HIGH",
-        mitre_technique="T0860",
-        mitre_justification="Replay attack o duplicación de mensaje",
+        mitre_technique="T1692.002",
+        mitre_justification="Duplicación de mensaje de reporte no autorizado (T1692.002; T0860 es Wireless Compromise)",
         limitations="WATO usa contador monotónico; reinicio de sesión puede resetear"
     ),
     Rule(
@@ -125,8 +125,8 @@ DEFAULT_RULES = [
         description="Replay detectado por hash de contenido normalizado",
         category="SEQ",
         default_severity="HIGH",
-        mitre_technique="T0860",
-        mitre_justification="Reenvío de mensaje previo con MCID distinto pero mismo contenido",
+        mitre_technique="T1692.002",
+        mitre_justification="Replay de mensaje de reporte (T1692.002; mitigación M0802 Communication Authenticity; T0860 es Wireless Compromise)",
         limitations="Normalización excluye timestamp y MCID; variaciones legítimas no detectadas"
     ),
     Rule(
@@ -135,8 +135,8 @@ DEFAULT_RULES = [
         description="Timestamp HL7 (MSH-7) regresivo respecto al anterior",
         category="TIME",
         default_severity="MEDIUM",
-        mitre_technique="T0887",
-        mitre_justification="Manipulación temporal para evasión o confusión forense",
+        mitre_technique="T1692.002",
+        mitre_justification="Contenido temporal manipulado en mensaje de reporte (T1692.002; T0887 es Wireless Sniffing)",
         limitations="Reloj WATO tiene offset +17min10s; usar timestamp de red para correlación"
     ),
     Rule(
@@ -155,8 +155,8 @@ DEFAULT_RULES = [
         description="Código OBX-3 no en baseline observado",
         category="OBX",
         default_severity="HIGH",
-        mitre_technique="T0831",
-        mitre_justification="Inyección de parámetro de observación no autorizado (MITRE T0831: Manipulate I/O Image)",
+        mitre_technique="T1692.002",
+        mitre_justification="Código de observación no autorizado en telemetría (T1692.002; T0831 exige control físico, no aplica)",
         limitations="Baseline STANDBY solo 4 códigos CWE; RUNNING tiene ~23 códigos NM/SN no verificados"
     ),
     Rule(
@@ -165,8 +165,8 @@ DEFAULT_RULES = [
         description="Unidad OBX-6 no permitida",
         category="OBX",
         default_severity="MEDIUM",
-        mitre_technique="T0831",
-        mitre_justification="Manipulación de unidades de medida",
+        mitre_technique="T1692.002",
+        mitre_justification="Unidades de medida falsificadas en telemetría (T1692.002; T0831 no aplica)",
         limitations="STANDBY usa CWE (sin unidades); unidades RUNNING NO_VERIFICADO"
     ),
     Rule(
@@ -175,8 +175,8 @@ DEFAULT_RULES = [
         description="Tipo de dato OBX-2 incompatible con baseline",
         category="OBX",
         default_severity="HIGH",
-        mitre_technique="T0831",
-        mitre_justification="Cambio de tipo de dato (ej. NM en campo CWE) para corrupción",
+        mitre_technique="T1692.002",
+        mitre_justification="Tipo de dato corrompido en mensaje de reporte (T1692.002; T0831 no aplica)",
         limitations="STANDBY solo CWE; RUNNING NM/SN NO_VERIFICADO"
     ),
     Rule(
@@ -185,8 +185,8 @@ DEFAULT_RULES = [
         description="Transición FSM no permitida (SIN_GATEWAY→HANDSHAKE→ESTABLECIDA)",
         category="STATE",
         default_severity="HIGH",
-        mitre_technique="T0869",
-        mitre_justification="Secuencia anómala de establecimiento de sesión (MITRE T0869: Connection Proxy)",
+        mitre_technique="T1692.002",
+        mitre_justification="Cambio inválido de estado de sesión (T1692.002, analítica AN2045; T0869 es Standard Application Layer Protocol)",
         limitations="FSM inferido de 1 captura; transiciones RUNNING/ALARM NO_VERIFICADO"
     ),
 ]

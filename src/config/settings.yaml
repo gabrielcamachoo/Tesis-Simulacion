@@ -294,77 +294,77 @@ anomaly_generator:
       name: "unknown_logical_source"
       description: "Fuente lógica desconocida en MSH-3/MSH-4"
       threat: "Suplantación de identidad (Spoofing)"
-      mitre_ics: "T0855"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 10
     A02:
       name: "duplicate_control_id"
       description: "Message Control ID duplicado"
       threat: "Replay / Duplicación"
-      mitre_ics: "T0860"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 10
     A03:
       name: "replay_synthetic_message"
       description: "Replay de mensaje sintético previo"
       threat: "Replay attack"
-      mitre_ics: "T0860"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 10
     A04:
       name: "regressive_timestamp"
       description: "Timestamp regresivo en MSH-7"
       threat: "Manipulación temporal"
-      mitre_ics: "T0887"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 10
     A05:
       name: "missing_final_delimiter"
       description: "Mensaje MLLP sin delimitador final (0x1C 0x0D)"
       threat: "Framing inválido / DoS parser"
-      mitre_ics: "T0887"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 5
     A06:
       name: "unexpected_bytes_before_start"
       description: "Bytes inesperados antes del delimitador inicial (0x0B)"
       threat: "Framing inválido / Evasión parser"
-      mitre_ics: "T0887"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 5
     A07:
       name: "missing_msh_segment"
       description: "Segmento MSH ausente"
       threat: "Mensaje malformado"
-      mitre_ics: "T0887"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 5
     A08:
       name: "invalid_segment_order"
       description: "Orden de segmentos inválido (ej. OBX antes de MSH)"
       threat: "Mensaje malformado"
-      mitre_ics: "T0887"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 5
     A09:
       name: "unknown_message_type"
       description: "Tipo de mensaje no en baseline (ej. ADT^A01, ORM^O01)"
       threat: "Inyección tipo mensaje no autorizado"
-      mitre_ics: "T0857"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 10
     A10:
       name: "synthetic_obx_unexpected_datatype"
       description: "Campo OBX sintético con tipo de dato inesperado (ej. NM en CWE)"
       threat: "Manipulación datos observación"
-      mitre_ics: "T0831"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 10
     A11:
       name: "synthetic_obx_unauthorized_unit"
       description: "Unidad sintética no autorizada en OBX-6"
       threat: "Manipulación unidades de medida"
-      mitre_ics: "T0831"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 10
     A12:
@@ -380,7 +380,7 @@ anomaly_generator:
       name: "repeated_reconnections"
       description: "Reconexiones repetidas con máximo bajo y cooldown"
       threat: "Connection flooding / Resource exhaustion"
-      mitre_ics: "T0869"
+      mitre_ics: "T0814"
       enabled: true
       safety_limit: 5
       max_reconnects: 5
@@ -389,7 +389,7 @@ anomaly_generator:
       name: "delayed_or_missing_ack"
       description: "ACK retrasado o ausente desde el emulador"
       threat: "Degradación canal / DoS parcial"
-      mitre_ics: "T0869"
+      mitre_ics: "T0814"
       enabled: true
       safety_limit: 10
       ack_delay_seconds: 5
@@ -405,7 +405,7 @@ anomaly_generator:
       name: "logical_identity_change_mid_session"
       description: "Cambio de identidad lógica (MSH-3/4) durante sesión"
       threat: "Suplantación / Session hijacking"
-      mitre_ics: "T0855"
+      mitre_ics: "T1692.002"
       enabled: true
       safety_limit: 5
 
