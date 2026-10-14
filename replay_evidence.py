@@ -149,20 +149,30 @@ def start_receiver(run_dir: Path, port: int):
 
 
 def count_alerts(run_dir: Path):
+    """Devuelve (fp, por_regla_fp, normales) — fp = eventos con rule_id != NORMAL.
+
+    El motor escribe un evento por mensaje: NORMAL (severity INFO) si ninguna
+    regla disparó; si no, la(s) alerta(s). Solo lo no-NORMAL cuenta como
+    anomalía (consistente con evaluate.py, que trata NORMAL como TN fuente).
+    """
     p = run_dir / "alerts" / "alerts.jsonl"
     if not p.exists():
-        return 0, {}
-    total = 0
+        return 0, {}, 0
+    fp = 0
+    normals = 0
     by_rule = {}
     for line in p.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
             continue
         rec = json.loads(line)
-        total += 1
         rid = rec.get("rule_id", "?")
+        if rid == "NORMAL" or rec.get("label") == "NORMAL":
+            normals += 1
+            continue
+        fp += 1
         by_rule[rid] = by_rule.get(rid, 0) + 1
-    return total, by_rule
+    return fp, by_rule, normals
 
 
 def parse_args():
@@ -250,7 +260,7 @@ def main() -> int:
             recv_log.close()
     elapsed = round(time.monotonic() - t0, 1)
 
-    alerts_total, alerts_by_rule = count_alerts(outdir)
+    alerts_fp, alerts_by_rule, normals = count_alerts(outdir)
     expectativa = ("FP = 0 (corpus benigno STANDBY, protocolo §3.2)"
                    if args.label.upper() == "STANDBY" else
                    "FP reportados sin umbral (códigos NM/SN NO_VERIFICADOS, "
@@ -275,8 +285,10 @@ def main() -> int:
         "receiver_spawned": args.start_receiver,
         "elapsed_s": elapsed,
         "error": error,
-        "alertas_totales": alerts_total,
+        "alertas_totales": alerts_fp,
         "alertas_por_regla": alerts_by_rule,
+        "eventos_normales": normals,
+        "eventos_totales": alerts_fp + normals,
         "expectativa": expectativa,
         "entorno": {
             "python": sys.version.split()[0],
@@ -287,8 +299,9 @@ def main() -> int:
     (outdir / "replay_manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print(f"Enviados: {sent}/{len(flat)} | alertas (FP): {alerts_total} "
-          f"{alerts_by_rule if alerts_by_rule else ''}", flush=True)
+    print(f"Enviados: {sent}/{len(flat)} | anomalías (FP): {alerts_fp} "
+          f"{alerts_by_rule if alerts_by_rule else ''} | normales: {normals}",
+          flush=True)
     print(f"Manifiesto: {outdir.relative_to(ROOT)}/replay_manifest.json")
     if error:
         print(f"ERROR durante replay: {error}", file=sys.stderr)
