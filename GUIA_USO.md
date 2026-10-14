@@ -133,6 +133,7 @@ $env:LAB_AUTHORIZED = "YES"
 # Terminal 2 — emulador benigno (10 msg, 1 por segundo por defecto)
 $env:LAB_AUTHORIZED = "YES"
 .venv\Scripts\python.exe wato_emulator.py --host 127.0.0.1 --port 1550 --count 10 --interval 1.0
+# (--interval 1.0 para verlo ágil; el default del emulador es 10 s, como la evidencia)
 
 # Terminal 3 — ver los eventos en vivo
 Get-Content runs\manual\alerts\alerts.jsonl -Wait

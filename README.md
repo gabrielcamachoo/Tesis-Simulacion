@@ -28,8 +28,11 @@ docker-compose.yml  Topología de laboratorio (requiere Docker Desktop).
 
 Documentos de fase (raíz): THREAT_MODEL.md, ETHICS_AND_SAFETY.md,
 LAB_ARCHITECTURE.md, ATTACK_SCENARIOS.md, VALIDATION_PROTOCOL.md,
-RESULTS_TEMPLATE.md, LIMITATIONS.md, TRACEABILITY_MATRIX.csv,
-EVIDENCE_ANALYSIS.md, RASPBERRY_PI_SETUP.md.
+RESULTS_TEMPLATE.md, RESULTS_20261014.md, LIMITATIONS.md,
+TRACEABILITY_MATRIX.csv, EVIDENCE_ANALYSIS.md, RASPBERRY_PI_SETUP.md.
+
+**Guía práctica paso a paso (cómo ejecutar y entender todo): `GUIA_USO.md`.**
+Historial de desarrollo y pendientes: `HANDOFF.md`.
 ```
 
 ## Requisitos
@@ -91,12 +94,17 @@ docker compose --profile anomalies run --rm anomaly-generator
   baseline trazable, anonimización por defecto.
 - **Fase 3** ✅ documentación: threat model, ética, arquitectura, escenarios A01–A16
   con técnicas ATT&CK ICS v20 verificadas (2026-10-13) y matriz de trazabilidad al SRS.
-- **Fase 2** ✅ emulador, generador A01–A16 y evaluador; 161 pruebas automatizadas.
+- **Fase 2** ✅ emulador, generador A01–A16 y evaluador; 179 pruebas automatizadas.
 - **Fase 4** ✅ orquestador `run_experiment.py` end-to-end en modo local
-  (2026-10-14: 67/67 inyecciones, recall=1.0, fp=0) y en modo docker
-  (2026-10-14: 64/64 con `--exclude A14`, recall=1.0, fp=0; evidencia en
-  named volume `lab_output` copiada al host con `docker compose cp`).
-- **Pendiente externo:** ejecución en Raspberry Pi (Fase 6, guía en
-  `RASPBERRY_PI_SETUP.md`) y Fase 9 (corridas con repetición).
-- **NO VERIFICADO:** H1 (ADR ≥ 90 %) y H2 (≤ 500 µs) hasta la Fase 9 (corridas
-  con repetición y en la Pi; lo anterior es solo validación del pipeline).
+  (67/67 inyecciones, recall=1.0, fp=0) y en modo docker (64/64 con `--exclude A14`;
+  evidencia en named volume `lab_output` copiada al host con `docker compose cp`).
+- **Fase 6** ✅ guía de montaje `RASPBERRY_PI_SETUP.md`; la ejecución en el hardware
+  Pi sigue pendiente (recurso externo).
+- **Fase 9** ✅ validación en PC (2026-10-14, `RESULTS_20261014.md`):
+  - **H1 ACEPTADA**: ADR 100 % en 16/16 escenarios (60 corridas selladas,
+    IC95 Wilson global [99.8, 100.0], precisión 99.7 %).
+  - **H2**: PASS de referencia en PC (p95 177.5 µs ≪ 500 µs); **NO VERIFICADO en
+    Pi** hasta repetir el bench allí.
+  - **H3**: replay STANDBY FP = 0 (×5); RUNNING = 256 alertas "fuera de baseline"
+    (×3, determinista; baseline unimodal STANDBY — documentado, sin umbral).
+  - Evidencia sellada: `analysis_output/validation/SHA256SUMS.txt` (314 archivos).
