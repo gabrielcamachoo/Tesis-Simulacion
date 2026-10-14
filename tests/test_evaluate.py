@@ -17,7 +17,7 @@ from evaluate import (
     Injection, AlertRecord, load_ground_truth, load_alerts,
     match_injections, compute_metrics, percentile, evaluate,
     format_report, run_from_dir, parse_expected_counts,
-    compute_throughput, compute_message_loss,
+    compute_throughput, compute_message_loss, count_received_messages,
 )
 
 
@@ -232,11 +232,39 @@ class TestFileIO:
         (run / "seed.txt").write_text(
             "seed_base=100001\nbenign_count=4\nanomaly_count=2\ninterval=6\n",
             encoding="utf-8")
+        (run / "ground_truth.jsonl").write_text(
+            '{"injection_id":"INJ-1"}\n{"injection_id":"INJ-2"}\n',
+            encoding="utf-8")
         counts = parse_expected_counts(run)
-        assert counts == {"benign": 4, "anomaly": 2}
+        # benign*2 (dos fases benignas del protocolo) + inyecciones GT
+        assert counts == {"benign": 8, "injections": 2, "expected_total": 10}
+
+    def test_parse_expected_counts_fallback_anomaly(self, tmp_path):
+        run = tmp_path / "run1"
+        run.mkdir()
+        (run / "seed.txt").write_text(
+            "seed_base=100001\nbenign_count=4\nanomaly_count=2\n",
+            encoding="utf-8")
+        counts = parse_expected_counts(run)
+        assert counts["expected_total"] == 8 + 2
 
     def test_parse_expected_counts_missing(self, tmp_path):
         assert parse_expected_counts(tmp_path) is None
+
+    def test_count_received_messages(self, tmp_path):
+        run = tmp_path / "run1"
+        (run / "hl7").mkdir(parents=True)
+        (run / "hl7" / "messages_a.hl7").write_text(
+            "### 2026-10-14 10:00:00 | msg 1 | 100 bytes\nMSH|...\n"
+            "### 2026-10-14 10:00:01 | msg 2 | 100 bytes\nMSH|...\n",
+            encoding="utf-8")
+        (run / "hl7" / "messages_b.hl7").write_text(
+            "### 2026-10-14 10:00:02 | msg 1 | 100 bytes\nMSH|...\n",
+            encoding="utf-8")
+        assert count_received_messages(run) == 3
+
+    def test_count_received_messages_missing(self, tmp_path):
+        assert count_received_messages(tmp_path) is None
 
     def test_compute_throughput(self):
         from datetime import datetime
@@ -252,24 +280,33 @@ class TestFileIO:
         assert compute_throughput([], 5)["window_s"] == 0.0
 
     def test_compute_message_loss_calculable(self):
-        loss = compute_message_loss({"benign": 4, "anomaly": 2},
+        loss = compute_message_loss({"expected_total": 10}, received=9,
                                     normal_count=6, alerts_total=2)
         assert loss["calculable"] == 1
-        assert loss["expected"] == 6
-        assert loss["received"] == 8
+        assert loss["expected"] == 10
+        assert loss["received"] == 9
+        assert loss["lost"] == 1
+        assert loss["loss_rate"] == pytest.approx(0.1, abs=0.001)
+        assert loss["source"] == "hl7"
+
+    def test_compute_message_loss_no_lost(self):
+        loss = compute_message_loss({"expected_total": 10}, received=12,
+                                    normal_count=3, alerts_total=2)
         assert loss["lost"] == 0
         assert loss["loss_rate"] == 0.0
 
-    def test_compute_message_loss_with_lost(self):
-        loss = compute_message_loss({"benign": 4, "anomaly": 2},
-                                    normal_count=3, alerts_total=2)
-        assert loss["lost"] == 1
-        assert loss["loss_rate"] == pytest.approx(1 / 6, abs=0.001)
+    def test_compute_message_loss_fallback_estimado(self):
+        loss = compute_message_loss({"expected_total": 10}, received=None,
+                                    normal_count=6, alerts_total=2)
+        assert loss["received"] == 8
+        assert loss["lost"] == 2
+        assert loss["source"] == "estimado"
 
     def test_compute_message_loss_not_calculable(self):
-        loss = compute_message_loss(None, normal_count=6, alerts_total=2)
+        loss = compute_message_loss(None, received=7,
+                                    normal_count=6, alerts_total=2)
         assert loss["calculable"] == 0
-        assert loss["received"] == 8
+        assert loss["received"] == 7
         assert "lost" not in loss
 
     def test_evaluate_includes_throughput_and_loss(self):
@@ -279,11 +316,13 @@ class TestFileIO:
         ts = [datetime(2026, 10, 13, 10, 0, 0),
               datetime(2026, 10, 13, 10, 0, 10)]
         res = evaluate(ins, als, normal_count=5, timestamps=ts,
-                       expected_counts={"benign": 5, "anomaly": 1})
+                       expected_counts={"expected_total": 10},
+                       received_messages=10)
         assert res.throughput["msgs_per_s"] > 0
         assert res.message_loss["calculable"] == 1
-        assert res.message_loss["expected"] == 6
-        assert res.message_loss["received"] == 6  # 5 normal + 1 alerta
+        assert res.message_loss["expected"] == 10
+        assert res.message_loss["received"] == 10
+        assert res.message_loss["lost"] == 0
 
     def test_run_from_dir_end_to_end(self, tmp_path):
         run = tmp_path / "run1"

@@ -259,21 +259,52 @@ def partition_unmatched(alerts: List[AlertRecord], injections: List[Injection],
 
 def parse_expected_counts(run_dir: Path) -> Optional[Dict[str, int]]:
     """
-    Lee seed.txt para obtener benign_count y anomaly_count (esperado enviado).
-    Devuelve None si no hay seed.txt (no fabricar datos).
+    Lee seed.txt para obtener benign_count (por fase; el protocolo del
+    laboratorio ejecuta DOS fases benignas -> benign*2) y calcula el total
+    esperado de mensajes: benign*2 + inyecciones reales (lineas de
+    ground_truth.jsonl, si existe; si no, anomaly_count de seed.txt es
+    POR ESCENARIO y NO se usa como total). None si no hay seed.txt.
     """
     seed_path = run_dir / "seed.txt"
     if not seed_path.exists():
         return None
     text = seed_path.read_text(encoding="utf-8")
     benign = re.search(r"^benign_count=(\d+)", text, re.M)
-    anomaly = re.search(r"^anomaly_count=(\d+)", text, re.M)
-    if not benign and not anomaly:
+    if not benign:
         return None
+    benign_n = int(benign.group(1))
+    gt_path = run_dir / "ground_truth.jsonl"
+    if gt_path.exists():
+        with open(gt_path, encoding="utf-8") as f:
+            injections = sum(1 for line in f if line.strip())
+    else:
+        anomaly = re.search(r"^anomaly_count=(\d+)", text, re.M)
+        injections = int(anomaly.group(1)) if anomaly else 0
     return {
-        "benign": int(benign.group(1)) if benign else 0,
-        "anomaly": int(anomaly.group(1)) if anomaly else 0,
+        "benign": benign_n * 2,
+        "injections": injections,
+        "expected_total": benign_n * 2 + injections,
     }
+
+
+def count_received_messages(run_dir: Path) -> Optional[int]:
+    """
+    Cuenta los mensajes MLLP realmente procesados por el receptor,
+    leyendo los encabezados '### <ts> | msg N | <bytes>' de hl7/*.hl7.
+    None si no hay hl7/ (no fabricar datos).
+    """
+    hl7_dir = run_dir / "hl7"
+    if not hl7_dir.is_dir():
+        return None
+    total = 0
+    found = False
+    for f in hl7_dir.glob("*.hl7"):
+        found = True
+        with open(f, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.startswith("### "):
+                    total += 1
+    return total if found else None
 
 
 def read_resource_usage(run_dir: Path) -> Optional[Dict[str, float]]:
@@ -312,18 +343,25 @@ def compute_throughput(timestamps: List[datetime],
 
 
 def compute_message_loss(expected: Optional[Dict[str, int]],
+                         received: Optional[int],
                          normal_count: int, alerts_total: int
                          ) -> Dict[str, float]:
     """
     Pérdida de mensajes = esperado - recibido.
-    Esperado = benign_count + anomaly_count (de seed.txt).
-    Recibido = normal_count + alerts_total (de alerts.jsonl).
-    Si no hay esperado, devuelve calculable=0 (no fabricar).
+    Esperado = benign*2 (dos fases benignas del protocolo) + inyecciones
+    (ground_truth.jsonl) — ver parse_expected_counts.
+    Recibido = conteo real de hl7/*.hl7 del receptor (count_received_messages).
+    Fallback sin hl7/: normal_count+alerts_total con source='estimado'
+    (sobreestima: una inyeccion puede generar varias alertas).
+    Si no hay esperado, calculable=0 (no fabricar).
     """
-    received = normal_count + alerts_total
+    source = "hl7"
+    if received is None:
+        received = normal_count + alerts_total
+        source = "estimado"
     if expected is None:
-        return {"calculable": 0, "received": received}
-    exp_total = expected["benign"] + expected["anomaly"]
+        return {"calculable": 0, "received": received, "source": source}
+    exp_total = expected["expected_total"]
     lost = max(0, exp_total - received)
     return {
         "calculable": 1,
@@ -331,6 +369,7 @@ def compute_message_loss(expected: Optional[Dict[str, int]],
         "received": received,
         "lost": lost,
         "loss_rate": round(lost / exp_total, 4) if exp_total > 0 else 0.0,
+        "source": source,
     }
 
 
@@ -338,7 +377,8 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
              normal_count: int, window_s: float = DEFAULT_MATCH_WINDOW_S,
              timestamps: Optional[List[datetime]] = None,
              expected_counts: Optional[Dict[str, int]] = None,
-             resource_usage: Optional[Dict[str, float]] = None
+             resource_usage: Optional[Dict[str, float]] = None,
+             received_messages: Optional[int] = None
              ) -> EvaluationResult:
     """Calcula resultado completo de evaluación."""
     res = EvaluationResult()
@@ -368,8 +408,9 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
     total_msgs = normal_count + res.alerts_total
     if timestamps:
         res.throughput = compute_throughput(timestamps, total_msgs)
-    res.message_loss = compute_message_loss(expected_counts, normal_count,
-                                            res.alerts_total)
+    res.message_loss = compute_message_loss(expected_counts,
+                                            received_messages,
+                                            normal_count, res.alerts_total)
     if resource_usage:
         res.resource_usage = resource_usage
 
@@ -453,10 +494,12 @@ def format_report(res: EvaluationResult) -> str:
                      f"({res.throughput['total_msgs']} msgs en "
                      f"{res.throughput['window_s']} s)")
     if res.message_loss.get("calculable"):
+        src = res.message_loss.get("source", "hl7")
+        suffix = " (ESTIMADO: sin hl7/, sobreestima)" if src == "estimado" else ""
         lines.append(f"Pérdida: {res.message_loss['lost']}/{res.message_loss['expected']} "
                      f"({res.message_loss['loss_rate']*100:.2f}%) "
                      f"[esperado={res.message_loss['expected']} "
-                     f"recibido={res.message_loss['received']}]")
+                     f"recibido={res.message_loss['received']}]{suffix}")
     else:
         lines.append("Pérdida: NO_CALCULABLE (sin seed.txt con conteos esperados)")
     if res.resource_usage:
@@ -503,9 +546,14 @@ def run_from_dir(run_dir: Path, window_s: float = DEFAULT_MATCH_WINDOW_S,
 
     expected_counts = parse_expected_counts(run_dir)
     resource_usage = read_resource_usage(run_dir)
+    received_messages = count_received_messages(run_dir)
+    if received_messages is not None:
+        logger.info(f"Mensajes procesados por receptor (hl7/*.hl7): "
+                    f"{received_messages}")
     res = evaluate(injections, alerts, normal_count, window_s,
                    timestamps=timestamps, expected_counts=expected_counts,
-                   resource_usage=resource_usage)
+                   resource_usage=resource_usage,
+                   received_messages=received_messages)
 
     out = out_path or (run_dir / "evaluation.json")
     payload = asdict(res)
