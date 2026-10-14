@@ -44,12 +44,11 @@
 
 ## 3. Pendientes (en orden)
 
-1. **Commit** de la sesión (ver §7): todo lo anterior está sin commitear.
-2. **Raspberry Pi (Fase 6):** ejecutar `RASPBERRY_PI_SETUP.md` en hardware real;
+1. **Raspberry Pi (Fase 6):** ejecutar `RASPBERRY_PI_SETUP.md` en hardware real;
    marcar la checklist del doc. Medir H2 (latencia ACK) ahí.
-3. **Fase 9 (validación):** ≥30 corridas/escenario con semillas fijas, según
-   `VALIDATION_PROTOCOL.md`; dillicenciar `RESULTS_TEMPLATE.md`.
-4. Limpieza opcional: `docker volume rm investigacion-de-la-tesis_lab_output`
+2. **Fase 9 (validación):** ≥30 corridas/escenario con semillas fijas, según
+   `VALIDATION_PROTOCOL.md`; diligenciar `RESULTS_TEMPLATE.md`.
+3. Limpieza opcional: `docker volume rm investigacion-de-la-tesis_lab_output`
    (los datos de cada corrida ya viven en `runs/<ts>/` tras el cp).
 
 ## 4. Comandos útiles
@@ -129,3 +128,4 @@ docker fallido). El usuario pidió "Sigue haz todo".
   que NO se commitea). Hacerlo tracking facilita clones/Pi sin paso manual extra.
 - Docs actualizadas con el estado nuevo: README (Fase 4 ✅ local+docker), LAB_ARCHITECTURE
   (tabla de despliegue), LIMITATIONS (§2 Docker: dos particularidades del entorno).
+- Commits de la sesión: `19fbdf3` (todo lo anterior, 29 archivos) + este commit (HANDOFF).
