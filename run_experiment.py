@@ -22,17 +22,221 @@ Requiere: LAB_AUTHORIZED=YES y LAB_ONLY.marker (creado en la raíz del repo).
 """
 
 import argparse
+import hashlib
+import json
 import os
+import platform
 import random
 import socket
+import statistics
 import subprocess
 import sys
+import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 PY = sys.executable
+
+GIT_CANDIDATES = ["git", r"C:\Program Files\Git\cmd\git.exe"]
+
+LAB_ONLY_WARNING = (
+    "LAB ONLY — entorno aislado de laboratorio (loopback / red interna Docker). "
+    "Prohibido ejecutar contra dispositivos médicos reales, hospitales, "
+    "direcciones públicas o sistemas de terceros.")
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _git_exe() -> list:
+    for exe in GIT_CANDIDATES:
+        try:
+            r = subprocess.run([exe, "--version"], capture_output=True, timeout=10)
+            if r.returncode == 0:
+                return [exe]
+        except OSError:
+            continue
+    return []
+
+
+def git_info() -> dict:
+    """Commit HEAD + dirty. Tolera ausencia de git (zip sin repo)."""
+    exe = _git_exe()
+    if not exe:
+        return {"commit": "unknown", "dirty": None,
+                "note": "git no disponible en PATH"}
+    try:
+        r = subprocess.run(exe + ["rev-parse", "HEAD"], capture_output=True,
+                           text=True, timeout=10, cwd=ROOT)
+        if r.returncode != 0:
+            return {"commit": "unknown", "dirty": None}
+        d = subprocess.run(exe + ["status", "--porcelain"], capture_output=True,
+                           text=True, timeout=30, cwd=ROOT)
+        return {"commit": r.stdout.strip(), "dirty": bool(d.stdout.strip())}
+    except Exception as e:
+        return {"commit": "unknown", "dirty": None, "error": str(e)}
+
+
+class ProcessSampler:
+    """Muestrea CPU/RSS de un proceso hijo (psutil opcional, 0.5 s).
+
+    Sin psutil devuelve nota honesta; no bloquea la corrida.
+    """
+
+    def __init__(self):
+        self._psutil = None
+        try:
+            import psutil  # noqa: PLC0415
+            self._psutil = psutil
+        except ImportError:
+            pass
+        self._stop = threading.Event()
+        self._thread = None
+        self._proc = None
+        self._t0 = None
+        self._cpu0 = None
+        self.cpu_samples = []
+        self.peak_rss = 0
+
+    def start(self, proc: subprocess.Popen) -> None:
+        if not self._psutil or proc.poll() is not None:
+            return
+        try:
+            self._proc = self._psutil.Process(proc.pid)
+            self._proc.cpu_percent(None)
+            self._cpu0 = self._proc.cpu_times()
+            self._t0 = time.monotonic()
+        except Exception:
+            self._proc = None
+            return
+
+        def loop():
+            while not self._stop.wait(0.5):
+                try:
+                    self.cpu_samples.append(self._proc.cpu_percent(None))
+                    self.peak_rss = max(self.peak_rss,
+                                        self._proc.memory_info().rss)
+                except Exception:
+                    break
+
+        self._thread = threading.Thread(target=loop, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> dict:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=2)
+        if not self._psutil:
+            return {"note": "psutil no instalado: CPU/RAM no muestreados "
+                            "(pip install psutil)"}
+        if not self._proc:
+            return {"note": "proceso receptor no muestreable (terminó antes o "
+                            "psutil sin permisos)"}
+        wall = time.monotonic() - self._t0 if self._t0 else None
+        cpu_total = None
+        try:
+            cpu1 = self._proc.cpu_times()
+            cpu_total = (cpu1.user - self._cpu0.user +
+                         cpu1.system - self._cpu0.system)
+        except Exception:
+            pass
+        return {
+            "sampler": "psutil 0.5s sobre proceso receptor (host)",
+            "cpu_avg_pct": (round(statistics.fmean(self.cpu_samples), 1)
+                            if self.cpu_samples else None),
+            "cpu_max_pct": (round(max(self.cpu_samples), 1)
+                            if self.cpu_samples else None),
+            "cpu_total_s": round(cpu_total, 3) if cpu_total is not None else None,
+            "wall_s": round(wall, 3) if wall is not None else None,
+            "peak_rss_mb": (round(self.peak_rss / 1048576, 1)
+                            if self.peak_rss else None),
+        }
+
+
+def write_manifest(run_dir: Path, args, mode: str, started_iso: str,
+                   finished_iso: str, eval_res, resources: dict) -> Path:
+    """manifest.json por corrida (protocolo §6): id, UTC, commit, config,
+    semilla, escenarios, hashes de entradas/salidas, runtime, resultado,
+    advertencia LAB ONLY y recursos del receptor."""
+    inputs = {}
+    for rel in ("settings_lab.yaml", "seed.txt"):
+        p = run_dir / rel
+        if p.exists():
+            inputs[rel] = sha256_file(p)
+    for rel in (Path("baseline.yaml"), Path("config") / "rules.yaml"):
+        p = ROOT / rel
+        if p.exists():
+            inputs[rel.as_posix()] = sha256_file(p)
+
+    outputs = {}
+    for rel in (Path("ground_truth.jsonl"), Path("alerts") / "alerts.jsonl",
+                Path("evaluation.json")):
+        p = run_dir / rel
+        if p.exists():
+            outputs[rel.as_posix()] = sha256_file(p)
+
+    from anomaly_generator import SCENARIOS
+    excluded = {s.strip() for s in (args.exclude or "").split(",") if s.strip()}
+    planned = [sid for sid, sc in sorted(SCENARIOS.items())
+               if sc.enabled and sid not in excluded]
+
+    manifest = {
+        "tool": "run_experiment.py",
+        "schema_version": "1.0",
+        "identificador_experimento": run_dir.name,
+        "fecha_hora_utc_inicio": started_iso,
+        "fecha_hora_utc_fin": finished_iso,
+        "commit_git": git_info(),
+        "configuracion": {
+            "mode": mode,
+            "benign_count": args.benign_count,
+            "interval_s": args.interval,
+            "anomaly_count": args.anomaly_count,
+            "exclude": args.exclude,
+            "match_window_s": args.window,
+        },
+        "semilla": {
+            "seed_base": getattr(args, "seed_base", None),
+            "phase_seeds": getattr(args, "phase_seeds", {}),
+            "registro": "runs/<ts>/seed.txt + scenario_order.txt",
+        },
+        "escenarios_ejecutados": planned,
+        "escenarios_excluidos": sorted(excluded),
+        "hashes_entradas": inputs,
+        "hashes_salidas": outputs,
+        "runtime": {
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "processor": platform.processor() or "no-declarado",
+            "host_declarado": "PC de laboratorio",
+            "contenedor": ("python:3.11-slim (ver docker-compose.yml; "
+                           "red internal:true)" if mode == "docker" else None),
+            "raspberry_pi": ("no; H2 en Pi pendiente "
+                             "(RASPBERRY_PI_SETUP.md)"),
+        },
+        "recursos_receptor": resources,
+        "resultado": ({
+            "tp": eval_res.tp, "fp": eval_res.fp, "tn": eval_res.tn,
+            "fn": eval_res.fn, "recall": eval_res.recall,
+            "precision": eval_res.precision, "f1_score": eval_res.f1_score,
+            "fpr": eval_res.fpr, "injections_total": eval_res.injections_total,
+            "alerts_total": eval_res.alerts_total,
+            "normal_messages": eval_res.normal_messages,
+            "latency_ms": eval_res.latency_ms,
+        } if eval_res is not None else None),
+        "advertencia": LAB_ONLY_WARNING,
+    }
+    path = run_dir / "manifest.json"
+    path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
+                    encoding="utf-8")
+    return path
 
 
 def parse_args():
@@ -188,6 +392,8 @@ def run_local(args, run_dir: Path, port: int):
         [PY, "mllp_receiver.py", "--host", "127.0.0.1", "--port", str(port),
          "--config", str(cfg), "--outdir", str(run_dir)],
         cwd=ROOT, env=env)
+    sampler = ProcessSampler()
+    sampler.start(receiver)
     try:
         wait_port("127.0.0.1", port)
 
@@ -222,6 +428,7 @@ def run_local(args, run_dir: Path, port: int):
         except subprocess.TimeoutExpired:
             receiver.kill()
             receiver.wait(timeout=5)
+        args.resources = sampler.stop()
 
 
 # ---------------------------------------------------------------------------
@@ -273,6 +480,10 @@ def run_docker(args, run_dir: Path):
     finally:
         print("\n=== docker compose down ===", flush=True)
         subprocess.run(["docker", "compose", "down"], cwd=ROOT, env=env)
+        args.resources = {
+            "note": "muestreo de CPU/RAM del contenedor no instrumentado en "
+                    "modo docker (proceso anfitrión en WSL2); medir con "
+                    "`docker stats` manual si se requiere para la tesis"}
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +513,7 @@ def main() -> int:
     # (una semilla idéntica haría repetir el ctrl_id inicial -> FP R-SEQ-001).
     seed_base = args.seed if args.seed is not None else \
         random.SystemRandom().randrange(1, 2**31)
+    args.seed_base = seed_base
     args.phase_seeds = {
         "benign1": seed_base,
         "anomalies": seed_base + 1_000_003,
@@ -323,6 +535,8 @@ def main() -> int:
     print(f"Modo: {mode} | Corrida: {run_dir.relative_to(ROOT)}")
     print(f"Semilla: {seed_base} "
           f"(anomalies=+1000003, benign2=+2000003, registrada en seed.txt)")
+    started_iso = datetime.now(timezone.utc).isoformat()
+    args.resources = {"note": "no muestreado (corrida abortada antes del receptor)"}
 
     if mode == "local":
         run_local(args, run_dir, free_port())
@@ -336,9 +550,14 @@ def main() -> int:
     except FileNotFoundError as e:
         die(f"salidas incompletas: {e}")
 
+    # ---- Manifest de la corrida (protocolo §6) ----
+    finished_iso = datetime.now(timezone.utc).isoformat()
+    mpath = write_manifest(run_dir, args, mode, started_iso, finished_iso,
+                           res, getattr(args, "resources", {}))
+
     print(f"\nCorrida completa: {run_dir.relative_to(ROOT)}")
     print(f"  ground_truth.jsonl, alerts/alerts.jsonl, "
-          f"evaluation.json, evaluation.txt")
+          f"evaluation.json, evaluation.txt, manifest.json")
     detection_rate = res.tp / res.injections_total if res.injections_total else 0.0
     print(f"  recall={detection_rate:.3f} precision={res.precision:.3f} "
           f"fp={res.fp} fn={res.fn}")

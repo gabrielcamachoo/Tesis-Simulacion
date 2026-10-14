@@ -64,6 +64,12 @@ Etiquetas usadas: **OBSERVADO** = medido directamente de los bytes de la captura
 
 - **NO VERIFICADO:** parámetros fisiológicos (no existen valores numéricos en
   la captura STANDBY; en RUNNING no hay contexto clínico asociado).
+- **NO VERIFICADO / NO PRESERVADO:** los artefactos de sesión en crudo que
+  `ackdummy_original.py` escribía durante la captura real
+  (`raw_<ip>_<puerto>.bin`, `mensajes.hl7`, `sesion.log`) **no están en el
+  repositorio**; solo se conservan el código (`evidence_raw/codigo/ackdummy_original.py`)
+  y las 5 capturas PCAPNG. Todo el análisis se apoya en los PCAPNG, no en esos
+  binarios sueltos.
 - El reensambla TCP por número de secuencia no resuelve solapamientos parciales
   ni fragmentación IP: las 5 capturas están completas y sin fragmentos
   (**OBSERVADO**: 0 paquetes con flag MF/offset), pero otras capturas podrían

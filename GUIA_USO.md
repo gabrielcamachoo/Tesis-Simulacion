@@ -59,6 +59,7 @@ Tres hipótesis que el laboratorio evalúa:
 | `run_matrix.py` | Campaña: N corridas con semillas + agregación ADR/IC95 Wilson | 30 corridas ≈ 55 min docker |
 | `run_campaign.ps1` | Wrapper: FASE1 (30 docker sin A14) + FASE2 (30 A14 local) | ≈ 2.5 h |
 | `replay_evidence.py` | Replay de evidencia real (corpus negativo H3) | 7 min (STANDBY) / 17 min (RUNNING) |
+| `detect_pcap.py` | Detección **offline** sobre un PCAP (Modalidad B, sin red) | instantáneo (~0.05 s por 43 ORU) |
 | `latency_bench.py` | Bench de latencia del pipeline completo (H2) | segundos |
 | `evaluate.py` | Métricas de una corrida (suele invocarlo run_experiment) | instantáneo |
 | `mllp_receiver.py` | Receptor MLLP (laboratorio, solo localhost/red interna) | continuo |
@@ -199,6 +200,31 @@ con tabla por escenario, ADR, IC 95 % de Wilson y cobertura ≥ 90 %.
 .venv\Scripts\python.exe evaluate.py --run runs\<timestamp>
 ```
 
+### 4.8 Detección offline sobre un PCAP (Modalidad B)
+
+Ejecuta el motor directamente sobre un PCAP **sin abrir conexión de red**
+(anonimización por defecto; requiere el mismo guardrail LAB_AUTHORIZED):
+
+```powershell
+$env:LAB_AUTHORIZED = "YES"
+.venv\Scripts\python.exe detect_pcap.py `
+  --pcap evidence_raw\pcap\LECTURACONACK25AGOSTO.pcapng --label STANDBY
+```
+
+Salidas: `analysis_output/offline_detect_<label>_<ts>/alerts/alerts.jsonl` y
+`detect_pcap_manifest.json` (hash del PCAP, anomalías por regla, normales,
+limitaciones). **Sin `--realtime`** los mensajes se procesan a velocidad de CPU:
+R-TIME-002 se dispara por el modo offline (limitación registrada en el manifiesto;
+sobre STANDBY real: 43 mensajes, 1 NORMAL + 42 R-TIME-002). Para frecuencia más
+fiel: `--realtime --max-sleep 15` (aplica deltas de captura con tope).
+R-MLLP-001 no es evaluable offline (solo llegan tramas completas).
+
+```powershell
+# Manifest de una corrida ya ejecutada (protocolo §6)
+Get-Content runs\<timestamp>\manifest.json | ConvertFrom-Json |
+  Select-Object identificador_experimento, advertencia
+```
+
 ---
 
 ## 5. Cómo leer las salidas
@@ -207,7 +233,8 @@ con tabla por escenario, ADR, IC 95 % de Wilson y cobertura ≥ 90 %.
 
 | Archivo | Qué contiene |
 |---|---|
-| `evaluation.json` | tp/fn/fp/tn, recall, precisión, **per_scenario** (inyectados/detectados por A01…A16) |
+| `manifest.json` | Manifiesto de corrida (protocolo §6): id, UTC, commit Git, config, semilla, escenarios, SHA-256 de entradas/salidas, plataforma, recursos CPU/RAM del receptor (psutil), resultado y advertencia LAB ONLY |
+| `evaluation.json` | tp/fn/fp/tn, recall, precisión, **per_scenario** (inyectados/detectados por A01…A16), throughput (msg/s), message_loss, resource_usage |
 | `ground_truth.jsonl` | Una línea por inyección: escenario, hash, ventana temporal, regla esperada |
 | `alerts/alerts.jsonl` | Un evento por mensaje: `rule_id=NORMAL` (limpio) o `R-*` (anomalía). Campos: severity, evidence_hash, session_id… |
 | `seed.txt` / `scenario_order.txt` | Semilla derivada por fase (benign1/anomalies/benign2) y orden alternado de escenarios |
@@ -303,6 +330,7 @@ niega a excederlos (`SafetyGuard`). A14 dura ~135 s por diseño.
 | `EVIDENCE_ANALYSIS.md` / `EVIDENCE_ANALYSIS_RESUMEN.md` | Preguntas sobre las capturas originales |
 | `ETHICS_AND_SAFETY.md` | Preguntas de seguridad, anonimización y ética |
 | `LIMITATIONS.md` | Vas a citar resultados y necesitas los matices |
+| `JUSTIFICACION_METODOLOGICA.md` | Vas a redactar/incrustar la sección metodológica de la tesis |
 | `RASPBERRY_PI_SETUP.md` | Vas a montar la Pi (único pendiente de hardware) |
 | `HANDOFF.md` | Historial de sesiones de desarrollo y pendientes |
 

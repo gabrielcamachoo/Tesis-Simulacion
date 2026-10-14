@@ -16,7 +16,8 @@ sys.path.insert(0, str(ROOT))
 from evaluate import (
     Injection, AlertRecord, load_ground_truth, load_alerts,
     match_injections, compute_metrics, percentile, evaluate,
-    format_report, run_from_dir,
+    format_report, run_from_dir, parse_expected_counts,
+    compute_throughput, compute_message_loss,
 )
 
 
@@ -220,9 +221,69 @@ class TestFileIO:
              "timestamp_utc": "2026-10-13T10:00:01+00:00", "label": "NORMAL"},
         ]
         p.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
-        alerts, normal = load_alerts(p)
+        alerts, normal, timestamps = load_alerts(p)
         assert len(alerts) == 1
         assert normal == 1
+        assert len(timestamps) == 2  # NORMAL + ANOMALO
+
+    def test_parse_expected_counts(self, tmp_path):
+        run = tmp_path / "run1"
+        run.mkdir()
+        (run / "seed.txt").write_text(
+            "seed_base=100001\nbenign_count=4\nanomaly_count=2\ninterval=6\n",
+            encoding="utf-8")
+        counts = parse_expected_counts(run)
+        assert counts == {"benign": 4, "anomaly": 2}
+
+    def test_parse_expected_counts_missing(self, tmp_path):
+        assert parse_expected_counts(tmp_path) is None
+
+    def test_compute_throughput(self):
+        from datetime import datetime
+        ts = [datetime(2026, 10, 13, 10, 0, 0),
+              datetime(2026, 10, 13, 10, 0, 10)]
+        tp = compute_throughput(ts, total_msgs=5)
+        assert tp["msgs_per_s"] == pytest.approx(0.5, abs=0.01)
+        assert tp["window_s"] == 10.0
+        assert tp["total_msgs"] == 5
+
+    def test_compute_throughput_empty(self):
+        assert compute_throughput([], 5)["msgs_per_s"] == 0.0
+        assert compute_throughput([], 5)["window_s"] == 0.0
+
+    def test_compute_message_loss_calculable(self):
+        loss = compute_message_loss({"benign": 4, "anomaly": 2},
+                                    normal_count=6, alerts_total=2)
+        assert loss["calculable"] == 1
+        assert loss["expected"] == 6
+        assert loss["received"] == 8
+        assert loss["lost"] == 0
+        assert loss["loss_rate"] == 0.0
+
+    def test_compute_message_loss_with_lost(self):
+        loss = compute_message_loss({"benign": 4, "anomaly": 2},
+                                    normal_count=3, alerts_total=2)
+        assert loss["lost"] == 1
+        assert loss["loss_rate"] == pytest.approx(1 / 6, abs=0.001)
+
+    def test_compute_message_loss_not_calculable(self):
+        loss = compute_message_loss(None, normal_count=6, alerts_total=2)
+        assert loss["calculable"] == 0
+        assert loss["received"] == 8
+        assert "lost" not in loss
+
+    def test_evaluate_includes_throughput_and_loss(self):
+        from datetime import datetime
+        ins = [inj("INJ-1", "A02", "R-SEQ-001", "2026-10-13T10:00:00+00:00")]
+        als = [alt("AL-1", "R-SEQ-001", "2026-10-13T10:00:01+00:00")]
+        ts = [datetime(2026, 10, 13, 10, 0, 0),
+              datetime(2026, 10, 13, 10, 0, 10)]
+        res = evaluate(ins, als, normal_count=5, timestamps=ts,
+                       expected_counts={"benign": 5, "anomaly": 1})
+        assert res.throughput["msgs_per_s"] > 0
+        assert res.message_loss["calculable"] == 1
+        assert res.message_loss["expected"] == 6
+        assert res.message_loss["received"] == 6  # 5 normal + 1 alerta
 
     def test_run_from_dir_end_to_end(self, tmp_path):
         run = tmp_path / "run1"

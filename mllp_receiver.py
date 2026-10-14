@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Importar componentes modulares
 from src.config.settings import load_settings, Settings
 from src.evidence.writer import EvidenceWriter
+from src.evidence.resource_monitor import ResourceMonitor
 from src.detection.baseline import load_baseline
 from src.detection.rules import RuleSet
 from src.detection.engine import DetectionEngine
@@ -120,6 +121,10 @@ Ejemplos:
         detection_engine = DetectionEngine(settings, baseline, rules)
         alert_logger = AlertLogger(settings, evidence_writer)
         
+        # Monitor de CPU/memoria (medido en runtime, escrito al cierre)
+        resource_monitor = ResourceMonitor()
+        resource_monitor.start()
+        
         # 5. Crear y arrancar servidor
         server = run_server(
             settings=settings,
@@ -160,6 +165,12 @@ Ejemplos:
         server_thread.join(timeout=5)
         
         alert_logger.close()
+        
+        # Escribir métricas de recursos (CPU/memoria) al cierre
+        res_path = resource_monitor.write(Path(args.outdir))
+        if res_path:
+            logger.info(f"Métricas de recursos escritas: {res_path}")
+        
         logger.info("Receptor detenido correctamente.")
         
     except RuntimeError as e:

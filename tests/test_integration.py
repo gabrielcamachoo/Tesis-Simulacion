@@ -166,7 +166,7 @@ def test_end_to_end_detection(tmp_path):
         assert alerts_file.exists(), "falta alerts.jsonl"
 
         injections = load_ground_truth(gt_path)
-        alerts, normal_count = load_alerts(alerts_file)
+        alerts, normal_count, _timestamps = load_alerts(alerts_file)
 
         assert len(injections) == total
         assert normal_count >= 2, (

@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 runs/
 evidence_output/
+analysis_output/offline_detect_*/

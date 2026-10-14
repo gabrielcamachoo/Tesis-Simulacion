@@ -2,7 +2,8 @@
 """
 evaluate.py - Evaluación del motor de detección contra verdad de terreno
 Cruza ground_truth.jsonl (inyecciones del generador) con alerts.jsonl (salida
-del receptor) y calcula TP/FP/TN/FN, recall, precision, F1, FPR y latencia.
+del receptor) y calcula TP/FP/TN/FN, recall, precision, F1, FPR, latencia,
+throughput (msg/s) y pérdida de mensajes (esperado vs recibido, desde seed.txt).
 
 No modifica evidencia existente; solo lee y escribe reportes de evaluación.
 
@@ -14,6 +15,7 @@ Uso:
 import argparse
 import json
 import logging
+import re
 import statistics
 import sys
 from dataclasses import dataclass, field, asdict
@@ -75,6 +77,9 @@ class EvaluationResult:
     alerts_total: int = 0
     normal_messages: int = 0
     latency_ms: Dict[str, float] = field(default_factory=dict)
+    throughput: Dict[str, float] = field(default_factory=dict)
+    message_loss: Dict[str, float] = field(default_factory=dict)
+    resource_usage: Dict[str, float] = field(default_factory=dict)
     per_scenario: Dict[str, Dict] = field(default_factory=dict)
     per_rule: Dict[str, Dict] = field(default_factory=dict)
     unmatched_alerts: List[str] = field(default_factory=list)
@@ -115,13 +120,15 @@ def load_ground_truth(path: Path) -> List[Injection]:
     return injections
 
 
-def load_alerts(path: Path) -> Tuple[List[AlertRecord], int]:
+def load_alerts(path: Path) -> Tuple[List[AlertRecord], int, List[datetime]]:
     """
-    Carga alerts.jsonl. Devuelve (alertas ANOMALO, conteo NORMAL).
+    Carga alerts.jsonl. Devuelve (alertas ANOMALO, conteo NORMAL, timestamps).
     Entradas con rule_id=NORMAL o label=NORMAL cuentan como TN fuente.
+    timestamps incluye todas las entradas (NORMAL + ANOMALO) para throughput.
     """
     alerts: List[AlertRecord] = []
     normal_count = 0
+    timestamps: List[datetime] = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -130,6 +137,9 @@ def load_alerts(path: Path) -> Tuple[List[AlertRecord], int]:
             data = json.loads(line)
             label = data.get("label", "ANOMALO")
             rule_id = data.get("rule_id", "")
+            ts = parse_ts(data.get("timestamp_utc", ""))
+            if ts != datetime.min:
+                timestamps.append(ts)
             if label == "NORMAL" or rule_id == "NORMAL":
                 normal_count += 1
                 continue
@@ -139,7 +149,7 @@ def load_alerts(path: Path) -> Tuple[List[AlertRecord], int]:
                 timestamp_utc=data.get("timestamp_utc", ""),
                 label=label,
             ))
-    return alerts, normal_count
+    return alerts, normal_count, timestamps
 
 
 def match_injections(injections: List[Injection],
@@ -247,8 +257,88 @@ def partition_unmatched(alerts: List[AlertRecord], injections: List[Injection],
     return true_fp, correlated
 
 
+def parse_expected_counts(run_dir: Path) -> Optional[Dict[str, int]]:
+    """
+    Lee seed.txt para obtener benign_count y anomaly_count (esperado enviado).
+    Devuelve None si no hay seed.txt (no fabricar datos).
+    """
+    seed_path = run_dir / "seed.txt"
+    if not seed_path.exists():
+        return None
+    text = seed_path.read_text(encoding="utf-8")
+    benign = re.search(r"^benign_count=(\d+)", text, re.M)
+    anomaly = re.search(r"^anomaly_count=(\d+)", text, re.M)
+    if not benign and not anomaly:
+        return None
+    return {
+        "benign": int(benign.group(1)) if benign else 0,
+        "anomaly": int(anomaly.group(1)) if anomaly else 0,
+    }
+
+
+def read_resource_usage(run_dir: Path) -> Optional[Dict[str, float]]:
+    """
+    Lee resource_usage.json si existe (escrito por el receptor en runtime).
+    Devuelve None si no existe (no fabricar datos).
+    """
+    res_path = run_dir / "resource_usage.json"
+    if not res_path.exists():
+        return None
+    try:
+        with open(res_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {k: v for k, v in data.items() if isinstance(v, (int, float))}
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def compute_throughput(timestamps: List[datetime],
+                       total_msgs: int) -> Dict[str, float]:
+    """
+    Throughput = mensajes procesados / ventana temporal (segundos).
+    Ventana = último - primer timestamp de alerts.jsonl.
+    """
+    if len(timestamps) < 2 or total_msgs == 0:
+        return {"msgs_per_s": 0.0, "window_s": 0.0, "total_msgs": total_msgs}
+    t_min, t_max = min(timestamps), max(timestamps)
+    span = (t_max - t_min).total_seconds()
+    if span <= 0:
+        return {"msgs_per_s": 0.0, "window_s": 0.0, "total_msgs": total_msgs}
+    return {
+        "msgs_per_s": round(total_msgs / span, 3),
+        "window_s": round(span, 3),
+        "total_msgs": total_msgs,
+    }
+
+
+def compute_message_loss(expected: Optional[Dict[str, int]],
+                         normal_count: int, alerts_total: int
+                         ) -> Dict[str, float]:
+    """
+    Pérdida de mensajes = esperado - recibido.
+    Esperado = benign_count + anomaly_count (de seed.txt).
+    Recibido = normal_count + alerts_total (de alerts.jsonl).
+    Si no hay esperado, devuelve calculable=0 (no fabricar).
+    """
+    received = normal_count + alerts_total
+    if expected is None:
+        return {"calculable": 0, "received": received}
+    exp_total = expected["benign"] + expected["anomaly"]
+    lost = max(0, exp_total - received)
+    return {
+        "calculable": 1,
+        "expected": exp_total,
+        "received": received,
+        "lost": lost,
+        "loss_rate": round(lost / exp_total, 4) if exp_total > 0 else 0.0,
+    }
+
+
 def evaluate(injections: List[Injection], alerts: List[AlertRecord],
-             normal_count: int, window_s: float = DEFAULT_MATCH_WINDOW_S
+             normal_count: int, window_s: float = DEFAULT_MATCH_WINDOW_S,
+             timestamps: Optional[List[datetime]] = None,
+             expected_counts: Optional[Dict[str, int]] = None,
+             resource_usage: Optional[Dict[str, float]] = None
              ) -> EvaluationResult:
     """Calcula resultado completo de evaluación."""
     res = EvaluationResult()
@@ -273,6 +363,15 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
     res.f1_score = m["f1_score"]
     res.fpr = m["fpr"]
     res.accuracy = m["accuracy"]
+
+    # Throughput y pérdida de mensajes
+    total_msgs = normal_count + res.alerts_total
+    if timestamps:
+        res.throughput = compute_throughput(timestamps, total_msgs)
+    res.message_loss = compute_message_loss(expected_counts, normal_count,
+                                            res.alerts_total)
+    if resource_usage:
+        res.resource_usage = resource_usage
 
     if latencies:
         res.latency_ms = {
@@ -325,6 +424,8 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
         res.warnings.append("No hay alertas en alerts.jsonl: ¿receptor corriendo con motor de detección?")
     if res.normal_messages == 0:
         res.warnings.append("Sin mensajes normales registrados: FPR no calculable (TN=0)")
+    if not res.resource_usage:
+        res.warnings.append("Sin resource_usage.json: CPU/memoria no medidos en runtime (NO_VERIFICADO)")
 
     return res
 
@@ -347,6 +448,27 @@ def format_report(res: EvaluationResult) -> str:
         lines.append(f"Latencia detección (ms): p50={res.latency_ms['p50']} "
                      f"p95={res.latency_ms['p95']} p99={res.latency_ms['p99']} "
                      f"max={res.latency_ms['max']}")
+    if res.throughput:
+        lines.append(f"Throughput: {res.throughput['msgs_per_s']} msg/s "
+                     f"({res.throughput['total_msgs']} msgs en "
+                     f"{res.throughput['window_s']} s)")
+    if res.message_loss.get("calculable"):
+        lines.append(f"Pérdida: {res.message_loss['lost']}/{res.message_loss['expected']} "
+                     f"({res.message_loss['loss_rate']*100:.2f}%) "
+                     f"[esperado={res.message_loss['expected']} "
+                     f"recibido={res.message_loss['received']}]")
+    else:
+        lines.append("Pérdida: NO_CALCULABLE (sin seed.txt con conteos esperados)")
+    if res.resource_usage:
+        cpu = res.resource_usage.get("cpu_percent")
+        mem = res.resource_usage.get("peak_rss_mb")
+        parts = []
+        if cpu is not None:
+            parts.append(f"CPU={cpu:.1f}%")
+        if mem is not None:
+            parts.append(f"mem_pico={mem:.1f} MB")
+        if parts:
+            lines.append(f"Recursos (runtime): {' '.join(parts)}")
     lines.append("-" * 70)
     lines.append(f"{'Esc':<4} {'Escenario':<34} {'Regla':<12} {'Det':>4} {'Fal':>4} {'%Det':>7}")
     for sid, sc in sorted(res.per_scenario.items()):
@@ -375,11 +497,15 @@ def run_from_dir(run_dir: Path, window_s: float = DEFAULT_MATCH_WINDOW_S,
         raise FileNotFoundError(f"No existe {alerts_path}")
 
     injections = load_ground_truth(gt_path)
-    alerts, normal_count = load_alerts(alerts_path)
+    alerts, normal_count, timestamps = load_alerts(alerts_path)
     logger.info(f"Cargadas {len(injections)} inyecciones, {len(alerts)} alertas, "
                 f"{normal_count} mensajes normales")
 
-    res = evaluate(injections, alerts, normal_count, window_s)
+    expected_counts = parse_expected_counts(run_dir)
+    resource_usage = read_resource_usage(run_dir)
+    res = evaluate(injections, alerts, normal_count, window_s,
+                   timestamps=timestamps, expected_counts=expected_counts,
+                   resource_usage=resource_usage)
 
     out = out_path or (run_dir / "evaluation.json")
     payload = asdict(res)
@@ -412,8 +538,9 @@ def main() -> int:
                                Path(args.out) if args.out else None)
         elif args.ground_truth and args.alerts:
             injections = load_ground_truth(Path(args.ground_truth))
-            alerts, normal_count = load_alerts(Path(args.alerts))
-            res = evaluate(injections, alerts, normal_count, args.window)
+            alerts, normal_count, timestamps = load_alerts(Path(args.alerts))
+            res = evaluate(injections, alerts, normal_count, args.window,
+                           timestamps=timestamps)
             if args.out:
                 with open(args.out, "w", encoding="utf-8") as f:
                     json.dump(asdict(res), f, ensure_ascii=False, indent=2)

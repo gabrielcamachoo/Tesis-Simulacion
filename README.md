@@ -108,3 +108,10 @@ docker compose --profile anomalies run --rm anomaly-generator
   - **H3**: replay STANDBY FP = 0 (×5); RUNNING = 256 alertas "fuera de baseline"
     (×3, determinista; baseline unimodal STANDBY — documentado, sin umbral).
   - Evidencia sellada: `analysis_output/validation/SHA256SUMS.txt` (314 archivos).
+- **Entregables de spec completados** (2026-10-14, sesión asistente 5+6):
+  - `manifest.json` por corrida (commit, hashes, semilla, runtime, recursos CPU/RAM).
+  - `detect_pcap.py`: detección offline sobre PCAP (Modalidad B), sin red.
+  - Diagrama Mermaid en `LAB_ARCHITECTURE.md` §1.1; `JUSTIFICACION_METODOLOGICA.md`.
+  - Métricas extra en `evaluate.py`: throughput, message_loss, resource_usage.
+  - `TRACEABILITY_MATRIX.csv` actualizado con estados post-Fase 9 y columna evidencia.
+  - Suite: **200 pruebas automatizadas** (2026-10-14).

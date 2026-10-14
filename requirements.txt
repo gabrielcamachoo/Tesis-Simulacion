@@ -1,2 +1,4 @@
 PyYAML>=6.0
 pytest>=8.0
+# opcional: muestreo de CPU/RAM del receptor en manifest.json (run_experiment)
+psutil>=5.9

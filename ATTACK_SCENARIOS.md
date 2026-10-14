@@ -50,6 +50,17 @@ T0831 (no aplica, queda NO_VERIFICADO).
 - **Excluido por diseño:** cualquier escenario que requiera explotación, escalada, firmware,
   ransomware o tráfico fuera del lab (ver `ETHICS_AND_SAFETY.md` §3).
 
+## Desviación documentada: A14
+
+La especificación original describía A14 como «ACK retrasado o ausente dentro del emulador».
+El receptor experimental **no puede observar el ACK saliente** (el ACK lo emite él mismo hacia
+el emisor; está fuera de su camino de observación). Por tanto el laboratorio modela el efecto
+observable equivalente en el canal: un **hueco de periodicidad** de 45 s (> intervalo baseline
+de 10–15 s) seguido de un mensaje, detectado por **R-TIME-002**. El caso «ACK ausente o
+retrasado del receptor» sí se valida del lado del emulador (`wato_emulator.py --ack-timeout`),
+que espera y reporta la respuesta. Esta desviación está registrada aquí y en
+`LIMITATIONS.md`; no altera el resto del mapa amenaza→escenario→regla.
+
 ## Trazabilidad
 
 Cada escenario se declara en `anomaly_generator.SCENARIOS` (con `enabled`, `safety_limit` y

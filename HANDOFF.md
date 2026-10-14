@@ -199,3 +199,79 @@ bench y cierre documental. Estado final: Fase 9 COMPLETA en PC.
 - Leccion de coordinacion: dos sesiones pueden colisionar en replays (puertos auto OK)
   pero NUNCA en docker (bind-mount vivo = contaminacion). Regla: todo cambio de
   src/config/baseline exige commit + re-freeze antes de cualquier corrida.
+
+## 10. Adenda - sesion asistente 5 (2026-10-14, completar entregables spec)
+
+El usuario pidio (tras un dump de spec OT/IoMT) completar lo que faltaba de los
+18 entregables y dejar el proyecto funcionando. Inventario vs spec + cierre de gaps:
+
+- **Gap 1 - diagrama Mermaid (entregable 17)**: anadido `LAB_ARCHITECTURE.md` sec 1.1
+  (`flowchart` con Modalidad A local + Modalidad B pasiva + pipeline offline + flujo
+  de datos + interlock SafetyGuard; leyenda observado/sintetico/interlock).
+- **Gap 2 - metricas faltantes en evaluate.py**: throughput (msg/s, desde timestamps
+  de alerts.jsonl) y perdida de mensajes (esperado=benign_count+anomaly_count desde
+  seed.txt vs recibido; NO_CALCULABLE si falta seed.txt). Nuevos campos
+  `throughput`, `message_loss`, `resource_usage` en EvaluationResult + lineas de
+  reporte. +8 tests (test_evaluate.py). load_alerts ahora devuelve 3 valores
+  (alerts, normal, timestamps); test_integration ajustado.
+- **Gap 2b - CPU/memoria en runtime**: nuevo `src/evidence/resource_monitor.py`
+  (CPU via time.process_time portable; RSS pico via ctypes GetProcessMemoryInfo en
+  Windows / resource.getrusage en POSIX; None=NO_VERIFICADO). `mllp_receiver.py`
+  lo arranca y escribe `resource_usage.json` al cierre limpio; evaluate.py lo lee
+  si existe. +4 tests (test_resource_monitor.py).
+- **Fix - detect_pcap.py (sesion paralela, untracked)**: 2 typos rompian la suite
+  (llamada `anomalicas_str` inexistente -> `format_anomalias`; var `anomalias` ->
+  `anomalies`). Corregidos. El fixture de test_detect_pcap.py (IP fuente) lo corrigio
+  la sesion paralela en paralelo (192.168.23.250, en allowed_ips).
+- **Gap 3 - artefactos ausentes marcados**: `EVIDENCE_ANALYSIS.md` sec 4 anade
+  NO_VERIFICADO/NO PRESERVADO para los binarios de sesion de ackdummy
+  (raw_*.bin, mensajes.hl7, sesion.log) - solo se conservan el codigo y los PCAPNG.
+- **Verificacion metodologica**: sin frases de exito/demo no demostrado; taxonomia
+  OBSERVADO/DOCUMENTADO/INFERIDO/NO_VERIFICADO presente en los 11 docs clave.
+- **Suite**: 200 passed (antes 179). Dependencias: solo PyYAML (requirements.txt OK).
+- **NO commitado a proposito**: la sesion paralela tiene cambios activos en
+  ATTACK_SCENARIOS.md, TRACEABILITY_MATRIX.csv, requirements.txt, run_experiment.py
+  + untracked (detect_pcap.py, test_manifest.py, etc.). Coordinar commit antes de
+  mezclar trabajo incompleto ajeno.
+- **Pendiente unico critico (hardware)**: H2 en Raspberry Pi (Fase 6) sigue NO
+  VERIFICADO - requiere el hardware del usuario.
+
+## 11. Adenda - sesion asistente 6 (2026-10-14, cierre de gaps spec + integracion)
+
+Continuo la auditoria spec->repo y completo/integre lo que faltaba, absorbiendo
+los cambios simultaneos de la sesion asistente 5 (ver §10) sin conflictos:
+
+- **manifest.json por corrida** (`run_experiment.write_manifest`): id, UTC inicio/fin,
+  commit Git (+dirty), config, semilla/phase_seeds, escenarios ejecutados/excluidos,
+  SHA-256 de entradas (settings_lab/seed/baseline/rules) y salidas
+  (ground_truth/alerts/evaluation), runtime (platform/python/contenedor), resultado
+  (tp..fn, recall/precision/F1/FPR, latencia), advertencia LAB ONLY. Recursos del
+  receptor via `ProcessSampler` (psutil opcional, 0.5 s; sin psutil -> nota honesta).
+  +5 tests (tests/test_manifest.py). Smoke local verificado: runs/20261014_163236.
+- **detect_pcap.py** (Modalidad B offline): reutiliza el pipeline
+  analyze_evidence (reasm. TCP + MLLP + anonimizacion por defecto) y ejecuta el
+  motor + AlertLogger sin abrir red. Limitaciones documentadas en su manifiesto
+  (R-MLLP-001 no evaluable; R-TIME-002 depende de reloj -> flag --realtime).
+  Corregido el lado cliente (_flow_key ordena lexicograficamente: emisor = lado
+  != :1550). Smoke sobre LECTURACONACK25AGOSTO.pcapng: 43 ORU, 1 NORMAL +
+  42 R-TIME-002 (esperado sin pacing). +4 tests (tests/test_detect_pcap.py).
+- **Desviacion A14 documentada** en ATTACK_SCENARIOS.md (spec decia "ACK ausente";
+  el receptor no observa su propio ACK -> hueco de periodicidad R-TIME-002;
+  el ACK ausente se valida desde el emulador --ack-timeout).
+- **TRACEABILITY_MATRIX.csv** reescrito: estados post-Fase 9 (VERIFICADO/MEDIDO_
+  PC/IMPLEMENTADO) + columna `evidencia` con rutas de artefactos reales; +4 filas
+  (MAN-01, OFF-01, GEN-01, H3-01).
+- **JUSTIFICACION_METODOLOGICA.md** nuevo: seccion academica de 13 puntos +
+  referencias verificables (HL7, NIST SP 800-82r3, MITRE ICS, FDA, CISA, IEC 62443).
+- **LAB_ARCHITECTURE.md**: estado actualizado (Fase 9 completa), Modalidad B del
+  Mermaid con detect_pcap/replay, puntos de entrada ampliados, psutil opcional.
+- **GUIA_USO.md**: receta §4.8 (detect_pcap + manifest), fila manifest.json en §5.1,
+  herramientas y docs index actualizados. **README.md**: estado + entregables spec.
+- **requirements.txt**: psutil (opcional, comentado) para el muestreo del manifest.
+- **Integracion con sesion 5**: evaluate.py (throughput/message_loss/resource_usage
+  + read_resource_usage), mllp_receiver + src/evidence/resource_monitor.py,
+  EVIDENCE_ANALYSIS §4 (binarios ackdummy NO PRESERVADOS) - todos commiteados juntos.
+- **Suite final: 200 passed** (2026-10-14). Smoke E2E local recall=1.0 fp=0 con
+  manifest completo.
+- **Pendientes inalterados**: H2 en Pi (hardware), gate clinico/etico, redaccion
+  de la tesis por el usuario.
