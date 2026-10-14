@@ -1,0 +1,10 @@
+req_id,origen,descripcion_corto,escenarios,reglas_o_componente,tecnica_attck_v20,metrica,fase_plan,estado,nota
+SW-01,SRS 3.1.1,Acceso raw sockets Linux,-,evidence/pcap_reader.py (lectura PCAP offline),-,Cobertura de captura,Fase 1,PARCIAL,"Lectura de evidencia OK; captura runtime con raw socket pendiente de Fase 5 en Pi"
+COM-01,SRS 3.1.2,Notificacion Syslog/SIEM UDP 514 en estado S3,-,alerting/json_logger.py,-,Eventos emitidos,Fase posterior,NO_IMPLEMENTADO,"Hoy alertas JSONL locales; Syslog fuera del alcance inmediato del plan aprobado"
+RF-01,SRS 3.2,Intercepcion BIW fail-open eth0/eth1,-,-,-,-,N/A lab,NO_APLICA,"Requiere inline en el equipo real; el lab es no inline por diseno (THREAT_MODEL 2 F3)"
+RF-02,SRS 3.2,DPI HL7: localizar ORU^R01 y extraer OBX,A10;A11,hl7/parser.py + R-OBX-001;R-OBX-002;R-OBX-003,T1692.002,ADR por escenario,Fase 9,EN_CURSO,"Parser y reglas listas; ADR pendiente. SRS cita T0855 (RD-02) hoy equivalente T1692.001/002"
+RF-03,SRS 3.2,FSM S0->S1<->S2 con estado de ataque S3,A13;A16,detection/engine.py (SessionState) + R-STATE-001,T1692.002;T0814,ADR + FP sobre STANDBY,Fase 9,EN_CURSO,"FSM del lab inferida de 1 captura; equivalente parcial de S0-S3 (LIMITATIONS 1)"
+RF-04,SRS 3.2,Cadena de custodia: volcar pcap + SHA-256 + timestamp,-,evidence/hashing.py + writer.py + evidence_inventory.csv,-,Hashes verificados,Fase 1,IMPLEMENTADO,"100 % de PCAP sellados con SHA-256; ver EVIDENCE_ANALYSIS.md"
+RD-01,SRS 3.3,Latencia de evaluacion HL7 <=500us,A01-A16 (todas),detection/engine.py (perf_counter),-,p95 latencia por mensaje,Fase 9,NO_VERIFICADO,"Hipotesis H2; medir en Pi (VALIDATION_PROTOCOL 3.3)"
+RD-02,SRS 3.3,ADR >=90 % con inyecciones MITRE ATT&CK,A01-A16,Todas las reglas habilitadas,T1692.002;T0814,ADR global y por escenario + IC95,Fase 9,NO_VERIFICADO,"Hipotesis H1; SRS cita T0855 -> ver THREAT_MODEL 4 (redireccion confirmada 2026-10-13)"
+RES-01,SRS 3.4,Codigo Python optimizado para ARM,-,Todo src/,-,Tiempo por mensaje en Pi,Fase 5/9,NO_VERIFICADO,"Python 3.11 sin Cython; se decide tras medir H2 en la Pi"
