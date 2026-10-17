@@ -8,31 +8,40 @@ capturada previamente y un emulador en red aislada.
 ## Estructura
 
 ```
-evidence_raw/       Evidencia original SOLO LECTURA (pcap, informes, código). No modificar.
-analysis_output/    Reportes derivados (CSV/Markdown), regenerables.
+MANUAL_TESIS.md      Manual completo de la tesis (uso, despliegues, resultados, defensa).
+docs/                Toda la documentación de la tesis (ver §Índice al final de este README).
+deploy/
+  receptor/          Detector (producto): receptor.ps1 + make_deploy_settings.py.
+  wato/              Emulador WATO (trafico benigno): wato.ps1.
+  atacante/          Atacante (ransomware simulado): atacante_ransomware.ps1.
+  pi/                Raspberry Pi: instalacion, red aislada, systemd, detector
+                     online/offline, campana + pi_detector_docker.ps1 (simulacion).
+  validacion/        suite.ps1 (pruebas) · evaluar.ps1 (metricas de corridas).
+evidence_raw/        Evidencia original SOLO LECTURA (pcap, informes, código). No modificar.
+analysis_output/     Reportes derivados (CSV/Markdown) + evidencia sellada en validation/.
+documentos_tesis/    Formatos, bitácora, SRS/VPP, PDFs y referencias (BibTeX).
+legacy/              ackdummy (prototipo histórico, no se ejecuta).
 src/
-  evidence/         Lector PCAP (Python puro), hashing, anonimización, baseline.
-  hl7/              Parser y validador HL7 v2.6.
-  mllp/             Framing MLLP, ACK, servidor.
-  detection/        Motor de detección, reglas, baseline.
-  config/           Ajustes YAML.
-  alerting/         Log JSON de alertas.
-tests/              Pruebas pytest (incluye verificación contra los PCAP reales).
-baseline.yaml       Línea base estadística trazable a hashes de evidencia.
-mllp_receiver.py    Receptor MLLP de laboratorio (solo localhost/red interna).
-wato_emulator.py    Emulador sintético ORU^R01 (periodicidad de evidencia).
+  evidence/          Lector PCAP (Python puro), hashing, anonimización, baseline.
+  hl7/               Parser y validador HL7 v2.6.
+  mllp/              Framing MLLP, ACK, servidor.
+  detection/         Motor de detección, reglas, baseline.
+  config/            Ajustes YAML.
+  alerting/          Log JSON de alertas.
+tests/               Pruebas pytest (incluye verificación contra los PCAP reales).
+baseline.yaml        Línea base estadística trazable a hashes de evidencia.
+mllp_receiver.py     Receptor MLLP = detector (solo localhost/red interna).
+wato_emulator.py     Emulador sintético ORU^R01 (periodicidad de evidencia).
 anomaly_generator.py Generador de escenarios A01–A16 con techos de seguridad.
-evaluate.py         Evaluación de corridas (ADR/FP) contra ground truth.
-run_experiment.py   Orquestador de corridas (benigno → anomalías → benigno → evaluación).
-docker-compose.yml  Topología de laboratorio (requiere Docker Desktop).
+evaluate.py          Evaluación de corridas (ADR/FP) contra ground truth.
+run_experiment.py    Orquestador de corridas (benigno → anomalías → benigno → evaluación).
+docker-compose.yml   Topología de laboratorio (requiere Docker Desktop).
 
-Documentos de fase (raíz): THREAT_MODEL.md, ETHICS_AND_SAFETY.md,
-LAB_ARCHITECTURE.md, ATTACK_SCENARIOS.md, VALIDATION_PROTOCOL.md,
-RESULTS_TEMPLATE.md, RESULTS_20261014.md, LIMITATIONS.md,
-TRACEABILITY_MATRIX.csv, EVIDENCE_ANALYSIS.md, RASPBERRY_PI_SETUP.md.
-
-**Guía práctica paso a paso (cómo ejecutar y entender todo): `GUIA_USO.md`.**
-Historial de desarrollo y pendientes: `HANDOFF.md`.
+Documentación clave: docs/RESULTADOS_TESIS.md (números de defensa),
+docs/GUIA_USO.md (recetas paso a paso), docs/HANDOFF.md (historial),
+docs/ATTACK_SCENARIOS.md, docs/THREAT_MODEL.md, docs/VALIDATION_PROTOCOL.md,
+docs/ETHICS_AND_SAFETY.md, docs/SIMULACION_RANSOMWARE.md, docs/RASPBERRY_PI_SETUP.md,
+docs/TRACEABILITY_MATRIX.csv (trazabilidad requisito→métrica).
 ```
 
 ## Requisitos
@@ -98,9 +107,9 @@ docker compose --profile anomalies run --rm anomaly-generator
 - **Fase 4** ✅ orquestador `run_experiment.py` end-to-end en modo local
   (67/67 inyecciones, recall=1.0, fp=0) y en modo docker (64/64 con `--exclude A14`;
   evidencia en named volume `lab_output` copiada al host con `docker compose cp`).
-- **Fase 6** ✅ guía de montaje `RASPBERRY_PI_SETUP.md`; la ejecución en el hardware
+- **Fase 6** ✅ guía de montaje `docs/RASPBERRY_PI_SETUP.md`; la ejecución en el hardware
   Pi sigue pendiente (recurso externo).
-- **Fase 9** ✅ validación en PC (2026-10-14, `RESULTS_20261014.md`):
+- **Fase 9** ✅ validación en PC (2026-10-14, `docs/RESULTS_20261014.md`):
   - **H1 ACEPTADA**: ADR 100 % en 16/16 escenarios (60 corridas selladas,
     IC95 Wilson global [99.8, 100.0], precisión 99.7 %).
   - **H2**: PASS de referencia en PC (p95 177.5 µs ≪ 500 µs); **NO VERIFICADO en
@@ -111,7 +120,26 @@ docker compose --profile anomalies run --rm anomaly-generator
 - **Entregables de spec completados** (2026-10-14, sesión asistente 5+6):
   - `manifest.json` por corrida (commit, hashes, semilla, runtime, recursos CPU/RAM).
   - `detect_pcap.py`: detección offline sobre PCAP (Modalidad B), sin red.
-  - Diagrama Mermaid en `LAB_ARCHITECTURE.md` §1.1; `JUSTIFICACION_METODOLOGICA.md`.
+  - Diagrama Mermaid en `docs/LAB_ARCHITECTURE.md` §1.1; `docs/JUSTIFICACION_METODOLOGICA.md`.
   - Métricas extra en `evaluate.py`: throughput, message_loss, resource_usage.
-  - `TRACEABILITY_MATRIX.csv` actualizado con estados post-Fase 9 y columna evidencia.
+  - `docs/TRACEABILITY_MATRIX.csv` actualizado con estados post-Fase 9 y columna evidencia.
   - Suite: **200 pruebas automatizadas** (2026-10-14).
+  - `docs/SIMULACION_RANSOMWARE.md`: campaña ransomware en tiempo real
+    (A01+A05+A06+A13+A14+A16 → 20/20 TP, FP=0) + simulación de topología
+    Raspberry Pi en docker (A01–A16 → recall 1.0); selladas en
+    `analysis_output/validation/{ransomware_sim,pi_sim}_20261014_*`.
+  - Suite actual: **204 pruebas** (incluye fix de pérdida de mensajes con
+    conteo real `hl7/*.hl7`).
+- **Sesión 7** ✅ 2026-10-17 — Reorganización para entrega/GitHub:
+  - 15 documentos movidos a `docs/` (referencias actualizadas en el código);
+    PDFs/DOCX/bib a `documentos_tesis/`; `ackdummy (1).py` a `legacy/`;
+    `.gitattributes` (`*.sh eol=lf`, `*.service eol=lf`).
+  - `MANUAL_TESIS.md` (manual completo de uso y defensa) y
+    `docs/RESULTADOS_TESIS.md` (compilado de números: H1/H2/H3, ransomware,
+    Pi docker, demo WATO, bench).
+  - Reproducción de campañas: topología Pi docker (`20261017_110211`, recall 1.0)
+    y campaña ransomware (`20261017_110410`, 20/20 TP, 0 FP); evidencia sellada
+    en `analysis_output/validation/{pi_sim,ransomware_sim}_20261017_*`.
+  - Demo WATO standalone: 8/8 ORU + 8/8 ACK `AA`, 0 alertas benignas;
+    evidencia en `evidence_output/wato_demo_20261017_112431/`.
+  - Suite verde: **204 passed**; `evidence_raw/` intacto (SHA-256 verificado).
