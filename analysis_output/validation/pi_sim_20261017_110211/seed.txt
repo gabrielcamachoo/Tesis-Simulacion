@@ -1,0 +1,10 @@
+seed_base=20261014
+seed_benign1=20261014
+seed_anomalies=21261017
+seed_benign2=22261017
+mode=docker
+exclude=A14
+anomaly_count=3
+benign_count=6
+interval=6.0
+nota=derivados +1000003/+2000003 entre fases para evitar MCID idénticos (R-SEQ-001); orden de escenarios en scenario_order.txt

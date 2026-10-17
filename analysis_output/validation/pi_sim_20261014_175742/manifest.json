@@ -1,0 +1,91 @@
+{
+  "tool": "run_experiment.py",
+  "schema_version": "1.0",
+  "identificador_experimento": "20261014_175742",
+  "fecha_hora_utc_inicio": "2026-10-14T22:57:42.975899+00:00",
+  "fecha_hora_utc_fin": "2026-10-14T22:59:35.922813+00:00",
+  "commit_git": {
+    "commit": "475e04c894414981ea84df60cc7fec7cac4984d9",
+    "dirty": false
+  },
+  "configuracion": {
+    "mode": "docker",
+    "benign_count": 6,
+    "interval_s": 6.0,
+    "anomaly_count": 3,
+    "exclude": "A14",
+    "match_window_s": 5.0
+  },
+  "semilla": {
+    "seed_base": 20261014,
+    "phase_seeds": {
+      "benign1": 20261014,
+      "anomalies": 21261017,
+      "benign2": 22261017
+    },
+    "registro": "runs/<ts>/seed.txt + scenario_order.txt"
+  },
+  "escenarios_ejecutados": [
+    "A01",
+    "A02",
+    "A03",
+    "A04",
+    "A05",
+    "A06",
+    "A07",
+    "A08",
+    "A09",
+    "A10",
+    "A11",
+    "A12",
+    "A13",
+    "A15",
+    "A16"
+  ],
+  "escenarios_excluidos": [
+    "A14"
+  ],
+  "hashes_entradas": {
+    "seed.txt": "8ce4c0bff12d01a6047d9ab2944a9908b39395600012c5df7359a9608ba6b837",
+    "baseline.yaml": "616b7ea2802d25906408f5be19062325f36fe2551e3667c85d16a8de401d561a",
+    "config/rules.yaml": "31d958f7876709af6bc260984174528433aec7a5b5706be415f3261386138cd5"
+  },
+  "hashes_salidas": {
+    "ground_truth.jsonl": "5d16c4d7f6a9f29850c2a18fd6b75eda9ab97fff36ef86baad82884dbd8f2fc4",
+    "alerts/alerts.jsonl": "7a619d8847174943ef61a8301a0ec3caad7cd9b14be726ae3c5301b4e4291a3d",
+    "evaluation.json": "cbf577b1e20efc44c177d0966407ce72f9130b2214d1cad84e66bcbb0cbdea53"
+  },
+  "runtime": {
+    "platform": "Windows-10-10.0.26300-SP0",
+    "python": "3.11.9",
+    "processor": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "host_declarado": "PC de laboratorio",
+    "contenedor": "python:3.11-slim (ver docker-compose.yml; red internal:true)",
+    "raspberry_pi": "no; H2 en Pi pendiente (RASPBERRY_PI_SETUP.md)"
+  },
+  "recursos_receptor": {
+    "note": "muestreo de CPU/RAM del contenedor no instrumentado en modo docker (proceso anfitrión en WSL2); medir con `docker stats` manual si se requiere para la tesis"
+  },
+  "resultado": {
+    "tp": 64,
+    "fp": 1,
+    "tn": 11,
+    "fn": 0,
+    "recall": 1.0,
+    "precision": 0.9846,
+    "f1_score": 0.9922,
+    "fpr": 0.0833,
+    "injections_total": 64,
+    "alerts_total": 152,
+    "normal_messages": 11,
+    "latency_ms": {
+      "p50": 0.95,
+      "p95": 1.78,
+      "p99": 2.442,
+      "max": 3.138,
+      "mean": 1.02,
+      "samples": 64
+    }
+  },
+  "advertencia": "LAB ONLY — entorno aislado de laboratorio (loopback / red interna Docker). Prohibido ejecutar contra dispositivos médicos reales, hospitales, direcciones públicas o sistemas de terceros."
+}

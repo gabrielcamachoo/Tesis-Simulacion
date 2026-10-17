@@ -1,0 +1,97 @@
+{
+  "tool": "run_experiment.py",
+  "schema_version": "1.0",
+  "identificador_experimento": "20261014_175952",
+  "fecha_hora_utc_inicio": "2026-10-14T22:59:52.143558+00:00",
+  "fecha_hora_utc_fin": "2026-10-14T23:03:16.308266+00:00",
+  "commit_git": {
+    "commit": "475e04c894414981ea84df60cc7fec7cac4984d9",
+    "dirty": false
+  },
+  "configuracion": {
+    "mode": "local",
+    "benign_count": 6,
+    "interval_s": 6.0,
+    "anomaly_count": 3,
+    "exclude": "A02,A03,A04,A07,A08,A09,A10,A11,A12,A15",
+    "match_window_s": 5.0
+  },
+  "semilla": {
+    "seed_base": 2026101401,
+    "phase_seeds": {
+      "benign1": 2026101401,
+      "anomalies": 2027101404,
+      "benign2": 2028101404
+    },
+    "registro": "runs/<ts>/seed.txt + scenario_order.txt"
+  },
+  "escenarios_ejecutados": [
+    "A01",
+    "A05",
+    "A06",
+    "A13",
+    "A14",
+    "A16"
+  ],
+  "escenarios_excluidos": [
+    "A02",
+    "A03",
+    "A04",
+    "A07",
+    "A08",
+    "A09",
+    "A10",
+    "A11",
+    "A12",
+    "A15"
+  ],
+  "hashes_entradas": {
+    "settings_lab.yaml": "854886c0590b2c53ad788f7419d118b638efb2be74a7e632b2336059eb9f5370",
+    "seed.txt": "bb15cdb25e6d1ae3656810b92dc2bddad51f4a527048483fd5a978f56683e46e",
+    "baseline.yaml": "616b7ea2802d25906408f5be19062325f36fe2551e3667c85d16a8de401d561a",
+    "config/rules.yaml": "31d958f7876709af6bc260984174528433aec7a5b5706be415f3261386138cd5"
+  },
+  "hashes_salidas": {
+    "ground_truth.jsonl": "736159864e8f2f244b1d15a7d5b217bc6e0e5f7ccc7b0296f02349d70115c647",
+    "alerts/alerts.jsonl": "3bdb01c50c282dc759a2de61bf822cf9001a08c47faf1a33ba6676ce0293c20c",
+    "evaluation.json": "4dca3beeb969af6b89f1e61fe2f28da0e21a084ebc84bc0ebbc760dbd614c6e1"
+  },
+  "runtime": {
+    "platform": "Windows-10-10.0.26300-SP0",
+    "python": "3.11.9",
+    "processor": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "host_declarado": "PC de laboratorio",
+    "contenedor": null,
+    "raspberry_pi": "no; H2 en Pi pendiente (RASPBERRY_PI_SETUP.md)"
+  },
+  "recursos_receptor": {
+    "sampler": "psutil 0.5s sobre proceso receptor (host)",
+    "cpu_avg_pct": 0.0,
+    "cpu_max_pct": 0.0,
+    "cpu_total_s": null,
+    "wall_s": 204.047,
+    "peak_rss_mb": 4.1
+  },
+  "resultado": {
+    "tp": 20,
+    "fp": 0,
+    "tn": 11,
+    "fn": 0,
+    "recall": 1.0,
+    "precision": 1.0,
+    "f1_score": 1.0,
+    "fpr": 0.0,
+    "injections_total": 20,
+    "alerts_total": 39,
+    "normal_messages": 11,
+    "latency_ms": {
+      "p50": 2.006,
+      "p95": 8.751,
+      "p99": 8.947,
+      "max": 8.996,
+      "mean": 3.335,
+      "samples": 20
+    }
+  },
+  "advertencia": "LAB ONLY — entorno aislado de laboratorio (loopback / red interna Docker). Prohibido ejecutar contra dispositivos médicos reales, hospitales, direcciones públicas o sistemas de terceros."
+}

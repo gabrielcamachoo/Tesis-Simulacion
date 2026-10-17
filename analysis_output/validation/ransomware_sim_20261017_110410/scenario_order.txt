@@ -1,0 +1,7 @@
+seed=2027101404
+01 A01 unknown_logical_source
+02 A14 periodic_silence
+03 A06 unexpected_bytes_before_start
+04 A13 repeated_reconnections
+05 A05 missing_final_delimiter
+06 A16 logical_identity_change_mid_session

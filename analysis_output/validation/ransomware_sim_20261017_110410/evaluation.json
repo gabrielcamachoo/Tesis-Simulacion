@@ -1,0 +1,127 @@
+{
+  "tp": 20,
+  "fp": 0,
+  "tn": 11,
+  "fn": 0,
+  "recall": 1.0,
+  "precision": 1.0,
+  "f1_score": 1.0,
+  "fpr": 0.0,
+  "accuracy": 1.0,
+  "injections_total": 20,
+  "alerts_total": 39,
+  "normal_messages": 11,
+  "latency_ms": {
+    "p50": 1.587,
+    "p95": 7.226,
+    "p99": 9.066,
+    "max": 9.526,
+    "mean": 2.749,
+    "samples": 20
+  },
+  "throughput": {
+    "msgs_per_s": 0.248,
+    "window_s": 201.244,
+    "total_msgs": 50
+  },
+  "message_loss": {
+    "calculable": 1,
+    "expected": 32,
+    "received": 29,
+    "lost": 3,
+    "loss_rate": 0.0938,
+    "source": "hl7"
+  },
+  "resource_usage": {},
+  "per_scenario": {
+    "A01": {
+      "name": "unknown_logical_source",
+      "expected_rule": "R-ID-001",
+      "mitre_ics": "T1692.002",
+      "injected": 3,
+      "detected": 3,
+      "missed": 0,
+      "wrong_rule": 0,
+      "detection_rate": 1.0,
+      "latency_p50_ms": 1.161
+    },
+    "A05": {
+      "name": "missing_final_delimiter",
+      "expected_rule": "R-MLLP-001",
+      "mitre_ics": "T1692.002",
+      "injected": 3,
+      "detected": 3,
+      "missed": 0,
+      "wrong_rule": 0,
+      "detection_rate": 1.0,
+      "latency_p50_ms": 1.002
+    },
+    "A06": {
+      "name": "unexpected_bytes_before_start",
+      "expected_rule": "R-MLLP-001",
+      "mitre_ics": "T1692.002",
+      "injected": 3,
+      "detected": 3,
+      "missed": 0,
+      "wrong_rule": 0,
+      "detection_rate": 1.0,
+      "latency_p50_ms": 3.54
+    },
+    "A13": {
+      "name": "repeated_reconnections",
+      "expected_rule": "R-TIME-002",
+      "mitre_ics": "T0814",
+      "injected": 5,
+      "detected": 5,
+      "missed": 0,
+      "wrong_rule": 0,
+      "detection_rate": 1.0,
+      "latency_p50_ms": 7.083
+    },
+    "A14": {
+      "name": "periodic_silence",
+      "expected_rule": "R-TIME-002",
+      "mitre_ics": "T0814",
+      "injected": 3,
+      "detected": 3,
+      "missed": 0,
+      "wrong_rule": 0,
+      "detection_rate": 1.0,
+      "latency_p50_ms": 1.492
+    },
+    "A16": {
+      "name": "logical_identity_change_mid_session",
+      "expected_rule": "R-ID-001",
+      "mitre_ics": "T1692.002",
+      "injected": 3,
+      "detected": 3,
+      "missed": 0,
+      "wrong_rule": 0,
+      "detection_rate": 1.0,
+      "latency_p50_ms": 1.056
+    }
+  },
+  "per_rule": {
+    "R-ID-001": {
+      "expected": 3,
+      "detected": 3,
+      "missed": 0
+    },
+    "R-MLLP-001": {
+      "expected": 3,
+      "detected": 3,
+      "missed": 0
+    },
+    "R-TIME-002": {
+      "expected": 3,
+      "detected": 3,
+      "missed": 0
+    }
+  },
+  "unmatched_alerts": [],
+  "correlated_alerts": 19,
+  "missed_injections": [],
+  "warnings": [
+    "Sin resource_usage.json: CPU/memoria no medidos en runtime (NO_VERIFICADO)"
+  ]
+}

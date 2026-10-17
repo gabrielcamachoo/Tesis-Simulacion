@@ -1,0 +1,24 @@
+======================================================================
+REPORTE DE EVALUACIÓN - DETECCIÓN DE ANOMALÍAS HL7/MLLP
+======================================================================
+Espacio de confusión: TP=20 FP=0 TN=11 FN=0 (+19 alertas correlacionadas)
+Recall:    1.0000
+Precision: 1.0000
+F1:        1.0000
+FPR:       0.0000
+Accuracy:  1.0000
+Inyecciones: 20  Alertas: 39  Normales: 11
+Latencia detección (ms): p50=1.587 p95=7.226 p99=9.066 max=9.526
+Throughput: 0.248 msg/s (50 msgs en 201.244 s)
+Pérdida: 3/32 (9.38%) [esperado=32 recibido=29]
+----------------------------------------------------------------------
+Esc  Escenario                          Regla         Det  Fal    %Det
+A01  unknown_logical_source             R-ID-001        3    0  100.0%
+A05  missing_final_delimiter            R-MLLP-001      3    0  100.0%
+A06  unexpected_bytes_before_start      R-MLLP-001      3    0  100.0%
+A13  repeated_reconnections             R-TIME-002      5    0  100.0%
+A14  periodic_silence                   R-TIME-002      3    0  100.0%
+A16  logical_identity_change_mid_sessio R-ID-001        3    0  100.0%
+----------------------------------------------------------------------
+ADVERTENCIA: Sin resource_usage.json: CPU/memoria no medidos en runtime (NO_VERIFICADO)
+======================================================================

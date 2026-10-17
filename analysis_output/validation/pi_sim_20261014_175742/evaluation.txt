@@ -1,0 +1,33 @@
+======================================================================
+REPORTE DE EVALUACIÓN - DETECCIÓN DE ANOMALÍAS HL7/MLLP
+======================================================================
+Espacio de confusión: TP=64 FP=1 TN=11 FN=0 (+85 alertas correlacionadas)
+Recall:    1.0000
+Precision: 0.9846
+F1:        0.9922
+FPR:       0.0833
+Accuracy:  0.9868
+Inyecciones: 64  Alertas: 152  Normales: 11
+Latencia detección (ms): p50=0.95 p95=1.78 p99=2.442 max=3.138
+Throughput: 1.943 msg/s (163 msgs en 83.889 s)
+Pérdida: 4/76 (5.26%) [esperado=76 recibido=72]
+----------------------------------------------------------------------
+Esc  Escenario                          Regla         Det  Fal    %Det
+A01  unknown_logical_source             R-ID-001        3    0  100.0%
+A02  duplicate_control_id               R-SEQ-001       3    0  100.0%
+A03  replay_synthetic_message           R-SEQ-002       3    0  100.0%
+A04  regressive_timestamp               R-TIME-001      3    0  100.0%
+A05  missing_final_delimiter            R-MLLP-001      3    0  100.0%
+A06  unexpected_bytes_before_start      R-MLLP-001      3    0  100.0%
+A07  missing_msh_segment                R-HL7-001       3    0  100.0%
+A08  invalid_segment_order              R-HL7-003       3    0  100.0%
+A09  unknown_message_type               R-HL7-002       3    0  100.0%
+A10  synthetic_obx_unexpected_datatype  R-OBX-003       3    0  100.0%
+A11  synthetic_obx_unauthorized_unit    R-OBX-002       3    0  100.0%
+A12  frequency_out_of_baseline          R-TIME-002     20    0  100.0%
+A13  repeated_reconnections             R-TIME-002      5    0  100.0%
+A15  oversized_message                  R-MLLP-001      3    0  100.0%
+A16  logical_identity_change_mid_sessio R-ID-001        3    0  100.0%
+----------------------------------------------------------------------
+ADVERTENCIA: Sin resource_usage.json: CPU/memoria no medidos en runtime (NO_VERIFICADO)
+======================================================================

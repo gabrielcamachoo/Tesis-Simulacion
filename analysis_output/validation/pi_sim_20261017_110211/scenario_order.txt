@@ -1,0 +1,16 @@
+seed=21261017
+01 A04 regressive_timestamp
+02 A11 synthetic_obx_unauthorized_unit
+03 A08 invalid_segment_order
+04 A12 frequency_out_of_baseline
+05 A01 unknown_logical_source
+06 A05 missing_final_delimiter
+07 A16 logical_identity_change_mid_session
+08 A09 unknown_message_type
+09 A02 duplicate_control_id
+10 A15 oversized_message
+11 A10 synthetic_obx_unexpected_datatype
+12 A07 missing_msh_segment
+13 A06 unexpected_bytes_before_start
+14 A13 repeated_reconnections
+15 A03 replay_synthetic_message
