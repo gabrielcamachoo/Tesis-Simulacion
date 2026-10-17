@@ -1,7 +1,7 @@
 # Limitaciones y Amenazas a la Validez
 
 **Fecha:** 2026-10-13 · **Regla:** todo lo marcado NO VERIFICADO no se afirma en el texto de la
-tesis como resultado; se declara como limitación. Complementa `THREAT_MODEL.md` §6.
+tesis como resultado; se declara como limitación. Complementa `docs/THREAT_MODEL.md` §6.
 
 ## 1. Evidencia disponible
 
@@ -47,11 +47,11 @@ tesis como resultado; se declara como limitación. Complementa `THREAT_MODEL.md`
 ## 5. Hipótesis pendientes
 
 - **H1 (ADR ≥ 90 %): VERIFICADA** en Fase 9 (2026-10-14): 16/16 escenarios, ADR 100 %,
-  60 corridas selladas (`RESULTS_20261014.md` §2). Queda pendiente solo el reporte a
+  60 corridas selladas (`docs/RESULTS_20261014.md` §2). Queda pendiente solo el reporte a
   texto de tesis.
 - **H2 (latencia ≤ 500 µs): NO VERIFICADO para la Raspberry Pi** — PASS de referencia
   en PC (p95 177.5 µs agregado, peor caso sintético). Repetir el bench en la Pi antes
-  de afirmar H2 (`RESULTS_20261014.md` §3, `RASPBERRY_PI_SETUP.md`).
+  de afirmar H2 (`docs/RESULTS_20261014.md` §3, `docs/RASPBERRY_PI_SETUP.md`).
 - FP en RUNNING: **cuantificado** (256 alertas no-NORMAL sobre 99 ORU de evidencia
   real, ~2.6/mensaje; reglas R-OBX-001/002/003 sobre códigos fuera de baseline
   STANDBY). STANDBY: FP = 0 (5 replays independientes).
@@ -59,7 +59,7 @@ tesis como resultado; se declara como limitación. Complementa `THREAT_MODEL.md`
 ## 6. Mapeo MITRE ATT&CK
 
 - Matriz **ICS v20 publicada 2026-10-13**, recién verificada; técnicas nuevas (T1692/T1693)
-  pueden cambiar en versiones futuras → `THREAT_MODEL.md` §7 obliga a reverificar.
+  pueden cambiar en versiones futuras → `docs/THREAT_MODEL.md` §7 obliga a reverificar.
 - El SRS/SPMP citan **T0855** (heredado de versiones previas): hoy redirige a T1692.001;
   la equivalencia queda documentada, pero los documentos fuente no la actualizan.
 - **No existe técnica ICS dedicada a malformación de framing/mensajes:** se usa T1692 como
@@ -73,7 +73,7 @@ tesis como resultado; se declara como limitación. Complementa `THREAT_MODEL.md`
   re-identificación interna posible por diseño (necesaria para auditoría); fuera del lab, los
   PCAP crudos son sensibles.
 - Marco de protección de datos (Ley 1581/2012 y Decreto 1377/2013): **NO VERIFICADO** por
-  revisión institucional (`ETHICS_AND_SAFETY.md` §7).
+  revisión institucional (`docs/ETHICS_AND_SAFETY.md` §7).
 - Gate clínico: sin revisor clínico no hay reglas de umbrales clínicos → la tesis solo evalúa
   detección de anomalías de **comunicación**, no de contenido médico.
 

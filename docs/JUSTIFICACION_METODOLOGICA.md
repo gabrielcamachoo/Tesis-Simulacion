@@ -27,7 +27,7 @@ tráfico por una interfaz observable. Este enfoque es compatible con las guías 
 de dispositivos médicos de la FDA, que enfatizan la evaluación de interfaces externas y el
 riesgo de red, y con NIST SP 800-82 (security of ICS), que recomienda monitorizar el tráfico
 de protocolos como control compensatorio. No se realiza ingeniería inversa invasiva ni
-explotación de vulnerabilidades (ver `ETHICS_AND_SAFETY.md`).
+explotación de vulnerabilidades (ver `docs/ETHICS_AND_SAFETY.md`).
 
 ## 3. Por qué la equivalencia se establece en HL7/MLLP y no en el sistema operativo
 
@@ -36,8 +36,8 @@ equipo emisor, puerto 1550, encapsulamiento MLLP, HL7 2.6, tipo ORU^R01^ORU_R01,
 MSH–PID–PV1–OBR–OBX×4, codificación UTF-8 declarada en MSH-18, periodicidad de 10.000 s por
 MSH-7 y ACK MSA|AA. Afirmar que el laboratorio replica el «sistema operativo del equipo»
 (Ubuntu, Debian, u otro) sería una conjetura sin respaldo del fabricante; la equivalencia
-declarada es **funcional y de protocolo**, y así queda en `LAB_ARCHITECTURE.md` y
-`LIMITATIONS.md`.
+declarada es **funcional y de protocolo**, y así queda en `docs/LAB_ARCHITECTURE.md` y
+`docs/LIMITATIONS.md`.
 
 ## 4. Por qué no se debe crear ransomware real
 
@@ -47,7 +47,7 @@ cifrar archivos, obtener persistencia o explotar el dispositivo añade riesgo si
 evidencia científica: el experimento no mide capacidad de compromiso, mide detección de
 comunicaciones anómalas. Además, cualquier artefacto ofensivo real estaría sujeto a
 restricciones legales y éticas (Ley 1581/2012 en Colombia; política institucional) que este
-proyecto no necesita invocar porque el alcance es un laboratorio aislado (`ETHICS_AND_SAFETY.md`).
+proyecto no necesita invocar porque el alcance es un laboratorio aislado (`docs/ETHICS_AND_SAFETY.md`).
 
 ## 5. Cómo las cargas anómalas representan efectos observables de un compromiso
 
@@ -60,7 +60,7 @@ tipos de mensaje no contemplados (A09), telemetría alterada (A10/A11), frecuenc
 conexiones repetidas (A12/A13), silencio prolongado (A14), sobredimensión acotada (A15).
 Cada escenario se mapea a una regla del detector y, cuando la correspondencia es defendible,
 a una técnica de MITRE ATT&CK for ICS (v20), explicando qué parte del escenario se corresponde
-y qué parte no fue reproducida (`THREAT_MODEL.md` §4–§5, `ATTACK_SCENARIOS.md`).
+y qué parte no fue reproducida (`docs/THREAT_MODEL.md` §4–§5, `docs/ATTACK_SCENARIOS.md`).
 
 ## 6. Cómo las capturas permiten construir la línea base
 
@@ -74,7 +74,7 @@ línea base es un conjunto de hechos medidos y trazables.
 
 ## 7. Cómo ackdummy permitió establecer la sesión, conservar bytes, extraer mensajes y responder ACK
 
-`ackdummy (1).py` (preservado en `evidence_raw/codigo/ackdummy_original.py`) es el prototipo
+`legacy/ackdummy (1).py` (preservado en `evidence_raw/codigo/ackdummy_original.py`) es el prototipo
 del receptor: escucha TCP/MLLP, guarda todos los bytes recibidos en `raw_<ip>_<puerto>.bin`,
 delimita SB/EOM, extrae el contenido HL7, lo decodifica, identifica MSH y segmentos, registra
 `mensajes.hl7` y `sesion.log`, y responde ACK MSA|AA con el mismo Message Control ID. De él
@@ -89,7 +89,7 @@ derivado) **participan activamente** en la sesión porque emiten ACK hacia el em
 puede mantener abierta la conexión y alterar el comportamiento del equipo respecto a una
 mera copia del tráfico. Por ello el corpus de replay (H3) usa `--no-ack`, y la Modalidad B
 (`detect_pcap.py`) procesa el PCAP sin abrir ninguna conexión. La distinción
-captura-pasiva / servidor-activo queda explícita en `EVIDENCE_ANALYSIS.md`.
+captura-pasiva / servidor-activo queda explícita en `docs/EVIDENCE_ANALYSIS.md`.
 
 ## 9. Cómo la Raspberry Pi actúa como control compensatorio externo
 
@@ -116,7 +116,7 @@ campaña H1 con 60 corridas (30 docker + 30 A14 local) con ADR 100% (2010/2010 T
 Wilson global [99.8, 100]), precisión 99.7% y 7 FP benignos por jitter de red en R-TIME-002;
 replay H3 post-Enmienda E1 con FP=0 sobre el corpus STANDBY (×5) y 256 FP reportados sin
 umbral sobre RUNNING (códigos NM/SN no verificados, anticipados); bench H2 con p95=177.52 µs
-en PC. Números sellados en `RESULTS_20261014.md` con manifiestos y SHA-256.
+en PC. Números sellados en `docs/RESULTS_20261014.md` con manifiestos y SHA-256.
 
 ## 12. Qué no puede conclusse a partir del experimento
 
@@ -147,7 +147,7 @@ en PC. Números sellados en `RESULTS_20261014.md` con manifiestos y SHA-256.
 - NIST — *SP 800-82 Rev. 3, Guide to Operational Technology Security*
   (https://csrc.nist.gov/pubs/sp/800/82/r3/final).
 - MITRE — *ATT&CK for ICS* (https://attack.mitre.org/techniques/ics/), v20; mapeo
-  verificado en `THREAT_MODEL.md` (T1692.002, T0814; T0855 redirigido).
+  verificado en `docs/THREAT_MODEL.md` (T1692.002, T0814; T0855 redirigido).
 - FDA — *Content of Premarket Submissions for Management of Cybersecurity in Medical
   Devices* (guía de ciberseguridad de dispositivos médicos).
 - CISA — material de ICS y ciberseguridad hospitalaria
@@ -157,8 +157,8 @@ en PC. Números sellados en `RESULTS_20261014.md` con manifiestos y SHA-256.
 - Mindray — documentación pública del producto WATO EX-35 (manual de operación del
   fabricante; no incluye distribución embebida).
 - Literatura revisada por pares sobre forense ICS y detección de ataques replay:
-  ver `BibTeXReferencias.bib` del repositorio.
+  ver `documentos_tesis/BibTeXReferencias.bib` del repositorio.
 
 *Nota de método:* las citas anteriores se dan como referencias de contexto verificables por
 el lector; los números experimentales citados provienen exclusivamente de la evidencia del
-propio repositorio (`RESULTS_20261014.md`, manifiestos de `analysis_output/validation/`).
+propio repositorio (`docs/RESULTS_20261014.md`, manifiestos de `analysis_output/validation/`).

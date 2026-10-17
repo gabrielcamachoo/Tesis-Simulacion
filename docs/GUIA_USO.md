@@ -1,8 +1,8 @@
 # Guía de uso — Laboratorio de detección HL7/MLLP (Tesis WATO EX-35, G18)
 
 Guía práctica para ejecutar, inspeccionar y entender el banco de pruebas.
-Complementa: `README.md` (estado), `LAB_ARCHITECTURE.md` (detalles de diseño),
-`VALIDATION_PROTOCOL.md` (metodología) y `RESULTS_20261014.md` (resultados sellados).
+Complementa: `README.md` (estado), `docs/LAB_ARCHITECTURE.md` (detalles de diseño),
+`docs/VALIDATION_PROTOCOL.md` (metodología) y `docs/RESULTS_20261014.md` (resultados sellados).
 
 ---
 
@@ -175,7 +175,7 @@ $env:LAB_AUTHORIZED = "YES"
 Peor caso: ráfaga sin sleep con mensajes que disparan R-TIME-002+R-SEQ-002.
 Imprime p50/p95/p99/max en µs y escribe JSON en `analysis_output/validation/`.
 PASS si p95 ≤ 500 µs. **En la Pi**: repetir allí antes de afirmar H2 (ver
-`RASPBERRY_PI_SETUP.md`).
+`docs/RASPBERRY_PI_SETUP.md`).
 
 ### 4.6 Campaña H1 completa (N corridas + Wilson)
 
@@ -266,7 +266,7 @@ Get-Content runs\<timestamp>\manifest.json | ConvertFrom-Json |
 ## 6. Los 16 escenarios de ataque (A01–A16)
 
 Fuente de verdad: `anomaly_generator.SCENARIOS` (detalle y mapeos MITRE en
-`ATTACK_SCENARIOS.md`).
+`docs/ATTACK_SCENARIOS.md`).
 
 | ID | Nombre | Qué simula | Regla esperada (campo `expected_rule`) |
 |----|--------|------------|----------------|
@@ -305,7 +305,7 @@ niega a excederlos (`SafetyGuard`). A14 dura ~135 s por diseño.
 4. **No dos campañas a la vez** (colisión Docker) y bench aislado de campañas
    (contaminación de CPU).
 5. **Ajustes post-hoc prohibidos**: si un umbral falla, se documenta como
-   hallazgo o se tramita enmienda versionada (§8 de `VALIDATION_PROTOCOL.md`;
+   hallazgo o se tramita enmienda versionada (§8 de `docs/VALIDATION_PROTOCOL.md`;
    precedente: enmienda E1, commit `70025c4`).
 6. `evidence_raw/` es solo lectura; los datos clínicos salen anonimizados
    (PID/PV1/NTE tokenizados con SHA-256 truncado).
@@ -321,25 +321,25 @@ niega a excederlos (`SafetyGuard`). A14 dura ~135 s por diseño.
 | Documento | Léelo cuando… |
 |---|---|
 | `README.md` | Quieres el estado general y la lista de comandos mínimos |
-| `GUIA_USO.md` (este) | Quieres ejecutar o entender el laboratorio |
-| `RESULTS_20261014.md` | Necesitas los números sellados para la tesis |
-| `VALIDATION_PROTOCOL.md` | Vas a repetir la validación o discutir metodología |
-| `ATTACK_SCENARIOS.md` | Quieres el detalle de A01–A16 y sus mapas MITRE |
-| `THREAT_MODEL.md` | Preguntas de amenazas, activos y supuestos |
-| `LAB_ARCHITECTURE.md` | Preguntas de diseño del motor y topología |
-| `EVIDENCE_ANALYSIS.md` / `EVIDENCE_ANALYSIS_RESUMEN.md` | Preguntas sobre las capturas originales |
-| `ETHICS_AND_SAFETY.md` | Preguntas de seguridad, anonimización y ética |
-| `LIMITATIONS.md` | Vas a citar resultados y necesitas los matices |
-| `JUSTIFICACION_METODOLOGICA.md` | Vas a redactar/incrustar la sección metodológica de la tesis |
-| `RASPBERRY_PI_SETUP.md` | Vas a montar la Pi (único pendiente de hardware) |
-| `HANDOFF.md` | Historial de sesiones de desarrollo y pendientes |
+| `docs/GUIA_USO.md` (este) | Quieres ejecutar o entender el laboratorio |
+| `docs/RESULTS_20261014.md` | Necesitas los números sellados para la tesis |
+| `docs/VALIDATION_PROTOCOL.md` | Vas a repetir la validación o discutir metodología |
+| `docs/ATTACK_SCENARIOS.md` | Quieres el detalle de A01–A16 y sus mapas MITRE |
+| `docs/THREAT_MODEL.md` | Preguntas de amenazas, activos y supuestos |
+| `docs/LAB_ARCHITECTURE.md` | Preguntas de diseño del motor y topología |
+| `docs/EVIDENCE_ANALYSIS.md` / `EVIDENCE_ANALYSIS_RESUMEN.md` | Preguntas sobre las capturas originales |
+| `docs/ETHICS_AND_SAFETY.md` | Preguntas de seguridad, anonimización y ética |
+| `docs/LIMITATIONS.md` | Vas a citar resultados y necesitas los matices |
+| `docs/JUSTIFICACION_METODOLOGICA.md` | Vas a redactar/incrustar la sección metodológica de la tesis |
+| `docs/RASPBERRY_PI_SETUP.md` | Vas a montar la Pi (único pendiente de hardware) |
+| `docs/HANDOFF.md` | Historial de sesiones de desarrollo y pendientes |
 
 ---
 
 ## 9. Pendientes conocidos (no los olvides al citar)
 
 1. **H2 en Raspberry Pi**: repetir `latency_bench.py --messages 1000 --runs 3`
-   en la Pi (setup en `RASPBERRY_PI_SETUP.md`). Hasta entonces H2 es
+   en la Pi (setup en `docs/RASPBERRY_PI_SETUP.md`). Hasta entonces H2 es
    "NO VERIFICADO en Pi; PASS de referencia en PC".
 2. **Gate clínico y revisión ética** (Ley 1581/2012): trámite institucional
    pendiente; ninguna regla clínica se activa hasta entonces.

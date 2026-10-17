@@ -2,9 +2,9 @@
 
 **Fuente de verdad operativa:** `anomaly_generator.py` → `SCENARIOS` (el bloque
 `settings.yaml` → `anomaly_generator.scenarios` es espejo documental; debe mantenerse igual)
-**Mapeo MITRE:** verificado contra ATT&CK ICS v20 el 2026-10-13 (`THREAT_MODEL.md` §4–§5)
+**Mapeo MITRE:** verificado contra ATT&CK ICS v20 el 2026-10-13 (`docs/THREAT_MODEL.md` §4–§5)
 **Carácter:** generación sintética **dentro del lab**, con techo por escenario
-(`safety_limit`) y los límites globales de `ETHICS_AND_SAFETY.md` §3. No hay explotación,
+(`safety_limit`) y los límites globales de `docs/ETHICS_AND_SAFETY.md` §3. No hay explotación,
 persistencia ni objetivo externo.
 
 Criterio de asignación (resumen): mensaje de reporte (ORU) no autorizado/malformado/falsificado
@@ -46,9 +46,9 @@ T0831 (no aplica, queda NO_VERIFICADO).
   (intervalos 9–10 s; tamaños ORU 968/971 B) — la anomalía es la desviación, no el volumen.
 - **Detección esperada (hipótesis, a verificar en Fase 9):** ADR ≥ 90 % por escenario;
   falsos positivos estimados solo en RUNNING por códigos OBX NM/SN NO_VERIFICADOS
-  (`LIMITATIONS.md`, pendiente).
+  (`docs/LIMITATIONS.md`, pendiente).
 - **Excluido por diseño:** cualquier escenario que requiera explotación, escalada, firmware,
-  ransomware o tráfico fuera del lab (ver `ETHICS_AND_SAFETY.md` §3).
+  ransomware o tráfico fuera del lab (ver `docs/ETHICS_AND_SAFETY.md` §3).
 
 ## Desviación documentada: A14
 
@@ -59,10 +59,10 @@ observable equivalente en el canal: un **hueco de periodicidad** de 45 s (> inte
 de 10–15 s) seguido de un mensaje, detectado por **R-TIME-002**. El caso «ACK ausente o
 retrasado del receptor» sí se valida del lado del emulador (`wato_emulator.py --ack-timeout`),
 que espera y reporta la respuesta. Esta desviación está registrada aquí y en
-`LIMITATIONS.md`; no altera el resto del mapa amenaza→escenario→regla.
+`docs/LIMITATIONS.md`; no altera el resto del mapa amenaza→escenario→regla.
 
 ## Trazabilidad
 
 Cada escenario se declara en `anomaly_generator.SCENARIOS` (con `enabled`, `safety_limit` y
 parámetros propios; espejo en `settings.yaml`); la matriz de trazabilidad
-requisito→escenario→regla→métrica queda en `TRACEABILITY_MATRIX.csv`.
+requisito→escenario→regla→métrica queda en `docs/TRACEABILITY_MATRIX.csv`.

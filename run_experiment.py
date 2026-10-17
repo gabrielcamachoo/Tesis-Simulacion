@@ -219,7 +219,7 @@ def write_manifest(run_dir: Path, args, mode: str, started_iso: str,
             "contenedor": ("python:3.11-slim (ver docker-compose.yml; "
                            "red internal:true)" if mode == "docker" else None),
             "raspberry_pi": ("no; H2 en Pi pendiente "
-                             "(RASPBERRY_PI_SETUP.md)"),
+                             "(docs/RASPBERRY_PI_SETUP.md)"),
         },
         "recursos_receptor": resources,
         "resultado": ({

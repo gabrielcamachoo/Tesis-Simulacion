@@ -25,7 +25,7 @@ causa; no se ajustan los umbrales post hoc para alcanzarlas.
 
 ### 3.1 Datos positivos (para ADR)
 
-- Generación por escenario con el techo de `ATTACK_SCENARIOS.md` (3–20 msg), repetida en
+- Generación por escenario con el techo de `docs/ATTACK_SCENARIOS.md` (3–20 msg), repetida en
   **≥ 30 corridas** por escenario con semillas distintas (o todas las corridas posibles si el
   techo lo limita; se declara N real por escenario).
 - Salida medida: alerta emitida por la regla mapeada al escenario (TP) o ausencia (FN);
@@ -63,8 +63,8 @@ causa; no se ajustan los umbrales post hoc para alcanzarlas.
 4. Correr A01–A16 según §3.1 → matriz TP/FP/FN por corrida
    (herramienta: `run_experiment.py --mode docker`, prerequisito de la corrida de latencia).
 5. Correr latencia (§3.3).
-6. Rellenar `RESULTS_TEMPLATE.md` con los números crudos (sin redondeos selectivos).
-7. Decisión: H1/H2 aceptadas o rechazadas; si se rechazan, `LIMITATIONS.md` y análisis de
+6. Rellenar `docs/RESULTS_TEMPLATE.md` con los números crudos (sin redondeos selectivos).
+7. Decisión: H1/H2 aceptadas o rechazadas; si se rechazan, `docs/LIMITATIONS.md` y análisis de
    causa raíz (sin iterar sobre los mismos datos).
 
 ## 6. Amenazas a la validez (y mitigación)
@@ -79,7 +79,7 @@ causa; no se ajustan los umbrales post hoc para alcanzarlas.
 
 ## 7. Salidas
 
-- `RESULTS_TEMPLATE.md` diligenciado (Fase 9).
+- `docs/RESULTS_TEMPLATE.md` diligenciado (Fase 9).
 - Tablas y corridas crudas en `analysis_output/validation/` (selladas con SHA-256).
 - Este protocolo no se modifica después de iniciar la Fase 9 salvo enmienda versionada.
 
@@ -110,7 +110,7 @@ causa; no se ajustan los umbrales post hoc para alcanzarlas.
 - **Artefactos pre-enmienda:** HEAD `025693e` + SHA-256 de
   settings/rules/baseline en `analysis_output/validation/freeze_manifest.json`.
 - **Decisión:** aprobada por el autor de la tesis (opción "enmienda
-  versionada + fix"). Transparencia: `RESULTS_20261014.md` publica AMBOS
+  versionada + fix"). Transparencia: `docs/RESULTS_20261014.md` publica AMBOS
   resultados (pre-enmienda 43 FP / post-enmienda).
 - **Re-medida:** replay STANDBY re-ejecutado con artefactos
   post-enmienda; nuevo HEAD y hashes registrados en el freeze manifest.

@@ -1,4 +1,4 @@
-# Plantilla de Resultados (Fase 9 — diligenciar al ejecutar VALIDATION_PROTOCOL.md)
+# Plantilla de Resultados (Fase 9 — diligenciar al ejecutar docs/VALIDATION_PROTOCOL.md)
 
 > Regla: números crudos, sin redondeos selectivos. Todo NO VERIFICADO se queda en blanco.
 > Copiar este archivo a `RESULTS_YYYYMMDD.md` al iniciar la Fase 9; no sobrescribir la plantilla.
@@ -66,7 +66,7 @@ Corpus RUNNING (99 ORU+99 ACK) → FP = ___ (reportar sin umbral)
 ## 6. Conclusión
 
 - H1: · H2: · H3 (observación):
-- Implicaciones para `LIMITATIONS.md` y para el texto de la tesis:
+- Implicaciones para `docs/LIMITATIONS.md` y para el texto de la tesis:
 
 ## 7. Evidencia asociada
 

@@ -1,6 +1,6 @@
 """Regresion de mapeos MITRE ATT&CK ICS v20.
 
-Verificado el 2026-10-13 (THREAT_MODEL.md 4, 7):
+Verificado el 2026-10-13 (docs/THREAT_MODEL.md 4, 7):
 - T0855 redirige a T1692.001 y T0857 a T1693.001 (obsoletas como IDs proprios).
 - T0860 (Wireless Compromise), T0887 (Wireless Sniffing), T0869 (Standard Application
   Layer Protocol) y T0831 (Manipulation of Control) NO describen los escenarios del lab.

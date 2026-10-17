@@ -2,8 +2,8 @@
 
 **Proyecto:** detector determinista de anomalías para comunicaciones HL7/MLLP (Tesis G18 SIDRE)
 **Fecha:** 2026-10-14 · **Estado:** ⬜ Fase 6 — guía de instalación escrita; **ejecución en la Pi
-pendiente** (ver `LAB_ARCHITECTURE.md` §6). H2 (latencia ≤ 500 µs) solo se verifica en la Pi
-(`VALIDATION_PROTOCOL.md` §3.3).
+pendiente** (ver `docs/LAB_ARCHITECTURE.md` §6). H2 (latencia ≤ 500 µs) solo se verifica en la Pi
+(`docs/VALIDATION_PROTOCOL.md` §3.3).
 
 ## 1. Alcance
 
@@ -26,7 +26,7 @@ con los mismos interlocks de seguridad que en el host Windows:
 | Sistema | Raspberry Pi OS 64 bits (Bookworm o superior) | decisión de despliegue |
 | Python | 3.11+ (`python3-venv`); el lector de PCAP es Python puro, sin dependencias de sistema | `README.md` §Requisitos |
 | Dependencias | `PyYAML>=6.0` (runtime), `pytest>=8.0` (pruebas) | `requirements.txt` |
-| Red | interfaz de laboratorio aislada (sin Internet, sin IP pública); puerto **1550/tcp** | `LAB_ARCHITECTURE.md` §4 |
+| Red | interfaz de laboratorio aislada (sin Internet, sin IP pública); puerto **1550/tcp** | `docs/LAB_ARCHITECTURE.md` §4 |
 
 ## 3. Aislamiento de red
 
@@ -172,7 +172,7 @@ scp -r pi@<ip-pi>:/home/pi/wato/runs/<timestamp> .\runs\
 ## 8. Medición de latencia (H2)
 
 La hipótesis H2 (p95 lectura→alerta ≤ 500 µs por mensaje) se mide **en la Pi**, con
-`perf_counter` por mensaje, siguiendo `VALIDATION_PROTOCOL.md` §3.3. Si la medición se hace en
+`perf_counter` por mensaje, siguiendo `docs/VALIDATION_PROTOCOL.md` §3.3. Si la medición se hace en
 un PC, debe declararse y H2 queda sin verificar ("sin Pi no hay H2").
 
 ## 9. Checklist de despliegue
@@ -184,9 +184,15 @@ un PC, debe declararse y H2 queda sin verificar ("sin Pi no hay H2").
 | `/LAB_ONLY.marker` + `LAB_AUTHORIZED=YES` (systemd) | ⬜ pendiente |
 | Firewall aislado (sin egress) + IP de lab fija | ⬜ pendiente |
 | Allowlist `baseline.yaml` con IPs del lab | ⬜ pendiente |
-| Corrida local end-to-end (`run_experiment.py --mode local`) | ⬜ pendiente |
+| Corrida local end-to-end (`run_experiment.py --mode local`) | 🟡 **simulada en docker** (topología idéntica, `docs/SIMULACION_RANSOMWARE.md` §4); física ⬜ |
 | Evidencia respaldada (scp) + hashes verificados | ⬜ pendiente |
-| Medición H2 en la Pi (`VALIDATION_PROTOCOL.md` §3.3) | ⬜ pendiente |
+| Medición H2 en la Pi (`docs/VALIDATION_PROTOCOL.md` §3.3) | ⬜ pendiente (en PC p95=248 µs, no extrapolable) |
+
+> **Nota 2026-10-14:** se ejecutó la campaña A01–A16 (sin A14) con el
+> `docker-compose.yml` del repo (misma topología que usará la Pi):
+> recall=1.0, precision=0.985 (1 FP jitter), sellada en
+> `analysis_output/validation/pi_sim_20261014_175742/`. Ver también
+> `docs/SIMULACION_RANSOMWARE.md` (campaña ransomware + metodología Pi).
 
 ## 10. Problemas comunes
 
@@ -198,5 +204,5 @@ un PC, debe declararse y H2 queda sin verificar ("sin Pi no hay H2").
 | Rechazo por IP pública | `block_public_ips: true` — behavior correcto; usar solo red de lab |
 | El emulador no recibe ACK | el receptor está con `--no-ack` (modo pasivo); quitarlo para ACK `AA` |
 
-Ver también: `ETHICS_AND_SAFETY.md` (límites cuantitativos), `LAB_ARCHITECTURE.md`
-(interlocks §5), `README.md` (comandos), `VALIDATION_PROTOCOL.md` (protocolo de medición).
+Ver también: `docs/ETHICS_AND_SAFETY.md` (límites cuantitativos), `docs/LAB_ARCHITECTURE.md`
+(interlocks §5), `README.md` (comandos), `docs/VALIDATION_PROTOCOL.md` (protocolo de medición).

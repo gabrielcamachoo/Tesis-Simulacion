@@ -10,7 +10,7 @@
 - Sin pruebas ofensivas, sin malware, sin contacto con el equipo real.
 - Directivas del usuario: trabajar por fases; cambios pequeños; correr tests tras cada
   módulo; **nunca** sobrescribir `evidence_raw/`; sin afirmaciones sin fuente; **siempre
-  dejar este HANDOFF.md al terminar el paso**.
+  dejar este docs/HANDOFF.md al terminar el paso**.
 - Seguridad: `SafetyGuard` (solo localhost/hostnames fijos), `LAB_AUTHORIZED=YES` +
   `LAB_ONLY.marker`, rate limit, `strict_validation=True` por defecto.
 - Host Windows, PowerShell (sin `&&`, usar `;`), Python:
@@ -39,15 +39,15 @@
   A14 `periodic_silence` gap 45 s, safety_limit 3).
 - Docs Fase 5/6 sincronizadas: README, THREAT_MODEL, ETHICS_AND_SAFETY, LAB_ARCHITECTURE,
   ATTACK_SCENARIOS, VALIDATION_PROTOCOL, RESULTS_TEMPLATE, LIMITATIONS,
-  TRACEABILITY_MATRIX.csv, **RASPBERRY_PI_SETUP.md** (borrador Fase 6, sin ejecutar).
+  docs/TRACEABILITY_MATRIX.csv, **docs/RASPBERRY_PI_SETUP.md** (borrador Fase 6, sin ejecutar).
 - Suite completa: **161 passed** (re-correr tras cualquier cambio).
 
 ## 3. Pendientes (en orden)
 
-1. **Raspberry Pi (Fase 6):** ejecutar `RASPBERRY_PI_SETUP.md` en hardware real;
+1. **Raspberry Pi (Fase 6):** ejecutar `docs/RASPBERRY_PI_SETUP.md` en hardware real;
    marcar la checklist del doc. Medir H2 (latencia ACK) ahí.
 2. **Fase 9 (validación):** ≥30 corridas/escenario con semillas fijas, según
-   `VALIDATION_PROTOCOL.md`; diligenciar `RESULTS_TEMPLATE.md`.
+   `docs/VALIDATION_PROTOCOL.md`; diligenciar `docs/RESULTS_TEMPLATE.md`.
 3. Limpieza opcional: `docker volume rm investigacion-de-la-tesis_lab_output`
    (los datos de cada corrida ya viven en `runs/<ts>/` tras el cp).
 
@@ -90,7 +90,7 @@ $env:LAB_AUTHORIZED="YES"
 ## 6. Riesgos conocidos
 
 - Validación clínica pendiente (`clinical_approval_status: PENDING`): ninguna regla
-  clínica activa hasta aprobación (ETHICS_AND_SAFETY.md).
+  clínica activa hasta aprobación (docs/ETHICS_AND_SAFETY.md).
 - RUNNING: códigos OBX NM/SN no baselineados → posible semitono de FP en Fase 9.
 - A14 completo cuesta ~135 s/corrida; en Fase 9 decidir si se corre completo o se
   excluye documentando la exclusión.
@@ -191,11 +191,11 @@ bench y cierre documental. Estado final: Fase 9 COMPLETA en PC.
   - H1 ACEPTADA (RESULTS sec 2). Semillas 100001-100030 por fase.
 - **H2 bench (latency_20261014_140421.json)**: 3x1000 peor caso; p95 agregado
   177.5 us << 500 us -> PASS de referencia en PC; H2 NO VERIFICADO para Pi.
-- **Docs cerradas**: RESULTS_20261014.md (completada con A14 + H2 + decisiones),
+- **Docs cerradas**: docs/RESULTS_20261014.md (completada con A14 + H2 + decisiones),
   LIMITATIONS (sec 5 actualizada + sec 9 hallazgos), este HANDOFF, SHA256SUMS.txt
   de analysis_output/validation/.
 - **Pendiente unico (Fase 6/9 hardware)**: repetir latency_bench en Raspberry Pi
-  (RASPBERRY_PI_SETUP.md) antes de afirmar H2 en la tesis.
+  (docs/RASPBERRY_PI_SETUP.md) antes de afirmar H2 en la tesis.
 - Leccion de coordinacion: dos sesiones pueden colisionar en replays (puertos auto OK)
   pero NUNCA en docker (bind-mount vivo = contaminacion). Regla: todo cambio de
   src/config/baseline exige commit + re-freeze antes de cualquier corrida.
@@ -205,7 +205,7 @@ bench y cierre documental. Estado final: Fase 9 COMPLETA en PC.
 El usuario pidio (tras un dump de spec OT/IoMT) completar lo que faltaba de los
 18 entregables y dejar el proyecto funcionando. Inventario vs spec + cierre de gaps:
 
-- **Gap 1 - diagrama Mermaid (entregable 17)**: anadido `LAB_ARCHITECTURE.md` sec 1.1
+- **Gap 1 - diagrama Mermaid (entregable 17)**: anadido `docs/LAB_ARCHITECTURE.md` sec 1.1
   (`flowchart` con Modalidad A local + Modalidad B pasiva + pipeline offline + flujo
   de datos + interlock SafetyGuard; leyenda observado/sintetico/interlock).
 - **Gap 2 - metricas faltantes en evaluate.py**: throughput (msg/s, desde timestamps
@@ -223,14 +223,14 @@ El usuario pidio (tras un dump de spec OT/IoMT) completar lo que faltaba de los
   (llamada `anomalicas_str` inexistente -> `format_anomalias`; var `anomalias` ->
   `anomalies`). Corregidos. El fixture de test_detect_pcap.py (IP fuente) lo corrigio
   la sesion paralela en paralelo (192.168.23.250, en allowed_ips).
-- **Gap 3 - artefactos ausentes marcados**: `EVIDENCE_ANALYSIS.md` sec 4 anade
+- **Gap 3 - artefactos ausentes marcados**: `docs/EVIDENCE_ANALYSIS.md` sec 4 anade
   NO_VERIFICADO/NO PRESERVADO para los binarios de sesion de ackdummy
   (raw_*.bin, mensajes.hl7, sesion.log) - solo se conservan el codigo y los PCAPNG.
 - **Verificacion metodologica**: sin frases de exito/demo no demostrado; taxonomia
   OBSERVADO/DOCUMENTADO/INFERIDO/NO_VERIFICADO presente en los 11 docs clave.
 - **Suite**: 200 passed (antes 179). Dependencias: solo PyYAML (requirements.txt OK).
 - **NO commitado a proposito**: la sesion paralela tiene cambios activos en
-  ATTACK_SCENARIOS.md, TRACEABILITY_MATRIX.csv, requirements.txt, run_experiment.py
+  docs/ATTACK_SCENARIOS.md, docs/TRACEABILITY_MATRIX.csv, requirements.txt, run_experiment.py
   + untracked (detect_pcap.py, test_manifest.py, etc.). Coordinar commit antes de
   mezclar trabajo incompleto ajeno.
 - **Pendiente unico critico (hardware)**: H2 en Raspberry Pi (Fase 6) sigue NO
@@ -255,17 +255,17 @@ los cambios simultaneos de la sesion asistente 5 (ver §10) sin conflictos:
   Corregido el lado cliente (_flow_key ordena lexicograficamente: emisor = lado
   != :1550). Smoke sobre LECTURACONACK25AGOSTO.pcapng: 43 ORU, 1 NORMAL +
   42 R-TIME-002 (esperado sin pacing). +4 tests (tests/test_detect_pcap.py).
-- **Desviacion A14 documentada** en ATTACK_SCENARIOS.md (spec decia "ACK ausente";
+- **Desviacion A14 documentada** en docs/ATTACK_SCENARIOS.md (spec decia "ACK ausente";
   el receptor no observa su propio ACK -> hueco de periodicidad R-TIME-002;
   el ACK ausente se valida desde el emulador --ack-timeout).
-- **TRACEABILITY_MATRIX.csv** reescrito: estados post-Fase 9 (VERIFICADO/MEDIDO_
+- **docs/TRACEABILITY_MATRIX.csv** reescrito: estados post-Fase 9 (VERIFICADO/MEDIDO_
   PC/IMPLEMENTADO) + columna `evidencia` con rutas de artefactos reales; +4 filas
   (MAN-01, OFF-01, GEN-01, H3-01).
-- **JUSTIFICACION_METODOLOGICA.md** nuevo: seccion academica de 13 puntos +
+- **docs/JUSTIFICACION_METODOLOGICA.md** nuevo: seccion academica de 13 puntos +
   referencias verificables (HL7, NIST SP 800-82r3, MITRE ICS, FDA, CISA, IEC 62443).
-- **LAB_ARCHITECTURE.md**: estado actualizado (Fase 9 completa), Modalidad B del
+- **docs/LAB_ARCHITECTURE.md**: estado actualizado (Fase 9 completa), Modalidad B del
   Mermaid con detect_pcap/replay, puntos de entrada ampliados, psutil opcional.
-- **GUIA_USO.md**: receta §4.8 (detect_pcap + manifest), fila manifest.json en §5.1,
+- **docs/GUIA_USO.md**: receta §4.8 (detect_pcap + manifest), fila manifest.json en §5.1,
   herramientas y docs index actualizados. **README.md**: estado + entregables spec.
 - **requirements.txt**: psutil (opcional, comentado) para el muestreo del manifest.
 - **Integracion con sesion 5**: evaluate.py (throughput/message_loss/resource_usage
@@ -275,3 +275,55 @@ los cambios simultaneos de la sesion asistente 5 (ver §10) sin conflictos:
   manifest completo.
 - **Pendientes inalterados**: H2 en Pi (hardware), gate clinico/etico, redaccion
   de la tesis por el usuario.
+
+## 12. Adenda - sesion asistente 7 (2026-10-17, despliegue Pi + campana ransomware)
+
+El usuario pidio "en base a lo demas desplegar la raspberry pi y la simulacion del
+wato y el atacante con ransomware". Decidio simulacion docker de la Pi (hardware
+fisico sigue sin IP/disponible). Sin cambios de codigo; interlocks de siempre.
+
+- **Suite pre-vuelo: 204 passed** (2026-10-17, `.venv` Python 3.11.9). Docker
+  Desktop estaba apagado; se arranco antes del modo docker.
+- **Despliegue topologia Pi (docker)**: `run_experiment.py --mode docker
+  --exclude A14 --seed 20261014` -> `runs/20261017_110211`, exit=0.
+  64/64 inyecciones, TP=64 FP=1 FN=0, recall=1.0000, precision=0.9846,
+  F1=0.9922, latencia p50=0.93 ms p95=1.93 ms; 15/15 escenarios al 100 %.
+  FP unico: 1 x R-TIME-002 benigno (jitter, comportamiento ya documentado Fase 9).
+  Sellada: `analysis_output/validation/pi_sim_20261017_110211/`.
+- **Campana ransomware (WATO emulador + atacante)**: `run_experiment.py
+  --mode local --exclude "A02,A03,A04,A07,A08,A09,A10,A11,A12,A15" --seed
+  2026101401` -> `runs/20261017_110410`, exit=0. 20/20 inyecciones
+  (A01=3, A05=3, A06=3, A13=5, A14=3, A16=3), TP=20 FP=0 FN=0,
+  recall=precision=F1=1.0000, latencia p50=1.59 ms p95=7.23 ms, duracion 201 s.
+  Sellada: `analysis_output/validation/ransomware_sim_20261017_110410/`.
+  Evidencia cualitativa identica a la corrida de 2026-10-14: FRAMING_ERROR
+  garbage_before_sb x3 (A06), sesion 136.8 s con hueco (A14), 5 sesiones de
+  reconexion (A13), R-ID-001 MALICIOUS_APP/MINDRAY_WATOPRO (A01/A16).
+- Alcance: sin malware real, sin equipo clinico (docs/SIMULACION_RANSOMWARE.md);
+  H2 en Pi fisica sigue NO VERIFICADO.
+- **Scripts de despliegue creados** (mismo dia; rutas finales tras la
+  reorganizacion por componente): `deploy/receptor/receptor.ps1` +
+  `deploy/receptor/make_deploy_settings.py` (settings con marker del repo),
+  `deploy/wato/wato.ps1`, `deploy/atacante/atacante_ransomware.ps1`,
+  `deploy/pi/pi_detector_docker.ps1`, `deploy/validacion/suite.ps1`,
+  `deploy/validacion/evaluar.ps1` (ASCII puro, cultura invariante) +
+  `deploy/pi/` (01_instalar, 02_red_aislada ufw, 03_instalar_servicio systemd,
+  04/05 detector online/offline, 06_campana, mllp-receiver.service con
+  ExecStartPre) + `.gitattributes` (sh/service LF). Referencias internas de
+  paths actualizadas en scripts y docs (MANUAL, README, RESULTADOS_TESIS).
+- **Demo WATO standalone**: `receptor/receptor.ps1` + `wato/wato.ps1` (STANDBY 8 msg/6 s)
+  -> 8/8 ORU, 8/8 ACK `AA`, 0 alertas (8 eventos NORMAL INFO), sesion 42.1 s,
+  5720 B; evidencia `evidence_output/wato_demo_20261017_112431/` con SHA-256.
+- **Reorganizacion para GitHub** (sin cambios de src): 15 docs -> `docs/`
+  (refs actualizadas en el codigo, 0 rotas); PDFs/DOCX/bib -> `documentos_tesis/`;
+  `ackdummy (1).py` -> `legacy/`; archivos sueltos de la carpeta externa
+  `Wato/` -> `Wato/capturas_y_textos_sueltos/`.
+- **Documentos de entrega**: `MANUAL_TESIS.md` (raiz: uso, despliegues Pi/WATO/
+  atacante, salida de resultados, guion de defensa) y `docs/RESULTADOS_TESIS.md`
+  (compilado H1/H2/H3 + ransomware + Pi docker + demo WATO + bench + mapa de
+  evidencia). `README.md`: seccion Estructura reescrita + estado sesion 7.
+- **Verificacion final sesion**: suite `204 passed` (27.68 s); `evidence_raw/`
+  SHA-256 OK (9/9 contra `evidence_inventory.csv`); evidencia sellada 2026-10-17
+  en `analysis_output/validation/{pi_sim,ransomware_sim}_20261017_*`.
+- Estado git: solo docs/deploy/nuevos .md; nada de src/config/baseline.
+  Sin commits en esta sesion (coordinar con sesion paralela, ver §10).

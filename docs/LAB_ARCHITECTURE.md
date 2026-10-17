@@ -146,7 +146,7 @@ Puntos de entrada en la raíz: `mllp_receiver.py` (receptor integrado), `wato_em
 
 1. `LAB_AUTHORIZED=YES` (entorno) + `LAB_ONLY.marker` exigidos por settings.
 2. Límites `safety` (≤70 anomalías por corrida, ≤5 msg/s, ≤32 KiB, cooldown ≥30 s,
-   `safety_limit` por escenario) — ver `ETHICS_AND_SAFETY.md` §3.
+   `safety_limit` por escenario) — ver `docs/ETHICS_AND_SAFETY.md` §3.
 3. Anonimización por defecto en todo artefacto derivado de evidencia clínica.
 4. Evidencia original inmutable (solo lectura) + SHA-256 verificable.
 
@@ -160,9 +160,9 @@ Puntos de entrada en la raíz: `mllp_receiver.py` (receptor integrado), `wato_em
 | Emulador + receptor + generador + evaluador | ✅ funcionales (Fase 2/4); E2E local y docker OK |
 | Orquestador `run_experiment.py` | ✅ modo local y docker probados; `manifest.json` por corrida (protocolo §6) |
 | Detección offline PCAP | ✅ `detect_pcap.py` (Modalidad B) con tests sintéticos |
-| Campaña H1 + H3 + bench H2 (PC) | ✅ 2026-10-14 (`RESULTS_20261014.md`) |
+| Campaña H1 + H3 + bench H2 (PC) | ✅ 2026-10-14 (`docs/RESULTS_20261014.md`) |
 | Docker Desktop/WSL (host Windows) | ✅ Docker 29.8.2 + WSL2; compose validado y E2E OK (evidencia en named volume `lab_output`) |
-| Ejecución en Raspberry Pi | ⬜ pendiente (`RASPBERRY_PI_SETUP.md`, Fase 6) |
+| Ejecución en Raspberry Pi | ⬜ pendiente (`docs/RASPBERRY_PI_SETUP.md`, Fase 6) |
 
 ## 7. Convenciones
 
@@ -171,4 +171,4 @@ Puntos de entrada en la raíz: `mllp_receiver.py` (receptor integrado), `wato_em
   `src.*` y absolutos desde `mllp_receiver.py`.
 - Ediciones compartidas: verificar `LastWriteTime` antes de tocar `src/mllp`, `src/hl7`,
   `src/detection` (sesión paralela activa) y commitear solo archivos propios.
-- Técnicas MITRE: solo IDs verificados contra ATT&CK ICS v20 (`THREAT_MODEL.md` §4, §7).
+- Técnicas MITRE: solo IDs verificados contra ATT&CK ICS v20 (`docs/THREAT_MODEL.md` §4, §7).
