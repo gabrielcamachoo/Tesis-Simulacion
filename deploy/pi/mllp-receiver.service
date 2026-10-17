@@ -1,0 +1,19 @@
+[Unit]
+Description=Receptor MLLP de laboratorio - detector HL7/MLLP WATO (Tesis G18)
+Documentation=file:///home/pi/wato/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/pi/wato
+Environment=LAB_AUTHORIZED=YES
+ExecStartPre=/home/pi/wato/.venv/bin/python /home/pi/wato/deploy/receptor/make_deploy_settings.py /home/pi/wato/evidence_output/settings_deploy.yaml
+ExecStart=/home/pi/wato/.venv/bin/python mllp_receiver.py --config /home/pi/wato/evidence_output/settings_deploy.yaml --host 127.0.0.1 --port 1550 --verbose --outdir /home/pi/wato/evidence_output
+Restart=on-failure
+RestartSec=5
+User=pi
+# Interlocks: sin privilegios de red salientes extra; el SafetyGuard valida
+# LAB_AUTHORIZED + /LAB_ONLY.marker al arrancar el proceso.
+
+[Install]
+WantedBy=multi-user.target
