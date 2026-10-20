@@ -87,9 +87,11 @@ class DetectionEngine:
     
     def process_message(self, session_id: str, source_ip: str, source_port: int,
                         parsed_message: HL7Message, raw_bytes: bytes,
-                        mllp_frame: bytes) -> DetectionResult:
+                        mllp_frame: bytes,
+                        capture_time: Optional[float] = None) -> DetectionResult:
         """Procesa un mensaje HL7 completo y genera alertas."""
         start_time = time.perf_counter()
+        msg_time = capture_time if (capture_time is not None and capture_time > 0) else time.time()
         
         with self._lock:
             session = self._get_or_create_session(session_id, source_ip, source_port)
@@ -106,10 +108,11 @@ class DetectionEngine:
             # Reglas de detección
             alerts = []
             alerts.extend(self._check_rules(session, parsed_message, raw_bytes,
-                                            mllp_frame, validation, obx_validation))
+                                            mllp_frame, validation, obx_validation,
+                                            now=msg_time))
             
             # Actualizar estado de sesión
-            self._update_session_state(session, parsed_message, raw_bytes)
+            self._update_session_state(session, parsed_message, raw_bytes, now=msg_time)
             
             processing_time = (time.perf_counter() - start_time) * 1000
             
@@ -131,10 +134,12 @@ class DetectionEngine:
     
     def _check_rules(self, session: SessionState, msg: HL7Message,
                      raw_bytes: bytes, mllp_frame: bytes,
-                     validation: Any, obx_validation: Any) -> List[Alert]:
+                     validation: Any, obx_validation: Any,
+                     now: Optional[float] = None) -> List[Alert]:
         """Ejecuta todas las reglas habilitadas."""
         alerts = []
-        now = time.time()
+        if now is None:
+            now = time.time()
         
         # R-NET-001: Origen de red no permitido
         if self.rules.is_enabled('R-NET-001'):
@@ -220,18 +225,21 @@ class DetectionEngine:
         # R-STATE-001: Transición estado no permitida
         if self.rules.is_enabled('R-STATE-001'):
             new_state = self._infer_state(msg)
-            if new_state != session.current_state:
-                ok, reason = validate_state_transition(
-                    session.current_state, new_state, self.baseline.state_transitions
-                )
-                if not ok:
-                    alerts.append(self._make_alert('R-STATE-001', session, msg, reason, AlertSeverity.HIGH))
+            if new_state not in ("UNKNOWN", "SESION_ESTABLECIDA_UNKNOWN"):
+                if new_state != session.current_state:
+                    ok, reason = validate_state_transition(
+                        session.current_state, new_state, self.baseline.state_transitions
+                    )
+                    if not ok:
+                        alerts.append(self._make_alert('R-STATE-001', session, msg, reason, AlertSeverity.HIGH))
+                    session.current_state = new_state
+            elif not session.current_state:
                 session.current_state = new_state
         
         return alerts
     
     def _infer_state(self, msg: HL7Message) -> str:
-        """Infiere estado FSM desde mensaje HL7."""
+        """Infiere estado FSM desde mensaje HL7 (OBX-3 = 202886^MDC_EVT_STAT_DEV^MDC)."""
         if not msg.obx_segments:
             return "UNKNOWN"
         
@@ -240,21 +248,25 @@ class DetectionEngine:
             if len(obx.fields) > 3 and obx.fields[3].components:
                 code = obx.fields[3].components[0]
                 if code == '202886' and len(obx.fields) > 5:
-                    val = obx.fields[5].components[0] if obx.fields[5].components else ""
-                    if 'STANDBY' in val:
+                    val = obx.fields[5].raw if obx.fields[5].raw else (
+                        obx.fields[5].components[0] if obx.fields[5].components else ""
+                    )
+                    if 'STANDBY' in val or '202836' in val:
                         return "SESION_ESTABLECIDA_STANDBY"
-                    elif 'RUNNING' in val or 'VENT' in val:
+                    elif 'RUNNING' in val or 'VENT' in val or '202902' in val or '202837' in val:
                         return "SESION_ESTABLECIDA_RUNNING"
+                    return f"SESION_ESTABLECIDA_{val}"
         return "SESION_ESTABLECIDA_UNKNOWN"
     
-    def _update_session_state(self, session: SessionState, msg: HL7Message, raw_bytes: bytes):
+    def _update_session_state(self, session: SessionState, msg: HL7Message,
+                              raw_bytes: bytes, now: Optional[float] = None):
         session.message_count += 1
         if msg.message_control_id:
             session.seen_control_ids.add(msg.message_control_id)
         if msg.timestamp:
             session.last_timestamp = msg.timestamp
             self.global_last_timestamp = msg.timestamp
-        session.last_message_time = time.time()
+        session.last_message_time = now if now is not None else time.time()
         self.global_last_message_time = session.last_message_time
         session.logical_identity = (msg.sending_app, msg.sending_facility)
     

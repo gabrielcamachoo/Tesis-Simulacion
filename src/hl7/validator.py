@@ -124,6 +124,11 @@ def validate_obx_constraints(msg: HL7Message, baseline: Baseline) -> ValidationR
     allowed_primary = {c.split('^')[0] for c in allowed_codes}
     allowed_types = set(baseline.obx_value_types_observed)
     allowed_units = set(baseline.obx_units_observed)
+    expected_type_by_code = {}
+    for full_id, detail in (baseline.obx_identifier_details or {}).items():
+        if isinstance(detail, dict) and detail.get('value_type'):
+            expected_type_by_code[full_id] = detail['value_type']
+            expected_type_by_code[full_id.split('^')[0]] = detail['value_type']
     
     for obx in msg.obx_segments:
         if len(obx.fields) < 3:
@@ -131,16 +136,22 @@ def validate_obx_constraints(msg: HL7Message, baseline: Baseline) -> ValidationR
         
         # R-OBX-001: Identificador no autorizado
         code = obx.fields[3].components[0] if obx.fields[3].components else ""
+        full_code = obx.fields[3].raw if len(obx.fields) > 3 else ""
         if (code and allowed_codes and code not in allowed_codes
+                and full_code not in allowed_codes
                 and code not in allowed_primary):
             errors.append(f"R-OBX-001: Unauthorized OBX code: {code}")
             violations.append("R-OBX-001")
         
-        # R-OBX-003: Tipo de dato incompatible
+        # R-OBX-003: Tipo de dato incompatible (global y por código en baseline)
         value_type = obx.fields[2].raw if len(obx.fields) > 2 else ""
-        if value_type and allowed_types and value_type not in allowed_types:
-            errors.append(f"R-OBX-003: Unexpected value type: {value_type} for code {code}")
-            violations.append("R-OBX-003")
+        expected_vtype = expected_type_by_code.get(full_code) or expected_type_by_code.get(code)
+        if value_type:
+            if (allowed_types and value_type not in allowed_types) or (
+                expected_vtype and value_type != expected_vtype
+            ):
+                errors.append(f"R-OBX-003: Unexpected value type: {value_type} for code {code}")
+                violations.append("R-OBX-003")
         
         # R-OBX-002: Unidad no permitida. Solo se valida si el baseline
         # tiene unidades observadas: cualquier OBX-6 fuera de esa lista es
