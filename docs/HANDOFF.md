@@ -327,3 +327,42 @@ fisico sigue sin IP/disponible). Sin cambios de codigo; interlocks de siempre.
   en `analysis_output/validation/{pi_sim,ransomware_sim}_20261017_*`.
 - Estado git: solo docs/deploy/nuevos .md; nada de src/config/baseline.
   Sin commits en esta sesion (coordinar con sesion paralela, ver §10).
+
+## 13. Adenda - rama pruebas-santi (2026-10-19, enmiendas E2 y E3)
+
+Trabajo de Santiago (con asistente) sobre `main` descargado el 2026-10-19. Sin tocar
+`evidence_raw/`; todo cambio de baseline se aplica en `baseline.yaml` Y en
+`src/evidence/baseline_builder.py`, igual que la Enmienda E1. Propuesta para revisión
+de Gabriel antes de mezclar a `main`.
+
+- **Enmienda E2 - R-STATE-001 (FSM).** Hallazgo: `_infer_state` buscaba 'STANDBY'
+  en el componente 0 de OBX-5, que es numérico (`202836`), así que los 158 ORU reales
+  quedaban `SESION_ESTABLECIDA_UNKNOWN` y la regla nunca podía disparar (el FP=0 de la
+  matriz de trazabilidad era por regla inerte). Cambios:
+  - Estado por código OBSERVADO: `202836` STANDBY, `202902` RUNNING (respaldo por nombre).
+  - Mensaje sin OBX 202886 no se trata como transición.
+  - Transición STANDBY->RUNNING agregada (OBSERVADA 1 vez en LECTURAACK27AGOSTO:
+    13 STANDBY -> 86 RUNNING). RUNNING->STANDBY sigue NO_VERIFICADO y alerta.
+  - Coherencia: estado RUNNING exige `184352^MDC_VENT_MODE` (presente 86/86 RUNNING,
+    0/56 STANDBY). Nº de OBX en RUNNING varía 17-28 según modo: no se exige conteo.
+- **Enmienda E3 - vigilante de silencio (R-TIME-002).** Hallazgo: un canal caído sin
+  mensaje posterior nunca alertaba (60 s -> 0 alertas). `DetectionEngine.check_silence()`
+  alerta una vez por episodio al superar el límite de baseline (p95*1.5 = 15 s);
+  `mllp_receiver.py` lo consulta cada 1 s. No se arma antes del primer mensaje.
+- **Pruebas:** `tests/test_enmiendas_e2_e3.py` (13 pruebas con ORU reales de
+  `evidence_raw/`). Las 13 fallan sobre `main` y pasan con E2/E3. Suite: **217 passed**.
+- **Verificación (2026-10-19, local, semilla 100001):**
+  - Capturas reales con reloj de captura: STANDBY 43/43 reconocidos, 0 alertas;
+    RUNNING 13 STANDBY + 86 RUNNING, 0 R-STATE-001 (R-OBX sin cambio: 256, fuera de
+    alcance); Nessus 14-sep: estados STANDBY, R-TIME-002=4 sin cambio.
+  - Campaña A01-A16 a 6 s y 10 s: 67/67 TP, recall 1.000 (igual que antes).
+    Aparecen 3 alertas fuera de ventana por corrida: son los 3 silencios de A14,
+    detectados por E3 ~30 s ANTES del timestamp de ground truth (A14 registra la
+    inyección al enviar el mensaje posterior al silencio de 45 s). No son FP reales;
+    queda por decidir cómo etiquetar A14 en `anomaly_generator.py`/`evaluate.py`.
+  - Prueba de evasión (ORU STANDBY real con OBX-5 cambiado a RUNNING, IP/MSH-3/
+    cadencia correctas): antes 0 alertas -> ahora 3 R-STATE-001 HIGH.
+    Prueba de caída (60 s sin mensajes): antes 0 -> ahora 1 alerta a los 16 s.
+- **Pendientes (no hechos a propósito):** perfil OBX de RUNNING (256 alertas), reloj de
+  captura en `detect_pcap.py`, razón correcta en alertas R-OBX-002/003, límite 4096 B
+  frente a RUNNING real de hasta 3894 B, texto "SYN cada ~30s" (real: ciclo 47.6 s).

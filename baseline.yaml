@@ -19,6 +19,7 @@ metadata:
   - Reloj WATO con offset +17min10s vs captura - usar timestamp de red
   - Intervalos documentados por MSH-7 (10.000s); tiempo de captura varía ±4ms
   - Codificación UTF-8 declarada en MSH-18 (ackdummy usaba ISO-8859-1)
+  - 'Enmienda E2: FSM agrega estado RUNNING y transición STANDBY->RUNNING (OBSERVADO 27-08); estadísticas OBX siguen siendo solo STANDBY'
   clinical_approval_status: PENDING
   clinical_approval_date: null
   clinical_approver: null
@@ -91,6 +92,14 @@ state_transitions_observed:
   - SESION_ESTABLECIDA_STANDBY
 - - SESION_ESTABLECIDA_STANDBY
   - SESION_ESTABLECIDA_STANDBY
+# Enmienda E2 (2026-10-19): transición OBSERVADA 1 vez en
+# LECTURAACK27AGOSTO.pcapng (sha256 67ec6034...dcd3): 13 ORU STANDBY y luego
+# 86 ORU RUNNING. RUNNING -> STANDBY NO_VERIFICADO (no observado): sigue
+# alertando por R-STATE-001 hasta tener evidencia.
+- - SESION_ESTABLECIDA_STANDBY
+  - SESION_ESTABLECIDA_RUNNING
+- - SESION_ESTABLECIDA_RUNNING
+  - SESION_ESTABLECIDA_RUNNING
 fsm_states:
   SIN_GATEWAY:
     description: Reintentos SYN sin respuesta (gateway no disponible)
@@ -121,6 +130,18 @@ fsm_states:
       - CWE
       - CWE
       - CWE
+  # Enmienda E2 (2026-10-19). Fuente: LECTURAACK27AGOSTO.pcapng (86 ORU RUNNING).
+  # OBSERVADO: OBX-5 de 202886 = 202902^MDC_EVT_STAT_RUNNING^MDC y el OBX
+  # 184352^MDC_VENT_MODE presente en 86/86 (0/56 en STANDBY). El número de OBX
+  # varía 17-28 según el modo de ventilación, por eso NO se exige un conteo.
+  # Solo alimenta R-STATE-001; los códigos/unidades RUNNING siguen fuera del
+  # baseline OBX (R-OBX-001/002/003), sin cambios en esta enmienda.
+  SESION_ESTABLECIDA_RUNNING:
+    description: Sesión persistente con el equipo ventilando (RUNNING)
+    behavior: ORU^R01 cada 10 s con OBX de configuración y medición
+    required_obx_codes:
+    - '184352'
+    status: OBSERVADO
 mllp_parameters:
   start_block: '0x0B'
   end_block: '0x1C'

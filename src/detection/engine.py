@@ -84,6 +84,11 @@ class DetectionEngine:
         # Ventana de replay: mitad del intervalo mínimo baseline (10 s → 5 s)
         interval_min = baseline.inter_message_interval_seconds.get('min', 10.0) or 10.0
         self.replay_window_s = max(1.0, interval_min * 0.5)
+
+        # Enmienda E3 (vigilante de silencio): una alerta por episodio.
+        self._silence_alerted = False
+        self._last_session_id = ""
+        self._last_source = ""
     
     def process_message(self, session_id: str, source_ip: str, source_port: int,
                         parsed_message: HL7Message, raw_bytes: bytes,
@@ -217,35 +222,74 @@ class DetectionEngine:
                 alerts.append(self._make_alert(rule_id, session, msg, 
                                               obx_validation.errors[0] if obx_validation.errors else "OBX violation", sev))
         
-        # R-STATE-001: Transición estado no permitida
+        # R-STATE-001: Transición estado no permitida + coherencia estado/perfil
         if self.rules.is_enabled('R-STATE-001'):
             new_state = self._infer_state(msg)
-            if new_state != session.current_state:
-                ok, reason = validate_state_transition(
-                    session.current_state, new_state, self.baseline.state_transitions
-                )
-                if not ok:
-                    alerts.append(self._make_alert('R-STATE-001', session, msg, reason, AlertSeverity.HIGH))
-                session.current_state = new_state
-        
+            # Enmienda E2: un mensaje sin OBX de estado (202886) no aporta
+            # información de estado; no se trata como transición.
+            if new_state not in self.UNKNOWN_STATES:
+                # Coherencia: el estado declarado debe traer los OBX que el
+                # equipo real siempre envía en ese estado (fsm_states del baseline).
+                missing = self._missing_required_obx(new_state, msg)
+                if missing:
+                    alerts.append(self._make_alert(
+                        'R-STATE-001', session, msg,
+                        f"R-STATE-001: Inconsistent state {new_state}: "
+                        f"missing required OBX {','.join(missing)}",
+                        AlertSeverity.HIGH))
+                if new_state != session.current_state:
+                    ok, reason = validate_state_transition(
+                        session.current_state, new_state, self.baseline.state_transitions
+                    )
+                    if not ok:
+                        alerts.append(self._make_alert('R-STATE-001', session, msg, reason, AlertSeverity.HIGH))
+                    session.current_state = new_state
+
         return alerts
-    
+
+    # Enmienda E2 (2026-10-19): valores OBSERVADOS de OBX-5 para
+    # 202886^MDC_EVT_STAT_DEV en las capturas reales (25-08 y 27-08).
+    # OBX-5 llega como "codigo^NOMBRE^MDC": el primer componente es numérico,
+    # por eso la versión anterior (buscar 'STANDBY' en el componente 0)
+    # devolvía siempre SESION_ESTABLECIDA_UNKNOWN (158/158 mensajes reales).
+    STATE_BY_CODE = {
+        '202836': "SESION_ESTABLECIDA_STANDBY",   # MDC_EVT_STAT_STANDBY (OBSERVADO)
+        '202902': "SESION_ESTABLECIDA_RUNNING",   # MDC_EVT_STAT_RUNNING (OBSERVADO)
+    }
+    UNKNOWN_STATES = ("UNKNOWN", "SESION_ESTABLECIDA_UNKNOWN")
+
     def _infer_state(self, msg: HL7Message) -> str:
-        """Infiere estado FSM desde mensaje HL7."""
+        """Infiere estado FSM desde el OBX 202886 (MDC_EVT_STAT_DEV)."""
         if not msg.obx_segments:
             return "UNKNOWN"
-        
-        # Buscar OBX de estado dispositivo
+
         for obx in msg.obx_segments:
-            if len(obx.fields) > 3 and obx.fields[3].components:
-                code = obx.fields[3].components[0]
-                if code == '202886' and len(obx.fields) > 5:
-                    val = obx.fields[5].components[0] if obx.fields[5].components else ""
-                    if 'STANDBY' in val:
-                        return "SESION_ESTABLECIDA_STANDBY"
-                    elif 'RUNNING' in val or 'VENT' in val:
-                        return "SESION_ESTABLECIDA_RUNNING"
+            if len(obx.fields) > 5 and obx.fields[3].components:
+                if obx.fields[3].components[0] != '202886':
+                    continue
+                comps = obx.fields[5].components or []
+                code = comps[0] if comps else ""
+                name = comps[1] if len(comps) > 1 else ""
+                if code in self.STATE_BY_CODE:
+                    return self.STATE_BY_CODE[code]
+                # Respaldo por nombre (intención original del código): cubre
+                # plantillas sintéticas con otro código numérico.
+                if 'STANDBY' in name:
+                    return "SESION_ESTABLECIDA_STANDBY"
+                if 'RUNNING' in name or 'VENT' in name:
+                    return "SESION_ESTABLECIDA_RUNNING"
         return "SESION_ESTABLECIDA_UNKNOWN"
+
+    def _missing_required_obx(self, state: str, msg: HL7Message) -> List[str]:
+        """OBX-3 obligatorios del estado (baseline fsm_states) ausentes en el mensaje."""
+        info = self.baseline.get_fsm_state_info(state) or {}
+        required = [str(c) for c in info.get('required_obx_codes', [])]
+        if not required:
+            return []
+        present = {obx.fields[3].components[0]
+                   for obx in msg.obx_segments
+                   if len(obx.fields) > 3 and obx.fields[3].components}
+        return [c for c in required if c not in present]
     
     def _update_session_state(self, session: SessionState, msg: HL7Message, raw_bytes: bytes):
         session.message_count += 1
@@ -257,6 +301,50 @@ class DetectionEngine:
         session.last_message_time = time.time()
         self.global_last_message_time = session.last_message_time
         session.logical_identity = (msg.sending_app, msg.sending_facility)
+        # E3: llegó un mensaje -> termina cualquier episodio de silencio
+        self._silence_alerted = False
+        self._last_session_id = session.session_id
+        self._last_source = f"{session.source_ip}:{session.source_port}"
+
+    def check_silence(self, now: Optional[float] = None) -> Optional[Alert]:
+        """
+        Enmienda E3 (2026-10-19) - vigilante de silencio (R-TIME-002).
+        R-TIME-002 solo evaluaba el intervalo al llegar el SIGUIENTE mensaje,
+        así que un canal caído o suprimido sin recuperación nunca alertaba
+        (verificado: 60 s sin mensajes -> 0 alertas). Este chequeo, llamado
+        periódicamente por el receptor, alerta una sola vez por episodio cuando
+        el silencio supera el mismo límite superior de R-TIME-002
+        (p95 * 1.5 = 15 s con la baseline STANDBY). No se arma antes del primer
+        mensaje (el WATO aún no ha conectado: estado SIN_GATEWAY).
+        """
+        if not self.rules.is_enabled('R-TIME-002'):
+            return None
+        with self._lock:
+            if self.global_last_message_time <= 0 or self._silence_alerted:
+                return None
+            now = time.time() if now is None else now
+            _, upper = self.baseline.get_interval_bounds()
+            silence = now - self.global_last_message_time
+            if silence <= upper:
+                return None
+            self._silence_alerted = True
+            self._alert_counter += 1
+            reason = (f"R-TIME-002: Silence: no message for {silence:.1f}s "
+                      f"> {upper:.3f}s (canal caído o suprimido)")
+            return Alert(
+                alert_id=f"ALERT-{self._alert_counter:06d}-{int(now*1000)}",
+                rule_id='R-TIME-002',
+                timestamp_utc=datetime.fromtimestamp(now, timezone.utc).isoformat(),
+                session_id=self._last_session_id or "N/A",
+                source=self._last_source or "N/A",
+                message_control_id="N/A",
+                severity=AlertSeverity.MEDIUM,
+                reason=reason,
+                evidence_hash=hashlib.sha256(reason.encode()).hexdigest(),
+                experimental_state="SILENCE",
+                label=AlertLabel.ANOMALO,
+                synthetic=False
+            )
     
     def _make_alert(self, rule_id: str, session: SessionState, msg: HL7Message,
                     reason: str, severity: AlertSeverity) -> Alert:

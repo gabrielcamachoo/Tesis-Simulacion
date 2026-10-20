@@ -128,7 +128,10 @@ def analyze_sessions_from_csv(sessions_csv: str, messages_csv: str) -> BaselineS
     state_transitions = [
         ["SIN_GATEWAY", "HANDSHAKE"],
         ["HANDSHAKE", "SESION_ESTABLECIDA_STANDBY"],
-        ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_STANDBY"]
+        ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_STANDBY"],
+        # Enmienda E2 (2026-10-19): OBSERVADO en LECTURAACK27AGOSTO
+        ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_RUNNING"],
+        ["SESION_ESTABLECIDA_RUNNING", "SESION_ESTABLECIDA_RUNNING"]
     ]
     
     msg_count = len(messages)
@@ -185,7 +188,9 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
                 'No hay alarmas ni eventos en baseline',
                 'Reloj WATO con offset +17min10s vs captura - usar timestamp de red',
                 'Intervalos documentados por MSH-7 (10.000s); tiempo de captura varía ±4ms',
-                'Codificación UTF-8 declarada en MSH-18 (ackdummy usaba ISO-8859-1)'
+                'Codificación UTF-8 declarada en MSH-18 (ackdummy usaba ISO-8859-1)',
+                'Enmienda E2: FSM agrega estado RUNNING y transición STANDBY->RUNNING '
+                '(OBSERVADO 27-08); estadísticas OBX siguen siendo solo STANDBY'
             ],
             'clinical_approval_status': 'PENDING',
             'clinical_approval_date': None,
@@ -252,7 +257,11 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
         'state_transitions_observed': [
             ['SIN_GATEWAY', 'HANDSHAKE'],
             ['HANDSHAKE', 'SESION_ESTABLECIDA_STANDBY'],
-            ['SESION_ESTABLECIDA_STANDBY', 'SESION_ESTABLECIDA_STANDBY']
+            ['SESION_ESTABLECIDA_STANDBY', 'SESION_ESTABLECIDA_STANDBY'],
+            # Enmienda E2 (2026-10-19): OBSERVADO 1 vez en LECTURAACK27AGOSTO
+            # (13 ORU STANDBY -> 86 ORU RUNNING). RUNNING->STANDBY NO_VERIFICADO.
+            ['SESION_ESTABLECIDA_STANDBY', 'SESION_ESTABLECIDA_RUNNING'],
+            ['SESION_ESTABLECIDA_RUNNING', 'SESION_ESTABLECIDA_RUNNING']
         ],
         'fsm_states': {
             'SIN_GATEWAY': {
@@ -277,6 +286,15 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
                     'obx_count': 4,
                     'obx_types': ['CWE', 'CWE', 'CWE', 'CWE']
                 }
+            },
+            # Enmienda E2 (2026-10-19). Fuente: LECTURAACK27AGOSTO.pcapng.
+            # OBSERVADO: 184352^MDC_VENT_MODE en 86/86 ORU RUNNING y 0/56
+            # STANDBY; nº de OBX varía 17-28 por modo (no se exige conteo).
+            'SESION_ESTABLECIDA_RUNNING': {
+                'description': 'Sesión persistente con el equipo ventilando (RUNNING)',
+                'behavior': 'ORU^R01 cada 10 s con OBX de configuración y medición',
+                'required_obx_codes': ['184352'],
+                'status': 'OBSERVADO'
             }
         },
         'mllp_parameters': {
