@@ -13,7 +13,7 @@ import random
 import signal
 import sys
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
@@ -68,7 +68,7 @@ class WATOEmulator:
     Genera mensajes HL7 ORU^R01 sintéticos con framing MLLP.
     """
     
-    # Plantillas HL7 sintéticas basadas en evidencia observada
+    # Plantillas HL7 con la estructura observada en las capturas WATO.
     TEMPLATES = {
         EmulatorState.STANDBY: {
             'msh': (
@@ -79,14 +79,15 @@ class WATOEmulator:
             'pid': "PID|||^^^^PI||^^^^^^L|||",
             'pv1': "PV1||I|^^^",
             'obr': (
-                "OBR|1|1^MINDRAY_WATOPRO-SERIES^...|1^...|"
+                "OBR|1|{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
+                "{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
                 "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
             ),
             'obx': [
-                "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202836^MDC_EVT_STAT_STANDBY^MDC",
-                "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL",
-                "OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT",
-                "OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL|1.3.1.30007|30000^MDC_TRUE",
+                "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202836^MDC_EVT_STAT_STANDBY^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV^99MNDRY|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE^99MNDRY|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL^99MNDRY|1.3.1.30007|30000^MDC_TRUE^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
             ]
         },
         EmulatorState.RUNNING: {
@@ -95,23 +96,37 @@ class WATOEmulator:
                 "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
                 "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
             ),
-            'pid': "PID|||12345^5^M11^ADT^MR||DOE^JOHN^^^^^L||19800101|M",
-            'pv1': "PV1||I|ICU^101^A^^^HOSP^A",
+            'pid': "PID|||^^^^PI||^^^^^^L|||",
+            'pv1': "PV1||I|^^^",
             'obr': (
-                "OBR|1|1^MINDRAY_WATOPRO-SERIES^...|1^...|"
+                "OBR|1|{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
+                "{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
                 "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
             ),
             'obx': [
-                "OBX|1|NM|150020^MDC_VOL_RESP_TIDAL^MDC||{tv}|mL",
-                "OBX|2|NM|150021^MDC_VOL_RESP_MINUTE^MDC||{mv}|L/min",
-                "OBX|3|NM|150022^MDC_RATE_RESP^MDC||{rr}|/min",
-                "OBX|4|NM|150005^MDC_PRESS_AWAY_PEAK^MDC||{pip}|cmH2O",
-                "OBX|5|NM|150007^MDC_PRESS_AWAY_MEAN^MDC||{map}|cmH2O",
-                "OBX|6|NM|150009^MDC_PRESS_AWAY_PEEP^MDC||{peep}|cmH2O",
-                "OBX|7|NM|150456^MDC_CONC_GAS_O2_INSP^MDC||{fio2}|%",
-                "OBX|8|NM|150457^MDC_CONC_GAS_CO2_ET^MDC||{etco2}|mmHg",
-                "OBX|9|CWE|202886^MDC_EVT_STAT_DEV^MDC||202837^MDC_EVT_STAT_RUNNING^MDC",
-                "OBX|10|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50005^MNDRY_VENT_MODE_VCV^99MNDRY",
+                "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202902^MDC_EVT_STAT_RUNNING^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV^99MNDRY|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE^99MNDRY|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL^99MNDRY|1.3.1.30007|30000^MDC_TRUE^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50005^MNDRY_VENT_MODE_VCV^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|6|NM|20015^MDC_VOL_AWAY_TIDAL_SETTING^99MNDRY|1.3.2.20015|{tv_setting}|263762^MDC_DIM_MILLI_L^MDC|||||F|||{timestamp}|",
+                "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_setting}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+                "OBX|8|SN|20000^MDC_RATIO_IE_SETTING^99MNDRY|1.3.2.20000|^1^:^2|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|9|NM|20007^MNDRY_VENT_PAUSE_TIME_PERCENT_SETTING^99MNDRY|1.3.2.20007|0|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+                "OBX|10|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_setting}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+                "OBX|11|NM|20013^MNDRY_VENT_PRESS_LIMIT_SETTING^99MNDRY|1.3.2.20013|30|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+                "OBX|12|NM|151957^MDC_VENT_PRESS_MAX^MDC|1.3.2.151957|{pip}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
+                "OBX|13|NM|151819^MDC_PRESS_AWAY_INSP_MEAN^MDC|1.3.2.151819|{map}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
+                "OBX|14|NM|151784^MDC_PRESS_RESP_PLAT^MDC|1.3.2.151784|{plat}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
+                "OBX|15|NM|151976^MDC_VENT_PRESS_AWAY_END_EXP_POS^MDC|1.3.2.151976|{peep}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
+                "OBX|16|NM|151880^MDC_VOL_MINUTE_AWAY^MDC|1.3.2.151880|{mv}|265216^MDC_DIM_L_PER_MIN^MDC|||||R|||{timestamp}|",
+                "OBX|17|NM|152664^MDC_VOL_AWAY_TIDAL_EXP^MDC|1.3.2.152664|{tv_exp}|263762^MDC_DIM_MILLI_L^MDC|||||R|||{timestamp}|",
+                "OBX|18|NM|152660^MDC_VOL_AWAY_TIDAL_INSP^MDC|1.3.2.152660|{tv_insp}|263762^MDC_DIM_MILLI_L^MDC|||||R|||{timestamp}|",
+                "OBX|19|SN|151832^MDC_RATIO_IE^MDC|1.3.2.151832|^1^:^2.1|262656^MDC_DIM_DIMLESS^MDC|||||R|||{timestamp}|",
+                "OBX|20|NM|151840^MDC_RES_AWAY^MDC|1.3.2.151840|95|268064^MDC_DIM_CM_H2O_PER_L_PER_SEC^MDC|||||R|||{timestamp}|",
+                "OBX|21|NM|151688^MDC_COMPL_LUNG^MDC|1.3.2.151688|3|268050^MDC_DIM_MILLI_L_PER_CM_H2O^MDC|||||R|||{timestamp}|",
+                "OBX|22||152196^MDC_CONC_AWAY_O2_INSP^MDC|1.4.1.152196||262688^MDC_DIM_PERCENT^MDC||INV|||X|||{timestamp}|",
+                "OBX|23|NM|151586^MDC_VENT_RESP_RATE^MDC|1.3.2.151586|{rr}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||R|||{timestamp}|",
             ]
         },
         EmulatorState.ALARM_SIMULATED: {
@@ -138,14 +153,14 @@ class WATOEmulator:
     
     # Valores fisiológicos simulados para modo RUNNING
     PHYSIOLOGICAL_RANGES = {
-        'tv': (450, 550),      # mL
-        'mv': (7.0, 9.0),      # L/min
-        'rr': (14, 18),        # /min
-        'pip': (18, 25),       # cmH2O
-        'map': (10, 15),       # cmH2O
-        'peep': (4, 6),        # cmH2O
-        'fio2': (30, 50),      # %
-        'etco2': (35, 45),     # mmHg
+        'tv': (60, 80),        # mL, tidal expirado/inspirado observado
+        'mv': (0.8, 0.9),      # L/min
+        'rr': (12, 13),        # /min
+        'pip': (30, 35),       # cmH2O
+        'map': (10, 18),       # cmH2O
+        'peep': (6, 8),        # cmH2O
+        'fio2': (0, 0),        # %; el WATO deja este OBX vacío
+        'etco2': (35, 45),     # no se usa en RUNNING_VCV
     }
     
     ALARM_CODES = [
@@ -178,8 +193,9 @@ class WATOEmulator:
 
     def _generate_timestamp(self) -> str:
         """Genera timestamp HL7 en formato YYYYMMDDHHMMSS±ZZZZ."""
-        now = datetime.now(timezone.utc)
-        return now.strftime("%Y%m%d%H%M%S%z")[:-2] + ":" + now.strftime("%z")[-2:]
+        capture_timezone = timezone(timedelta(hours=-5))
+        now = datetime.now(timezone.utc).astimezone(capture_timezone)
+        return now.strftime("%Y%m%d%H%M%S%z")
 
     def _build_message(self) -> str:
         """Construye mensaje HL7 completo según estado actual."""
@@ -194,6 +210,15 @@ class WATOEmulator:
                 physio[key] = str(random.randint(min_v, max_v))
             else:
                 physio[key] = f"{random.uniform(min_v, max_v):.1f}"
+
+        physio.update({
+            'tv_setting': str(random.randint(400, 450)),
+            'rr_setting': '12',
+            'peep_setting': '6',
+            'plat': str(random.randint(29, 35)),
+            'tv_exp': str(random.randint(60, 80)),
+            'tv_insp': str(random.randint(60, 80)),
+        })
         
         # Alarm code/text para ALARM_SIMULATED
         alarm_code, alarm_text = random.choice(self.ALARM_CODES)
@@ -207,7 +232,11 @@ class WATOEmulator:
         
         # PID, PV1, OBR
         for seg_key in ['pid', 'pv1', 'obr']:
-            seg = template[seg_key].format(timestamp=timestamp, **physio)
+            seg = template[seg_key].format(
+                timestamp=timestamp,
+                ctrl_id=self.ctrl_id,
+                **physio
+            )
             segments.append(seg)
         
         # OBX segments
@@ -215,28 +244,13 @@ class WATOEmulator:
             obx = obx_template.format(
                 timestamp=timestamp,
                 ctrl_id=self.ctrl_id,
-                tv=physio.get('tv', '500'),
-                mv=physio.get('mv', '8.0'),
-                rr=physio.get('rr', '16'),
-                pip=physio.get('pip', '22'),
-                map=physio.get('map', '12'),
-                peep=physio.get('peep', '5'),
-                fio2=physio.get('fio2', '40'),
-                etco2=physio.get('etco2', '40'),
                 alarm_code=alarm_code,
-                alarm_text=alarm_text
+                alarm_text=alarm_text,
+                **physio
             )
             segments.append(obx)
         
-        # Unir con \r y terminar con \r
-        hl7_message = '\r'.join(segments) + '\r'
-        
-        # Añadir prefijo sintético en comentario (no parte del HL7 estándar)
-        # Lo añadimos como NTE segment opcional
-        nte = f"NTE|1|{self.config.synthetic_prefix} - State: {self.config.state.value} - Msg: {self.ctrl_id}"
-        hl7_message = hl7_message.rstrip('\r') + '\r' + nte + '\r'
-        
-        return hl7_message
+        return '\r'.join(segments) + '\r'
 
     def _send_message(self, hl7_message: str) -> bool:
         """Envía mensaje HL7 con framing MLLP y espera ACK si configurado."""
