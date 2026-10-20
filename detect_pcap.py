@@ -173,7 +173,8 @@ def run_detect(pcap_path: Path, outdir: Path, config: Path,
                     source_port=fl["src_port"],
                     parsed_message=parsed,
                     raw_bytes=raw,
-                    mllp_frame=frame)
+                    mllp_frame=frame,
+                    capture_time=ts if (ts and not realtime) else None)
                 lat_ms.append(result.processing_time_ms)
                 if result.alerts:
                     anomalies += len(result.alerts)
