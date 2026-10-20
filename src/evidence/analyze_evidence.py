@@ -45,9 +45,11 @@ PID_ANON_FIELDS = {2: 'PATIENT_ID', 3: 'PATIENT_ID', 5: 'PATIENT_NAME',
                    7: 'PATIENT_DOB', 8: 'PATIENT_SEX'}
 PV1_ANON_FIELDS = {19: 'VISIT_NUMBER'}
 
-# Patrones no estructurales seguros (sin alternaciones rotas)
+# Patrones no estructurales seguros (sin alternaciones rotas).
+# Lookbehind/lookahead (?<!\.) y (?!\.) evitan corromper OIDs ISO
+# (ej. 1.3.6.1.4.1.19376.1.6.1.1.1^ISO en MSH-21) y sub-IDs OBX-4.
 SENSITIVE_PATTERNS = {
-    'ip_address': re.compile(rb'\b(?:\d{1,3}\.){3}\d{1,3}\b'),
+    'ip_address': re.compile(rb'(?<!\.)\b(?:\d{1,3}\.){3}\d{1,3}\b(?!\.)'),
     'mac_address': re.compile(rb'\b(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\b'),
 }
 
