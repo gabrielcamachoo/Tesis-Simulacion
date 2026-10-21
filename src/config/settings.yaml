@@ -42,10 +42,10 @@ wato_observed_standby:
     carriage_return: 0x0D
     encoding: "UTF-8"              # OBSERVADO: MSH-18 = "UNICODE UTF-8"
     # NOTA: ackdummy original usaba ISO-8859-1 (INCORRECTO según evidencia)
-    # INFERIDO: umbral de detección del framer = 4× p95 baseline (971 B).
-    # El límite de protocolo documentado es 65535 B; en el laboratorio se
-    # usa 4096 B para detectar mensajes sobredimensionados (A15).
-    max_message_size: 4096
+    # Enmienda E9 (2026-10-20): umbral del framer elevado de 4096 a 5120 B
+    # (5 KiB) para dar +1143 B (~29 %) de margen sobre SIMV-VC+PS en RUNNING
+    # (real máx. 3945 B; emulado con NTE 3977 B) y seguir atrapando A15 (~16 KiB).
+    max_message_size: 5120
   
   hl7:
     version: "2.6"                 # OBSERVADO: MSH-12 = "2.6"
@@ -416,9 +416,9 @@ anomaly_generator:
       safety_limit: 5
 
 baseline_builder:
-  source_sessions: ["standby_20260825"]  # Solo sesiones normales etiquetadas
+  source_sessions: ["arp_discovery_20260818", "standby_20260825", "running_multimode_20260827"]
   output_file: "baseline.yaml"
-  schema_version: "1.0"
+  schema_version: "1.1"
   requires_clinical_approval: true
   clinical_approval_status: "PENDING"
   statistics:
@@ -430,26 +430,69 @@ baseline_builder:
     hl7_versions_allowed: ["2.6"]
     message_length:
       min: 968
-      median: 971
-      p95: 972
-      max: 972
+      median: 3303.0
+      p95: 3945.0
+      max: 3945
     inter_message_interval_seconds:
-      min: 9.99
+      min: 10.0
       median: 10.0
-      p95: 10.01
-      max: 10.02
+      p95: 10.0
+      max: 10.0
     messages_per_minute: 6.0
     obx_identifiers_observed:
       - "202886^MDC_EVT_STAT_DEV^MDC"
+      - "30002^MNDRY_EVT_STAT_MODE_DEV^99MNDRY"
       - "30002^MNDRY_EVT_STAT_MODE_DEV"
+      - "30005^MNDRY_EVT_PATIENT_TYPE^99MNDRY"
       - "30005^MNDRY_EVT_PATIENT_TYPE"
+      - "30007^MNDRY_EVT_STAT_WARMER_ON_BOOL^99MNDRY"
       - "30007^MNDRY_EVT_STAT_WARMER_ON_BOOL"
-    obx_units_observed: []  # STANDBY usa CWE, no unidades
-    obx_value_types_observed: ["CWE"]
+      - "184352^MDC_VENT_MODE^MDC"
+      - "20000^MDC_RATIO_IE_SETTING^99MNDRY"
+      - "20001^MNDRY_RESP_RATE_MIN_SETTING^99MNDRY"
+      - "20002^MNDRY_VENT_PRESS_INSP_SETTING^99MNDRY"
+      - "20003^MNDRY_VENT_DELTA_PRESS_SETTING^99MNDRY"
+      - "20004^MNDRY_VENT_INSP_TIME_SETTING^99MNDRY"
+      - "20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY"
+      - "20007^MNDRY_VENT_PAUSE_TIME_PERCENT_SETTING^99MNDRY"
+      - "20013^MNDRY_VENT_PRESS_LIMIT_SETTING^99MNDRY"
+      - "20014^MDC_VENT_PRESS_TRIG_SENS_SETTING^99MNDRY"
+      - "20015^MDC_VOL_AWAY_TIDAL_SETTING^99MNDRY"
+      - "20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY"
+      - "20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY"
+      - "20026^MNDRY_VENT_EXP_TRIGGER_SETTING^99MNDRY"
+      - "20027^MNDRY_VENT_DELTA_PRESS_APNEA_SETTING^99MNDRY"
+      - "20043^MNDRY_VENT_APNEA_RATIO_IE_SETTING^99MNDRY"
+      - "20044^MNDRY_VENT_TRIG_WINDOW_SETTING^99MNDRY"
+      - "151586^MDC_VENT_RESP_RATE^MDC"
+      - "151688^MDC_COMPL_LUNG^MDC"
+      - "151784^MDC_PRESS_RESP_PLAT^MDC"
+      - "151819^MDC_PRESS_AWAY_INSP_MEAN^MDC"
+      - "151832^MDC_RATIO_IE^MDC"
+      - "151840^MDC_RES_AWAY^MDC"
+      - "151880^MDC_VOL_MINUTE_AWAY^MDC"
+      - "151957^MDC_VENT_PRESS_MAX^MDC"
+      - "151976^MDC_VENT_PRESS_AWAY_END_EXP_POS^MDC"
+      - "152196^MDC_CONC_AWAY_O2_INSP^MDC"
+      - "152660^MDC_VOL_AWAY_TIDAL_INSP^MDC"
+      - "152664^MDC_VOL_AWAY_TIDAL_EXP^MDC"
+    obx_units_observed:
+      - "262656^MDC_DIM_DIMLESS^MDC"
+      - "262688^MDC_DIM_PERCENT^MDC"
+      - "263762^MDC_DIM_MILLI_L^MDC"
+      - "264320^MDC_DIM_SEC^MDC"
+      - "264928^MDC_DIM_RESP_PER_MIN^MDC"
+      - "265216^MDC_DIM_L_PER_MIN^MDC"
+      - "266048^MDC_DIM_CM_H2O^MDC"
+      - "268050^MDC_DIM_MILLI_L_PER_CM_H2O^MDC"
+      - "268064^MDC_DIM_CM_H2O_PER_L_PER_SEC^MDC"
+    obx_value_types_observed: ["CWE", "NM", "SN"]
     state_transitions_observed:
       - ["SIN_GATEWAY", "HANDSHAKE"]
       - ["HANDSHAKE", "SESION_ESTABLECIDA_STANDBY"]
       - ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_STANDBY"]
+      - ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_RUNNING"]
+      - ["SESION_ESTABLECIDA_RUNNING", "SESION_ESTABLECIDA_RUNNING"]
 
 evaluation:
   metrics:

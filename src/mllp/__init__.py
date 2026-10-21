@@ -1,3 +1,5 @@
+"""Paquete MLLP: framing stateful (SB 0x0B / EOM 0x1C 0x0D), ACK HL7 y servidor TCP."""
+
 from .framing import (
     SB, EB, CR, EOM,
     MLLPFramer, MLLPFrame, FrameResult, FrameState,
