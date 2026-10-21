@@ -366,3 +366,100 @@ de Gabriel antes de mezclar a `main`.
 - **Pendientes (no hechos a propósito):** perfil OBX de RUNNING (256 alertas), reloj de
   captura en `detect_pcap.py`, razón correcta en alertas R-OBX-002/003, límite 4096 B
   frente a RUNNING real de hasta 3894 B, texto "SYN cada ~30s" (real: ciclo 47.6 s).
+
+## 14. Adenda - rama pruebas-santi (2026-10-20, enmiendas E4 a E7)
+
+Continuación de §13, mismas reglas (sin tocar `evidence_raw/`; baseline en
+`baseline.yaml` Y `baseline_builder.py`). Propuesta para revisión de Gabriel.
+
+- **E4 - motivo de R-OBX-002/003** (`src/detection/engine.py`). Todas las alertas R-OBX
+  usaban `errors[0]`, así que R-OBX-002/003 mostraban "Unauthorized OBX code: 184352".
+  Ahora cada una lleva su propio error (p. ej. "Unauthorized unit: 263762^MDC_DIM_MILLI_L
+  for code 20015"). Los conteos no cambian (RUNNING real: 86/86/84).
+- **E5 - hora de captura en `detect_pcap.py`.** `process_message(..., now=None)`: con
+  `None` (receptor en vivo) el comportamiento es idéntico; offline se pasa la hora del
+  paquete. Los mensajes se procesan en el orden en que TCP los entrega (máximo
+  acumulado por flujo) e intercalados entre flujos (`delivery_order`). `--realtime`
+  queda solo como ritmo de reproducción. Resultados:
+  - STANDBY 25-ago: antes 1 NORMAL + 42 R-TIME-002 -> ahora **43 NORMAL**.
+  - RUNNING 27-ago: 0 alertas de tiempo; quedan solo R-OBX (86/86/84, ver pendientes).
+  - Nessus 14-sep (`analconnessusactivo`, fuera del repo): **R-TIME-002=5, R-TIME-001=0**.
+    El arnés de §13 (orden por hora de paquete) daba además R-TIME-001=1; el MCID 91 se
+    retransmitió (primera copia capturada a los 916 s, después de la 92) y TCP entrega
+    91 antes que 92, así que no hay timestamp regresivo real. Las 5 alertas: hueco de
+    25.8 s, entrega simultánea 91/92 (0 s), 4.2 s y dos huecos de 20 s.
+- **E6 - evaluación por conexión** (`anomaly_generator.py`, `evaluate.py`). Ajusta la
+  decisión de §5 "alertas en ventana -> correlacionadas": el ground truth guarda
+  `source` (ip:puerto local de la conexión de la inyección) y `started_utc` (inicio de
+  la anomalía; en A14 el comienzo del silencio). Una alerta solo se correlaciona con
+  inyecciones de su misma conexión, desde `started_utc` hasta `timestamp_utc`+ventana.
+  Ground truth antiguo sin esos campos se evalúa igual que antes (re-evaluada la corrida
+  `20261019_105937`: mismo TP=67 FP=3).
+- **E7 - texto SIN_GATEWAY** (baseline). Medido en LECTURA25AGOSYO (19 ciclos, puertos
+  2048-2066): SYN a 0, +1.6, +16.6, +31.6 s, RST del WATO a +46.6 s, nuevo puerto a
+  +47.6 s. Antes decía "SYN cada ~30s". En esa misma captura hay 30 SYN de .200 hacia
+  el puerto 1550 del WATO respondidos con RST (el WATO no escucha en 1550).
+- **Pruebas:** `tests/test_enmiendas_e4_e5.py` (10) y `tests/test_enmienda_e6.py` (8);
+  17 de las 18 fallan sin las enmiendas. Suite: **235 passed**.
+- **Verificación (2026-10-20, local, semilla 100001):**
+  - Campaña A01-A16 a 6 s y a 10 s: TP=67 FN=0 FP=1 TN=11 (+94 correlacionadas), igual
+    en las dos. Antes: FP=3. Cambio de composición: los 3 silencios de A14 pasan a
+    correlacionados (son detecciones reales, §13), y aparece 1 FP que antes quedaba
+    oculto: el primer mensaje benigno de la fase 2 (conexión del emulador) alerta
+    R-TIME-002 "Interval too short: 0.33 s" porque llega justo después de la última
+    inyección (R-TIME-002 es global entre sesiones, §5).
+  - Evasión y caída (arnés de §13): sin cambio, 3 R-STATE-001 y 1 silencio a los 16 s.
+  - Modo docker: NO_VERIFICADO en esta rama (no hay Docker en el entorno de prueba).
+    `source` sale de `getsockname()` del generador; en la red interna sin NAT debería
+    coincidir con el `source` de la alerta.
+- **No hecho a propósito:** intervalos por sesión en R-TIME-002. Evitaría el FP de arriba,
+  pero contradice §5 (estado global) y rompería A13, que se detecta justamente por
+  reconexiones en sesiones nuevas. Decisión para Gabriel.
+- **Pendientes:** perfil OBX de RUNNING (las 256 alertas R-OBX sobre RUNNING real
+  siguen porque la baseline es solo STANDBY), límite `max_message_size: 4096` frente a
+  RUNNING real de hasta 3894 B (margen 5 %).
+
+## 15. Adenda - integración pruebas-santi sobre main del 2026-10-20 (rama pruebas-santi-v2)
+
+Main descargado el 2026-10-20 (commits de Gabriel del 19-oct ~22:25: baseline bimodal
+STANDBY+RUNNING, emulador de 6 modos, `capture_time` en el motor, estados por código,
+anonimizador sin romper el OID IHE). Las enmiendas §13-§14 se re-aplicaron encima con
+este criterio: **donde main ya resolvía lo mismo, queda la versión de main**; de
+pruebas-santi entra solo lo que main no tiene.
+
+- **Fallo en main: `wato_emulator.py` no compila.** Tiene 4 bloques de conflicto de git
+  sin resolver (`<<<<<<< HEAD` / `>>>>>>> f15c0259...`), así que `tests/test_integration.py`
+  no se puede ni recolectar y el emulador no corre. Resuelto con el lado `f15c0259`
+  (6 modos), que es el único coherente con el resto del archivo (`_build_running_obx`,
+  `--vent-mode`, `RUNNING_HEADER_OBX` están fuera del conflicto y solo existen en ese
+  lado) y con las pruebas nuevas de main. **Gabriel debe confirmarlo**: el lado HEAD
+  quitaba la línea NTE "SYNTHETIC-NOT-FOR-CLINICAL-USE".
+- **Queda la versión de main (descartado lo nuestro):** E5 `now` -> se usa
+  `capture_time` de main; `_infer_state` de main (además devuelve un estado propio para
+  valores desconocidos, que alerta: mejor que la E2, que los ignoraba). Las pruebas E2-E5
+  se adaptaron a `capture_time` y a que el RUNNING real ya no da alertas R-OBX.
+- **Se conserva de pruebas-santi (main no lo tiene):** coherencia RUNNING ⇒ OBX 184352
+  (E2), vigilante de silencio (E3), motivo propio en R-OBX con varias violaciones en un
+  mismo mensaje (E4), orden de entrega TCP en `detect_pcap` (E5), evaluación por
+  conexión (E6) y ciclo SYN medido en SIN_GATEWAY (E7; se mantiene el ARP y el rango
+  0-299 s de main). Sobre el main resuelto, 19 de nuestras pruebas fallan (los huecos).
+- **E8 nueva - R-TIME-001 con zona horaria** (`src/hl7/validator.py`). Al integrar
+  apareció un FP nuevo: el emulador de main escribe MSH-7 con -0500 (como el WATO) y el
+  generador en UTC (+00:00); el validador comparaba solo dígitos, así que el primer
+  benigno de la fase 2 (17:03:21-0500 = 22:03:21Z) era "regresivo" frente a 22:03:21+00:00.
+  Ahora, si ambos traen offset se comparan instantes; si no, como antes. A04 sigue 3/3.
+  En main este FP existe pero el evaluador anterior lo oculta.
+- **Para decisión de Gabriel:** `state_transitions_observed` incluye RUNNING->STANDBY,
+  pero ninguna captura lo muestra (27-08: solo STANDBY->RUNNING). Se dejó como está en
+  main; `test_running_a_standby_no_verificado_sigue_alertando` queda `xfail(strict)`.
+- **Verificación (2026-10-20, local, semilla 100001):** suite 245 passed + 1 xfailed.
+  STANDBY 43/43 NORMAL; RUNNING 99/99 NORMAL; Nessus R-TIME-002=5 (sin el -5.797 s que
+  da main por la retransmisión). Evasión 3 R-STATE-001, caída 1 alerta (main: 0 y 0).
+  Campaña 6 s y 10 s: TP=67 FN=0 FP=1 TN=11 (el FP es el R-TIME-002 global de §14).
+  Main resuelto sin enmiendas: FP=0 reportado, con 2 alertas falsas ocultas como
+  "correlacionadas" (R-TIME-001 por zona horaria y R-TIME-002 0.32 s).
+- **Riesgo:** emulador SIMV-VC+PS = trama de 3977 B (real máx. 3897 B; +80 B por la NTE),
+  a 119 B del `max_message_size: 4096`.
+- **Docs de main desactualizados (no tocados):** `GUIA_USO.md` línea "baseline es
+  unimodal STANDBY" y `RESULTADOS_TESIS.md` (256 alertas RUNNING) describen el estado
+  anterior a la baseline bimodal.

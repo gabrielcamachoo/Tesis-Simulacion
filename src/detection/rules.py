@@ -187,7 +187,7 @@ DEFAULT_RULES = [
         default_severity="HIGH",
         mitre_technique="T1692.002",
         mitre_justification="Cambio inválido de estado de sesión (T1692.002, analítica AN2045; T0869 es Standard Application Layer Protocol)",
-        limitations="Enmienda E2: STANDBY->RUNNING OBSERVADO (27-08) y coherencia RUNNING exige OBX 184352; RUNNING->STANDBY y ALARM NO_VERIFICADO"
+        limitations="Enmienda E2: STANDBY->RUNNING OBSERVADO (27-08) y coherencia RUNNING exige OBX 184352; RUNNING->STANDBY permitido en baseline sin captura que lo muestre (pendiente Gabriel); ALARM NO_VERIFICADO"
     ),
 ]
 

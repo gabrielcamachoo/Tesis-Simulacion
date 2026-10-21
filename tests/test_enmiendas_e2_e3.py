@@ -160,6 +160,11 @@ class TestE2Coherencia:
             count += _rules(_process(engine, spoof.replace("|1|P|2.6", f"|{900 + i}|P|2.6"))).count("R-STATE-001")
         assert count == 3
 
+    @pytest.mark.xfail(strict=True, reason=(
+        "Decisión pendiente de Gabriel: el main 2026-10-20 lista RUNNING->STANDBY "
+        "en state_transitions_observed, pero ninguna captura la muestra "
+        "(27-08: solo STANDBY->RUNNING). Si se retira de la baseline, esta "
+        "prueba pasa y hay que quitar el xfail."))
     def test_running_a_standby_no_verificado_sigue_alertando(self, lab_engine):
         """RUNNING->STANDBY no se ha observado: debe seguir alertando."""
         engine, clock = lab_engine

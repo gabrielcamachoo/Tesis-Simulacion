@@ -263,13 +263,15 @@ def main() -> int:
     alerts_fp, alerts_by_rule, normals = count_alerts(outdir)
     expectativa = ("FP = 0 (corpus benigno STANDBY, protocolo §3.2)"
                    if args.label.upper() == "STANDBY" else
-                   "FP reportados sin umbral (códigos NM/SN NO_VERIFICADOS, "
-                   "protocolo §3.2)")
+                   "FP = 0 con baseline bimodal STANDBY+RUNNING (observado en "
+                   "LECTURAACK27AGOSTO.pcapng)")
+    pcap_display = str(pcap.relative_to(ROOT)) if pcap.is_relative_to(ROOT) else str(pcap)
+    outdir_display = str(outdir.relative_to(ROOT)) if outdir.is_relative_to(ROOT) else str(outdir)
     manifest = {
         "tool": "replay_evidence.py",
         "label": args.label,
         "timestamp_utc_inicio": started.isoformat(),
-        "pcap": str(pcap.relative_to(ROOT)),
+        "pcap": pcap_display,
         "pcap_sha256": sha256_file(pcap),
         "anonimizado": True,
         "pipeline": "analyze_evidence (reasamblado TCP + MLLP + anonimización)",
@@ -302,7 +304,7 @@ def main() -> int:
     print(f"Enviados: {sent}/{len(flat)} | anomalías (FP): {alerts_fp} "
           f"{alerts_by_rule if alerts_by_rule else ''} | normales: {normals}",
           flush=True)
-    print(f"Manifiesto: {outdir.relative_to(ROOT)}/replay_manifest.json")
+    print(f"Manifiesto: {outdir_display}/replay_manifest.json")
     if error:
         print(f"ERROR durante replay: {error}", file=sys.stderr)
         return 1

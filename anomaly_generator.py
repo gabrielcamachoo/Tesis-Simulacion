@@ -260,6 +260,21 @@ class GroundTruthRecord:
     target: str
     mitre_ics: str
     threat: str
+    # Enmienda E6 (evaluación honesta). source = ip:puerto LOCAL de la
+    # conexión que llevó la inyección, tal como la ve el receptor en la
+    # alerta (Alert.source). started_utc = cuándo empezó la anomalía; solo
+    # difiere de timestamp_utc en A14, cuyo silencio empieza 45 s antes del
+    # mensaje que lo cierra. Vacíos en ground truth antiguos.
+    source: str = ""
+    started_utc: str = ""
+
+
+def _sock_source(sock: Optional[socket.socket]) -> str:
+    try:
+        host, port = sock.getsockname()[:2]
+        return f"{host}:{port}"
+    except (OSError, AttributeError):
+        return ""
 
 
 class AnomalyGenerator:
@@ -327,7 +342,8 @@ class AnomalyGenerator:
             self._sock = None
 
     def _record(self, scenario: AnomalyScenario, control_id: str,
-                bytes_sent: int) -> GroundTruthRecord:
+                bytes_sent: int, sock: Optional[socket.socket] = None,
+                started_utc: Optional[str] = None) -> GroundTruthRecord:
         # Cap global de inyecciones por corrida
         if self._total_injections >= self.max_total_injections:
             raise RuntimeError(
@@ -335,25 +351,29 @@ class AnomalyGenerator:
         self._injection_counter += 1
         self._total_injections += 1
         self.counters[scenario.id] += 1
+        now_utc = datetime.now(timezone.utc).isoformat()
         rec = GroundTruthRecord(
             injection_id=f"INJ-{self._injection_counter:05d}",
             scenario_id=scenario.id,
             scenario_name=scenario.name,
             expected_rule=scenario.expected_rule,
-            timestamp_utc=datetime.now(timezone.utc).isoformat(),
+            timestamp_utc=now_utc,
             monotonic_ns=time.monotonic_ns(),
             control_id=control_id,
             bytes_sent=bytes_sent,
             target=f"{self.target_host}:{self.target_port}",
             mitre_ics=scenario.mitre_ics,
             threat=scenario.threat,
+            source=_sock_source(sock if sock is not None else self._sock),
+            started_utc=started_utc or now_utc,
         )
         self._gt_file.write(json.dumps(asdict(rec), ensure_ascii=False) + "\n")
         self._gt_file.flush()
         return rec
 
     def _send_raw(self, payload: bytes, scenario: AnomalyScenario,
-                  control_id: str) -> Optional[GroundTruthRecord]:
+                  control_id: str,
+                  started_utc: Optional[str] = None) -> Optional[GroundTruthRecord]:
         """Envía payload crudo respetando rate limit; registra ground truth."""
         if not self._sock:
             if not self._connect():
@@ -361,7 +381,8 @@ class AnomalyGenerator:
         self._rate_limit()
         try:
             self._sock.sendall(payload)
-            return self._record(scenario, control_id, len(payload))
+            return self._record(scenario, control_id, len(payload),
+                                started_utc=started_utc)
         except OSError as e:
             logger.warning(f"Error enviando {scenario.id}: {e}")
             self._close()
@@ -411,7 +432,7 @@ class AnomalyGenerator:
             sock.settimeout(5)
             self._rate_limit()
             sock.sendall(payload)
-            rec = self._record(scenario, control_id, len(payload))
+            rec = self._record(scenario, control_id, len(payload), sock=sock)
             return rec
         except OSError as e:
             logger.warning(f"Error en conexión dedicada ({scenario.id}): {e}")
@@ -561,6 +582,9 @@ class AnomalyGenerator:
             # el intervalo anómalo (R-TIME-002) en el receptor.
             gap = float(scenario.params.get("gap_seconds", 45))
             logger.info(f"A14: silencio de {gap}s simulando canal degradado...")
+            # E6: el silencio (la anomalía) empieza aquí, no al enviar el
+            # mensaje que lo cierra. El vigilante E3 alerta durante el hueco.
+            silence_start = datetime.now(timezone.utc).isoformat()
             end = time.monotonic() + gap
             while time.monotonic() < end and self.running:
                 time.sleep(min(1.0, end - time.monotonic()))
@@ -568,7 +592,8 @@ class AnomalyGenerator:
                 return None
             hl7 = base_hl7_message(cid, now_hl7_timestamp())
             frame = frame_hl7_message(hl7.encode("utf-8"))
-            return self._send_raw(frame, scenario, cid)
+            return self._send_raw(frame, scenario, cid,
+                                  started_utc=silence_start)
 
         if scenario.id == "A15":
             # Mensaje grande pero bajo el límite duro

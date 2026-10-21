@@ -127,6 +127,41 @@ def test_benign_emulator_produces_no_alerts(tmp_path):
         stop_lab(lab)
 
 
+def test_benign_emulator_running_produces_no_alerts(tmp_path):
+    """Emulador benigno en modo RUNNING (VCV + SIMV-VC+PS): solo NORMAL, 0 FP."""
+    lab = start_lab(tmp_path)
+    try:
+        emu_cfg = EmulatorConfig(
+            receiver_host="127.0.0.1",
+            receiver_port=lab["port"],
+            state=EmulatorState.RUNNING,
+            vent_mode="CYCLE",
+            interval_seconds=6.0,
+            max_messages=2,
+            require_ack=True,
+            ack_timeout=3.0,
+            max_reconnects=2,
+        )
+        emu = WATOEmulator(emu_cfg)
+        emu.run()
+        assert emu.stats["messages_sent"] == 2, emu.stats
+        assert emu.stats["acks_received"] == 2, emu.stats
+        time.sleep(0.5)
+
+        alerts_file = lab["outdir"] / "alerts" / "alerts.jsonl"
+        rows = [json.loads(l) for l in
+                alerts_file.read_text(encoding="utf-8").splitlines()
+                if l.strip()]
+        anom = [a for a in rows if a.get("label") == "ANOMALO"]
+        normal = [a for a in rows if a.get("label") == "NORMAL"]
+        assert not anom, (
+            f"emulador RUNNING generó alertas: "
+            f"{[(a['rule_id'], a['reason']) for a in anom]}")
+        assert len(normal) == 2, f"esperaba 2 NORMAL, hay {len(normal)}"
+    finally:
+        stop_lab(lab)
+
+
 def test_end_to_end_detection(tmp_path):
     """Flujo completo benigno + anómalo + evaluación."""
     lab = start_lab(tmp_path)

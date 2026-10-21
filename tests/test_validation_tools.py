@@ -128,6 +128,36 @@ class TestEnmiendaE1ObxUnit:
             obx_unit="262656^MDC_DIM_DIMLESS^MDC"))
         assert "R-OBX-002" not in res.rule_violations
 
+    @pytest.mark.skipif(not PCAP_RUNNING.exists(),
+                        reason="evidencia RUNNING de la tesis requerida")
+    def test_running_real_99_oru_zero_obx_violations(self):
+        from replay_evidence import extract_oru_flows, flatten
+        flat = flatten(extract_oru_flows(PCAP_RUNNING))
+        assert len(flat) == 99
+        for idx, (content, _ts) in enumerate(flat):
+            res = self._validate(content.decode("utf-8", errors="replace"))
+            assert not res.rule_violations, (
+                f"ORU #{idx+1} en LECTURAACK27AGOSTO disparó {res.rule_violations}: {res.errors}"
+            )
+
+    def test_emulator_all_6_vent_modes_pass_baseline(self):
+        from wato_emulator import WATOEmulator, EmulatorConfig, EmulatorState
+        modes = ["VCV", "SIMVVC_PLUS_PS", "PCV", "SIMVPC_PLUS_PS", "PS", "MANUAL"]
+        for mode in modes:
+            emu = WATOEmulator(EmulatorConfig(
+                state=EmulatorState.RUNNING, vent_mode=mode))
+            hl7_msg = emu._build_message()
+            res = self._validate(hl7_msg)
+            assert not res.rule_violations, (
+                f"Modo {mode} disparó {res.rule_violations}: {res.errors}"
+            )
+
+    def test_a10_datatype_mismatch_still_triggers_r_obx_003(self):
+        from anomaly_generator import base_hl7_message, now_hl7_timestamp
+        res = self._validate(base_hl7_message(
+            "A10TEST", now_hl7_timestamp(), obx_datatype="NM"))
+        assert "R-OBX-003" in res.rule_violations
+
 
 class TestRunMatrix:
     def test_wilson_ci_perfecto(self):

@@ -13,7 +13,7 @@ import random
 import signal
 import sys
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
@@ -52,6 +52,7 @@ class EmulatorConfig:
     bind_host: str = "0.0.0.0"
     bind_port: int = 0  # Puerto efímero automático
     state: EmulatorState = EmulatorState.STANDBY
+    vent_mode: str = "VCV"  # VCV, SIMVVC_PLUS_PS, PCV, SIMVPC_PLUS_PS, PS, MANUAL, CYCLE
     interval_seconds: float = 10.0
     message_count: int = 0
     max_messages: int = 0  # 0 = infinito
@@ -64,88 +65,165 @@ class EmulatorConfig:
 
 class WATOEmulator:
     """
-    Emulador de máquina de anestesia Mindray WATO EX-35.
-    Genera mensajes HL7 ORU^R01 sintéticos con framing MLLP.
+    Emulador de máquina de anestesia Mindray WATO EX-35 (WATO Pro Series).
+    Genera mensajes HL7 v2.6 ORU^R01^ORU_R01 (perfil IHE PCD-01 DEC)
+    con framing MLLP y nomenclatura ISO/IEEE 11073-10101 MDC + 99MNDRY,
+    alineado byte a byte con las capturas reales:
+      - LECTURACONACK25AGOSTO.pcapng (STANDBY, 4 OBX CWE)
+      - LECTURAACK27AGOSTO.pcapng (RUNNING, 6 modos ventilatorios, 17-28 OBX)
     """
-    
+
+    COMMON_MSH = (
+        "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
+        "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
+        "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
+    )
+    COMMON_PID = "PID|||^^^^PI||^^^^^^L|||"
+    COMMON_PV1 = "PV1||I|^^^"
+    COMMON_OBR = (
+        "OBR|1|{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
+        "{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
+        "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
+    )
+
+    # Bloques OBX de estado del dispositivo en RUNNING (OBX 1..4 comunes)
+    RUNNING_HEADER_OBX = [
+        "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202902^MDC_EVT_STAT_RUNNING^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+        "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV^99MNDRY|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+        "OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE^99MNDRY|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+        "OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL^99MNDRY|1.3.1.30007|30000^MDC_TRUE^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+    ]
+
+    # Ajustes ventilatorios (OBX-11 = F) observados por modo en LECTURAACK27AGOSTO.pcapng
+    VENT_MODE_SETTINGS_OBX = {
+        "VCV": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50005^MNDRY_VENT_MODE_VCV^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20015^MDC_VOL_AWAY_TIDAL_SETTING^99MNDRY|1.3.2.20015|{vt_set}|263762^MDC_DIM_MILLI_L^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_set}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|8|SN|20000^MDC_RATIO_IE_SETTING^99MNDRY|1.3.2.20000|^1^:^2|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20007^MNDRY_VENT_PAUSE_TIME_PERCENT_SETTING^99MNDRY|1.3.2.20007|0|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|11|NM|20013^MNDRY_VENT_PRESS_LIMIT_SETTING^99MNDRY|1.3.2.20013|{plim_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+        ],
+        "SIMVVC_PLUS_PS": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50008^MNDRY_VENT_MODE_SIMVVC_PLUS_PS^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20015^MDC_VOL_AWAY_TIDAL_SETTING^99MNDRY|1.3.2.20015|{vt_set}|263762^MDC_DIM_MILLI_L^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_set}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|8|NM|20004^MNDRY_VENT_INSP_TIME_SETTING^99MNDRY|1.3.2.20004|1.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20014^MDC_VENT_PRESS_TRIG_SENS_SETTING^99MNDRY|1.3.2.20014|3.0|265216^MDC_DIM_L_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20003^MNDRY_VENT_DELTA_PRESS_SETTING^99MNDRY|1.3.2.20003|15|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|11|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|12|NM|20013^MNDRY_VENT_PRESS_LIMIT_SETTING^99MNDRY|1.3.2.20013|{plim_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|13|NM|20007^MNDRY_VENT_PAUSE_TIME_PERCENT_SETTING^99MNDRY|1.3.2.20007|0|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|14|NM|20044^MNDRY_VENT_TRIG_WINDOW_SETTING^99MNDRY|1.3.2.20044|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|15|NM|20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY|1.3.2.20005|0.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|16|NM|20026^MNDRY_VENT_EXP_TRIGGER_SETTING^99MNDRY|1.3.2.20026|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+        ],
+        "PCV": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50011^MNDRY_VENT_MODE_PCV^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20002^MNDRY_VENT_PRESS_INSP_SETTING^99MNDRY|1.3.2.20002|29|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_set}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|8|SN|20000^MDC_RATIO_IE_SETTING^99MNDRY|1.3.2.20000|^1^:^2|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY|1.3.2.20005|0.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+        ],
+        "SIMVPC_PLUS_PS": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50010^MNDRY_VENT_MODE_SIMVPC_PLUS_PS^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20002^MNDRY_VENT_PRESS_INSP_SETTING^99MNDRY|1.3.2.20002|29|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_set}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|8|NM|20004^MNDRY_VENT_INSP_TIME_SETTING^99MNDRY|1.3.2.20004|1.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20014^MDC_VENT_PRESS_TRIG_SENS_SETTING^99MNDRY|1.3.2.20014|3.0|265216^MDC_DIM_L_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY|1.3.2.20005|0.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|11|NM|20003^MNDRY_VENT_DELTA_PRESS_SETTING^99MNDRY|1.3.2.20003|15|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|12|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|13|NM|20044^MNDRY_VENT_TRIG_WINDOW_SETTING^99MNDRY|1.3.2.20044|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|14|NM|20026^MNDRY_VENT_EXP_TRIGGER_SETTING^99MNDRY|1.3.2.20026|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+        ],
+        "PS": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50006^MNDRY_VENT_MODE_PS^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20003^MNDRY_VENT_DELTA_PRESS_SETTING^99MNDRY|1.3.2.20003|15|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY|1.3.2.20005|0.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|8|NM|20014^MDC_VENT_PRESS_TRIG_SENS_SETTING^99MNDRY|1.3.2.20014|3.0|265216^MDC_DIM_L_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20026^MNDRY_VENT_EXP_TRIGGER_SETTING^99MNDRY|1.3.2.20026|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20001^MNDRY_RESP_RATE_MIN_SETTING^99MNDRY|1.3.2.20001|4|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|11|NM|20027^MNDRY_VENT_DELTA_PRESS_APNEA_SETTING^99MNDRY|1.3.2.20027|15|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|12|SN|20043^MNDRY_VENT_APNEA_RATIO_IE_SETTING^99MNDRY|1.3.2.20043|^1^:^2|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|13|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+        ],
+        "MANUAL": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50000^MNDRY_VENT_MODE_MANUAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+        ],
+    }
+
+    # Mediciones ventilatorias (OBX-11 = R / X) observadas en LECTURAACK27AGOSTO.pcapng
+    MEASURED_OBX_TEMPLATES = [
+        ("NM", "151957^MDC_VENT_PRESS_MAX^MDC", "1.3.2.151957", "{pip}", "266048^MDC_DIM_CM_H2O^MDC", "", "R"),
+        ("NM", "151819^MDC_PRESS_AWAY_INSP_MEAN^MDC", "1.3.2.151819", "{map}", "266048^MDC_DIM_CM_H2O^MDC", "", "R"),
+        ("NM", "151784^MDC_PRESS_RESP_PLAT^MDC", "1.3.2.151784", "{pplat}", "266048^MDC_DIM_CM_H2O^MDC", "", "R"),
+        ("NM", "151976^MDC_VENT_PRESS_AWAY_END_EXP_POS^MDC", "1.3.2.151976", "{peep}", "266048^MDC_DIM_CM_H2O^MDC", "", "R"),
+        ("NM", "151880^MDC_VOL_MINUTE_AWAY^MDC", "1.3.2.151880", "{mv}", "265216^MDC_DIM_L_PER_MIN^MDC", "", "R"),
+        ("NM", "152664^MDC_VOL_AWAY_TIDAL_EXP^MDC", "1.3.2.152664", "{vte}", "263762^MDC_DIM_MILLI_L^MDC", "", "R"),
+        ("NM", "152660^MDC_VOL_AWAY_TIDAL_INSP^MDC", "1.3.2.152660", "{vti}", "263762^MDC_DIM_MILLI_L^MDC", "", "R"),
+        ("SN", "151832^MDC_RATIO_IE^MDC", "1.3.2.151832", "^1^:^{ie_exp}", "262656^MDC_DIM_DIMLESS^MDC", "", "R"),
+        ("NM", "151840^MDC_RES_AWAY^MDC", "1.3.2.151840", "{raw_res}", "268064^MDC_DIM_CM_H2O_PER_L_PER_SEC^MDC", "", "R"),
+        ("NM", "151688^MDC_COMPL_LUNG^MDC", "1.3.2.151688", "{compl}", "268050^MDC_DIM_MILLI_L_PER_CM_H2O^MDC", "", "R"),
+        ("", "152196^MDC_CONC_AWAY_O2_INSP^MDC", "1.4.1.152196", "", "262688^MDC_DIM_PERCENT^MDC", "INV", "X"),
+        ("NM", "151586^MDC_VENT_RESP_RATE^MDC", "1.3.2.151586", "{rr}", "264928^MDC_DIM_RESP_PER_MIN^MDC", "", "R"),
+    ]
+
     # Plantillas HL7 sintéticas basadas en evidencia observada
     TEMPLATES = {
         EmulatorState.STANDBY: {
-            'msh': (
-                "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
-                "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
-                "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
-            ),
-            'pid': "PID|||^^^^PI||^^^^^^L|||",
-            'pv1': "PV1||I|^^^",
-            'obr': (
-                "OBR|1|1^MINDRAY_WATOPRO-SERIES^...|1^...|"
-                "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
-            ),
+            'msh': COMMON_MSH,
+            'pid': COMMON_PID,
+            'pv1': COMMON_PV1,
+            'obr': COMMON_OBR,
             'obx': [
-                "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202836^MDC_EVT_STAT_STANDBY^MDC",
-                "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL",
-                "OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT",
-                "OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL|1.3.1.30007|30000^MDC_TRUE",
+                "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202836^MDC_EVT_STAT_STANDBY^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV^99MNDRY|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE^99MNDRY|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL^99MNDRY|1.3.1.30007|30000^MDC_TRUE^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
             ]
         },
         EmulatorState.RUNNING: {
-            'msh': (
-                "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
-                "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
-                "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
-            ),
-            'pid': "PID|||12345^5^M11^ADT^MR||DOE^JOHN^^^^^L||19800101|M",
-            'pv1': "PV1||I|ICU^101^A^^^HOSP^A",
-            'obr': (
-                "OBR|1|1^MINDRAY_WATOPRO-SERIES^...|1^...|"
-                "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
-            ),
-            'obx': [
-                "OBX|1|NM|150020^MDC_VOL_RESP_TIDAL^MDC||{tv}|mL",
-                "OBX|2|NM|150021^MDC_VOL_RESP_MINUTE^MDC||{mv}|L/min",
-                "OBX|3|NM|150022^MDC_RATE_RESP^MDC||{rr}|/min",
-                "OBX|4|NM|150005^MDC_PRESS_AWAY_PEAK^MDC||{pip}|cmH2O",
-                "OBX|5|NM|150007^MDC_PRESS_AWAY_MEAN^MDC||{map}|cmH2O",
-                "OBX|6|NM|150009^MDC_PRESS_AWAY_PEEP^MDC||{peep}|cmH2O",
-                "OBX|7|NM|150456^MDC_CONC_GAS_O2_INSP^MDC||{fio2}|%",
-                "OBX|8|NM|150457^MDC_CONC_GAS_CO2_ET^MDC||{etco2}|mmHg",
-                "OBX|9|CWE|202886^MDC_EVT_STAT_DEV^MDC||202837^MDC_EVT_STAT_RUNNING^MDC",
-                "OBX|10|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50005^MNDRY_VENT_MODE_VCV^99MNDRY",
-            ]
+            'msh': COMMON_MSH,
+            'pid': COMMON_PID,
+            'pv1': COMMON_PV1,
+            'obr': COMMON_OBR,
+            'obx': []  # Construido dinámicamente según vent_mode en _build_message()
         },
         EmulatorState.ALARM_SIMULATED: {
-            'msh': (
-                "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
-                "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
-                "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
-            ),
-            'pid': "PID|||12345^5^M11^ADT^MR||DOE^JOHN^^^^^L||19800101|M",
-            'pv1': "PV1||I|ICU^101^A^^^HOSP^A",
-            'obr': (
-                "OBR|1|1^MINDRAY_WATOPRO-SERIES^...|1^...|"
-                "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
-            ),
+            'msh': COMMON_MSH,
+            'pid': COMMON_PID,
+            'pv1': COMMON_PV1,
+            'obr': COMMON_OBR,
             'obx': [
-                "OBX|1|NM|150020^MDC_VOL_RESP_TIDAL^MDC||{tv}|mL",
-                "OBX|2|NM|150021^MDC_VOL_RESP_MINUTE^MDC||{mv}|L/min",
-                "OBX|3|CWE|202886^MDC_EVT_STAT_DEV^MDC||202838^MDC_EVT_STAT_ALARM^MDC",
-                "OBX|4|CWE|30001^MNDRY_EVT_ALARM^MDC||{alarm_code}|MDC",
-                "OBX|5|ST|30002^MNDRY_EVT_ALARM_TEXT^MDC||{alarm_text}",
+                "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202838^MDC_EVT_STAT_ALARM^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|2|NM|151957^MDC_VENT_PRESS_MAX^MDC|1.3.2.151957|{pip}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
+                "OBX|3|NM|151880^MDC_VOL_MINUTE_AWAY^MDC|1.3.2.151880|{mv}|265216^MDC_DIM_L_PER_MIN^MDC|||||R|||{timestamp}|",
+                "OBX|4|CWE|30001^MNDRY_EVT_ALARM^99MNDRY|1.1.1.30001|{alarm_code}|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+                "OBX|5|ST|30002^MNDRY_EVT_ALARM_TEXT^99MNDRY|1.1.1.30002|{alarm_text}|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
             ]
         }
     }
     
-    # Valores fisiológicos simulados para modo RUNNING
+    # Rangos observados en LECTURAACK27AGOSTO.pcapng para modo RUNNING
     PHYSIOLOGICAL_RANGES = {
-        'tv': (450, 550),      # mL
-        'mv': (7.0, 9.0),      # L/min
-        'rr': (14, 18),        # /min
-        'pip': (18, 25),       # cmH2O
-        'map': (10, 15),       # cmH2O
-        'peep': (4, 6),        # cmH2O
-        'fio2': (30, 50),      # %
-        'etco2': (35, 45),     # mmHg
+        'vt_set': (400, 450),     # mL (setting 20015)
+        'rr_set': (12, 14),       # /min (setting 20016)
+        'peep_set': (6, 8),       # cmH2O (setting 20017)
+        'plim_set': (30, 35),     # cmH2O (setting 20013)
+        'vte': (62, 85),          # mL (152664 observado en pulmón de prueba)
+        'vti': (68, 86),          # mL (152660 observado en pulmón de prueba)
+        'mv': (0.6, 1.0),         # L/min (151880 observado)
+        'rr': (10, 14),           # /min (151586 observado)
+        'pip': (31, 35),          # cmH2O (151957 observado)
+        'map': (10, 16),          # cmH2O (151819 observado)
+        'pplat': (29, 34),        # cmH2O (151784 observado)
+        'peep': (5, 8),           # cmH2O (151976 observado)
+        'raw_res': (54, 60),      # cmH2O/(L/s) (151840 observado)
+        'compl': (2, 3),          # mL/cmH2O (151688 observado)
+        'ie_exp': (2.0, 2.3),     # relación I:E medida (^1^:^2.1)
     }
     
     ALARM_CODES = [
@@ -178,8 +256,42 @@ class WATOEmulator:
 
     def _generate_timestamp(self) -> str:
         """Genera timestamp HL7 en formato YYYYMMDDHHMMSS±ZZZZ."""
-        now = datetime.now(timezone.utc)
-        return now.strftime("%Y%m%d%H%M%S%z")[:-2] + ":" + now.strftime("%z")[-2:]
+        capture_timezone = timezone(timedelta(hours=-5))
+        now = datetime.now(timezone.utc).astimezone(capture_timezone)
+        return now.strftime("%Y%m%d%H%M%S%z")
+
+    def _build_running_obx(self, timestamp: str, physio: Dict[str, str]) -> List[str]:
+        """Construye los segmentos OBX (17 a 28) de modo RUNNING según el modo
+        ventilatorio activo observado en LECTURAACK27AGOSTO.pcapng."""
+        modes_order = ["VCV", "SIMVVC_PLUS_PS", "PCV", "SIMVPC_PLUS_PS", "PS", "MANUAL"]
+        mode = (self.config.vent_mode or "VCV").upper()
+        if mode == "CYCLE":
+            mode = modes_order[self.stats['messages_sent'] % len(modes_order)]
+        elif mode not in self.VENT_MODE_SETTINGS_OBX:
+            mode = "VCV"
+
+        obx_lines = []
+        for hdr in self.RUNNING_HEADER_OBX:
+            obx_lines.append(hdr.format(timestamp=timestamp))
+
+        settings_templates = self.VENT_MODE_SETTINGS_OBX[mode]
+        for st_line in settings_templates:
+            obx_lines.append(st_line.format(timestamp=timestamp, **physio))
+
+        next_idx = len(obx_lines) + 1
+        is_manual = (mode == "MANUAL")
+        for i, (vtype, code, subid, val_tpl, unit, flag, status) in enumerate(self.MEASURED_OBX_TEMPLATES):
+            seq_num = next_idx + i
+            if is_manual or status == "X":
+                obx_lines.append(
+                    f"OBX|{seq_num}||{code}|{subid}||{unit}||INV|||X|||{timestamp}|"
+                )
+            else:
+                val = val_tpl.format(**physio)
+                obx_lines.append(
+                    f"OBX|{seq_num}|{vtype}|{code}|{subid}|{val}|{unit}|||||{status}|||{timestamp}|"
+                )
+        return obx_lines
 
     def _build_message(self) -> str:
         """Construye mensaje HL7 completo según estado actual."""
@@ -194,6 +306,15 @@ class WATOEmulator:
                 physio[key] = str(random.randint(min_v, max_v))
             else:
                 physio[key] = f"{random.uniform(min_v, max_v):.1f}"
+
+        physio.update({
+            'tv_setting': str(random.randint(400, 450)),
+            'rr_setting': '12',
+            'peep_setting': '6',
+            'plat': str(random.randint(29, 35)),
+            'tv_exp': str(random.randint(60, 80)),
+            'tv_insp': str(random.randint(60, 80)),
+        })
         
         # Alarm code/text para ALARM_SIMULATED
         alarm_code, alarm_text = random.choice(self.ALARM_CODES)
@@ -207,32 +328,27 @@ class WATOEmulator:
         
         # PID, PV1, OBR
         for seg_key in ['pid', 'pv1', 'obr']:
-            seg = template[seg_key].format(timestamp=timestamp, **physio)
+            seg = template[seg_key].format(timestamp=timestamp, ctrl_id=self.ctrl_id, **physio)
             segments.append(seg)
         
         # OBX segments
-        for obx_template in template['obx']:
-            obx = obx_template.format(
-                timestamp=timestamp,
-                ctrl_id=self.ctrl_id,
-                tv=physio.get('tv', '500'),
-                mv=physio.get('mv', '8.0'),
-                rr=physio.get('rr', '16'),
-                pip=physio.get('pip', '22'),
-                map=physio.get('map', '12'),
-                peep=physio.get('peep', '5'),
-                fio2=physio.get('fio2', '40'),
-                etco2=physio.get('etco2', '40'),
-                alarm_code=alarm_code,
-                alarm_text=alarm_text
-            )
-            segments.append(obx)
+        if self.config.state == EmulatorState.RUNNING:
+            segments.extend(self._build_running_obx(timestamp, physio))
+        else:
+            for obx_template in template['obx']:
+                obx = obx_template.format(
+                    timestamp=timestamp,
+                    ctrl_id=self.ctrl_id,
+                    alarm_code=alarm_code,
+                    alarm_text=alarm_text,
+                    **physio
+                )
+                segments.append(obx)
         
         # Unir con \r y terminar con \r
         hl7_message = '\r'.join(segments) + '\r'
         
-        # Añadir prefijo sintético en comentario (no parte del HL7 estándar)
-        # Lo añadimos como NTE segment opcional
+        # Añadir prefijo sintético en comentario NTE opcional (auditabilidad)
         nte = f"NTE|1|{self.config.synthetic_prefix} - State: {self.config.state.value} - Msg: {self.ctrl_id}"
         hl7_message = hl7_message.rstrip('\r') + '\r' + nte + '\r'
         
@@ -430,6 +546,8 @@ Ejemplos:
     parser.add_argument("--bind-port", type=int, default=0, help="Puerto local (0=automático)")
     parser.add_argument("--state", choices=[s.value for s in EmulatorState], 
                         default="STANDBY", help="Estado inicial (default: STANDBY)")
+    parser.add_argument("--vent-mode", choices=["VCV", "SIMVVC_PLUS_PS", "PCV", "SIMVPC_PLUS_PS", "PS", "MANUAL", "CYCLE"],
+                        default="VCV", help="Modo ventilatorio en estado RUNNING (default: VCV; CYCLE rota los 6 modos)")
     parser.add_argument("--interval", type=float, default=10.0, help="Intervalo entre mensajes en segundos (default: 10.0)")
     parser.add_argument("--count", type=int, default=0, help="Número de mensajes a enviar (0=infinito)")
     parser.add_argument("--seed", type=int, default=None,
@@ -455,6 +573,7 @@ Ejemplos:
         bind_host=args.bind_host,
         bind_port=args.bind_port,
         state=EmulatorState(args.state),
+        vent_mode=args.vent_mode,
         interval_seconds=args.interval,
         max_messages=args.count,
         require_ack=not args.no_ack,

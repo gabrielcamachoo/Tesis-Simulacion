@@ -136,3 +136,15 @@ def test_mllp_extraction_roundtrip():
     assert len(msgs) == 2
     assert msgs[0][0].startswith(b"MSH|")
     assert msgs[1][0] == b"second"
+
+
+def test_anonymize_preserves_ihe_pcd_oid():
+    msg = (
+        b"MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
+        b"20260825141442-0500||ORU^R01^ORU_R01|1|P|2.6|||NE|AL||UNICODE UTF-8|||"
+        b"IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO\r"
+        b"PID|||^^^^PI||^^^^^^L|||\r"
+    )
+    out = anonymize_hl7_message(msg).decode("utf-8")
+    assert "1.3.6.1.4.1.19376.1.6.1.1.1^ISO" in out
+    assert "IP_ADDRESS_" not in out
