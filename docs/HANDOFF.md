@@ -1,6 +1,6 @@
 # HANDOFF — Contexto y pasos siguientes
 
-> Última actualización: 2026-10-14 (sesión asistente 2: E2E docker validado, §7).
+> Última actualización: 2026-10-20 (cierre post-integración PR #1: baseline bimodal v1.1 + Enmiendas E2–E8, §16).
 
 ## 1. Contexto del proyecto
 
@@ -40,21 +40,26 @@
 - Docs Fase 5/6 sincronizadas: README, THREAT_MODEL, ETHICS_AND_SAFETY, LAB_ARCHITECTURE,
   ATTACK_SCENARIOS, VALIDATION_PROTOCOL, RESULTS_TEMPLATE, LIMITATIONS,
   docs/TRACEABILITY_MATRIX.csv, **docs/RASPBERRY_PI_SETUP.md** (borrador Fase 6, sin ejecutar).
-- Suite completa: **161 passed** (re-correr tras cualquier cambio).
+- Suite completa: **246 passed, 0 xfailed** (re-correr tras cualquier cambio).
 
-## 3. Pendientes (en orden)
+## 3. Pendientes y áreas de mejora continua (en orden de prioridad)
 
-1. **Raspberry Pi (Fase 6):** ejecutar `docs/RASPBERRY_PI_SETUP.md` en hardware real;
-   marcar la checklist del doc. Medir H2 (latencia ACK) ahí.
-2. **Fase 9 (validación):** ≥30 corridas/escenario con semillas fijas, según
-   `docs/VALIDATION_PROTOCOL.md`; diligenciar `docs/RESULTS_TEMPLATE.md`.
-3. Limpieza opcional: `docker volume rm investigacion-de-la-tesis_lab_output`
-   (los datos de cada corrida ya viven en `runs/<ts>/` tras el cp).
+1. **Hardware en Raspberry Pi física (Fase 6):**
+   - Ejecutar el despliegue con `deploy/pi/` (01_instalar...06_campana) en la Pi 4 real sobre red aislada.
+   - Medir formalmente H2 con `latency_bench.py --messages 1000 --runs 5` directamente en hardware ARM y verificar p95 ≤ 500 µs (hasta ahora PASS en PC x86, clasificado honestamente como `NO_VERIFICADO` en hardware).
+2. **Margen de tamaño de trama en SIMV-VC+PS vs `max_message_size`:**
+   - En `wato_emulator.py`, el modo SIMV-VC+PS con 28 segmentos OBX genera tramas de ~3977 bytes, a 119 B del límite de laboratorio `max_message_size: 4096` configurado para atrapar A15. Evaluar si conviene elevar `max_message_size` a 4500 o 5120 bytes en `settings.yaml` para dotar de holgura ante variaciones en MSH-7 o identidades largas.
+3. **Campaña de re-congelamiento formal H1/H2/H3 con baseline bimodal v1.1:**
+   - La campaña original sellada de 60 corridas (`2017af16`) usó la baseline unimodal STANDBY (con 256 alertas históricas sobre RUNNING). Con la baseline bimodal v1.1 y las Enmiendas E1–E8 se verificó 0 FP en replays y corrida local de prueba (TP=64 FP=0). Se recomienda ejecutar una campaña automatizada completa de 30 corridas (`run_matrix.py`) con Docker activo para regenerar un `validation_summary.json` formal bimodal sellado con nuevo `SHA256SUMS.txt`.
+4. **Captura y perfilado de alarmas fisiológicas reales:**
+   - El estado `ALARM_SIMULATED` del emulador es sintético. Si en el sandbox hospitalario futuro se logra capturar tráfico con alarma real activa (o desaturación en pulmón de prueba), modelar los códigos y transiciones fisiológicas correspondientes, sujetas a la aprobación clínica formal (`clinical_approval_status: PENDING`).
+5. **Limpieza y mantenimiento de entorno Docker:**
+   - Limpieza periódica de volúmenes temporales: `docker volume rm investigacion-de-la-tesis_lab_output` o `docker compose down -v`.
 
 ## 4. Comandos útiles
 
 ```powershell
-# Suite completa (debe decir 161 passed)
+# Suite completa (debe decir 246 passed)
 & "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" -m pytest tests/ -q
 
 # Corrida local completa (67 inyecciones, ~3 min)
@@ -463,3 +468,47 @@ pruebas-santi entra solo lo que main no tiene.
 - **Docs de main desactualizados (no tocados):** `GUIA_USO.md` línea "baseline es
   unimodal STANDBY" y `RESULTADOS_TESIS.md` (256 alertas RUNNING) describen el estado
   anterior a la baseline bimodal.
+
+## 16. Adenda - cierre de integración sobre main (2026-10-20, post PR #1)
+
+Continuación directa tras el merge de `Pruebas-santi` en `main` (`850ba39`). Se
+resolvieron todos los puntos pendientes dejados para decisión/confirmación en §14 y §15:
+
+- **Limpieza post-merge en `wato_emulator.py`:** el merge commit `a34f6da` había
+  duplicado la definición de `_build_running_obx`; se eliminó el duplicado y se
+  confirmó la versión de 6 modos ventilatorios (`VCV`, `SIMVVC_PLUS_PS`, `PCV`,
+  `SIMVPC_PLUS_PS`, `PS`, `MANUAL`, `CYCLE`) con el segmento opcional de auditoría
+  `NTE|1|SYNTHETIC-NOT-FOR-CLINICAL-USE...` (la trama máxima en `SIMV-VC+PS` es
+  3977 B < `max_message_size: 4096`).
+- **Decisión FSM `RUNNING -> STANDBY` (E2):** dado que ninguna captura de
+  `evidence_raw/` contiene la transición `SESION_ESTABLECIDA_RUNNING ->
+  SESION_ESTABLECIDA_STANDBY` (`LECTURAACK27AGOSTO.pcapng` solo muestra 13 `STANDBY`
+  → 86 `RUNNING`), se retiró de `state_transitions_observed` tanto en `baseline.yaml`
+  como en `src/evidence/baseline_builder.py` y se quitó el `@pytest.mark.xfail` de
+  `test_running_a_standby_no_verificado_sigue_alertando` en
+  `tests/test_enmiendas_e2_e3.py`. Toda transición no observada alerta `R-STATE-001`.
+- **Decisión sobre el FP de transición en `run_experiment.py` (§14):** se mantiene
+  `R-TIME-002` **global entre sesiones** (§5, indispensable para que `A13`
+  `repeated_reconnections` detecte 5/5). La causa del único FP en la transición
+  `FASE ANÓMALA -> FASE BENIGNA 2` (0.33 s < 5.0 s) era que el orquestador lanzaba el
+  emulador de la fase 2 inmediatamente al terminar el generador de anomalías. Se
+  añadió `time.sleep(args.interval)` antes de `FASE BENIGNA 2` (en `run_local` y
+  `run_docker`), respetando la cadencia benigna sin disparar el vigilante de silencio
+  E3 (15 s).
+- **Verificación ejecutada (2026-10-20):**
+  - Suite completa: **`246 passed` en 39.28 s** (`0 xfailed`).
+  - Detección offline (`detect_pcap.py`):
+    - `LECTURACONACK25AGOSTO.pcapng` (`STANDBY_v11`): **43/43 `NORMAL`, 0 anomalías**.
+    - `LECTURAACK27AGOSTO.pcapng` (`RUNNING_v11`): **99/99 `NORMAL`, 0 anomalías**.
+  - Corrida E2E local (`runs/20261020_212558`, `--exclude A14 --seed 100001`):
+    **64/64 inyecciones detectadas (TP=64, FN=0), 12/12 mensajes benignos limpios
+    (TN=12, FP=0), `recall=1.000`, `precision=1.000`, `F1=1.000`**.
+- **Documentación sincronizada:** `README.md`, `MANUAL_TESIS.md`, `docs/GUIA_USO.md`,
+  `docs/RESULTADOS_TESIS.md`, `docs/LIMITATIONS.md`, `docs/SRS_Resultados.md` (v1.2),
+  `docs/SPMP_Resultados.md` (v1.2), `docs/TRACEABILITY_MATRIX.csv` y este
+  `docs/HANDOFF.md` actualizados al estado bimodal v1.1 + Enmiendas E1–E8.
+
+- **Próximos pasos y mejoras recomendadas:**
+  1. Ejecución del banco en placa Raspberry Pi física (medición ARM de H2).
+  2. Ajuste preventivo del margen `max_message_size` (4096 vs 3977 B en SIMV-VC+PS).
+  3. Re-sellado de campaña oficial 30 corridas con `run_matrix.py` bajo baseline bimodal.

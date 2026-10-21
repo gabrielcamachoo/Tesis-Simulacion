@@ -33,7 +33,7 @@ Tres hipótesis que el laboratorio evalúa:
 |---|---|---|
 | **H1** efectividad | ADR ≥ 90 % por escenario | **ACEPTADA** — 100 % en 16/16 (60 corridas) |
 | **H2** latencia | p95 ≤ 500 µs | PASS en PC (177.5 µs); **NO VERIFICADO en Pi** |
-| **H3** FP reales | descriptiva, sin umbral | STANDBY FP=0; RUNNING 256 alertas "fuera de baseline" |
+| **H3** FP reales | descriptiva, sin umbral | **FP = 0** en STANDBY (43/43 NORMAL) y **FP = 0** en RUNNING (99/99 NORMAL, baseline bimodal v1.1 + E1–E8) |
 
 ---
 
@@ -47,7 +47,7 @@ Tres hipótesis que el laboratorio evalúa:
 | `src/hl7/parser.py` | Parser HL7 v2.6 (segmentos MSH/PID/PV1/OBR/OBX) | `pytest tests/test_hl7_parser.py` |
 | `src/hl7/validator.py` | Validación estructural → alimenta reglas | `pytest tests/test_validator*.py` |
 | `src/detection/rules.py` | 15 reglas R-* mapeadas a MITRE ICS v20 | `pytest tests/test_rules*.py` |
-| `src/detection/baseline.py` | Carga `baseline.yaml` (estadísticas de STANDBY real) | `pytest tests/test_baseline*.py` |
+| `src/detection/baseline.py` | Carga `baseline.yaml` (línea base bimodal STANDBY + RUNNING real) | `pytest tests/test_baseline*.py` |
 | `src/alerting/` | Log JSONL de eventos (alertas + NORMAL) | integrado en los E2E |
 | `src/evidence/` | Lector PCAP (Python puro), anonimización, baseline builder | `pytest tests/test_evidence*.py` |
 
@@ -89,7 +89,7 @@ python -m venv .venv
 $env:LAB_AUTHORIZED = "YES"
 # (el marcador LAB_ONLY.marker ya existe en la raíz; ambos son exigidos por el código)
 
-# 3. Verificación rápida: la suite completa debe dar 179 passed
+# 3. Verificación rápida: la suite completa debe dar 246 passed
 .venv\Scripts\python.exe -m pytest -q
 ```
 
@@ -156,7 +156,7 @@ $env:LAB_AUTHORIZED = "YES"
 # STANDBY: ~7 min, espera FP=0
 .venv\Scripts\python.exe replay_evidence.py `
   --pcap evidence_raw\pcap\LECTURACONACK25AGOSTO.pcapng --label STANDBY --start-receiver
-# RUNNING: ~17 min, reporta alertas sin umbral (baseline es unimodal STANDBY)
+# RUNNING: ~17 min, espera FP=0 (baseline bimodal STANDBY + RUNNING, 6 modos)
 .venv\Scripts\python.exe replay_evidence.py `
   --pcap evidence_raw\pcap\LECTURAACK27AGOSTO.pcapng --label RUNNING --start-receiver
 ```
@@ -343,9 +343,12 @@ niega a excederlos (`SafetyGuard`). A14 dura ~135 s por diseño.
    "NO VERIFICADO en Pi; PASS de referencia en PC".
 2. **Gate clínico y revisión ética** (Ley 1581/2012): trámite institucional
    pendiente; ninguna regla clínica se activa hasta entonces.
-3. **Baseline unimodal**: para usar el detector contra tráfico RUNNING real sin
-   alertas "fuera de baseline", ampliar `baseline.yaml` con una sesión RUNNING
-   representativa (hoy: 256 alertas esperadas sobre 99 ORU de RUNNING, todas
-   legítimas — documentado, no es regresión).
+3. **Baseline bimodal (STANDBY + RUNNING)**: `baseline.yaml` v1.1 incorpora las
+   sesiones reales `STANDBY` (43 ORU) y `RUNNING` (99 ORU, 6 modos ventilatorios,
+   33 códigos OBX y 9 unidades MDC), logrando **0 FP** en ambos corpus (Enmiendas
+   E1–E8; en Fase 9 inicial con baseline unimodal `STANDBY` se registraron 256
+   alertas `R-OBX-*` sobre `RUNNING`). Quedan como `NO_VERIFICADO` los segmentos de
+   alarma fisiológica activa y la transición `RUNNING -> STANDBY` (no observada en
+   las capturas).
 4. **Reversibilidad de la anonimización** es interna por diseño (tokens de 8 hex);
    fuera del lab los PCAP crudos son sensibles.

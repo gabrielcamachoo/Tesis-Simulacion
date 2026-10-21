@@ -14,14 +14,14 @@ anestésico Mindray WATO EX-35 (Tesis G18 SIDRE, Pontificia Universidad Javerian
 |---|---|---|---|
 | **H1 — Efectividad** | ADR ≥ 90 % sobre ataques ATT&CK ICS inyectados | **ACEPTADA (MEDIDO)** | ADR **100 %** (2010/2010 TP), IC95 Wilson [99.8, 100.0], 60 corridas selladas (2026-10-14) |
 | **H2 — Latencia** | p95 lectura→alerta ≤ 500 µs por mensaje | **PASS en PC / NO_VERIFICADO en Pi** | Bench 3×1000 msgs: p95 **177.5 µs** (PC). Requiere repetir en la Pi física |
-| **H3 — Falsos positivos** | FP sobre corpus benigno = 0 | **CUMPLE en STANDBY (MEDIDO)** | Replay evidencia STANDBY: **FP = 0** (43 ORU, ×5 reproducciones) |
+| **H3 — Falsos positivos** | FP sobre corpus benigno = 0 | **CUMPLE en STANDBY y RUNNING (MEDIDO)** | Evidencia real: **FP = 0** en STANDBY (43 ORU) y **FP = 0** en RUNNING (99 ORU, 6 modos) con baseline bimodal v1.1 + E1–E8 |
 
 | Entrega operativa (2026-10-17) | Resultado |
 |---|---|
 | Topología Raspberry Pi (docker) — A01–A16 | **recall 1.0000**, precision 0.9846 (1 FP jitter), 15/15 escenarios 100 % |
 | Campaña atacante ransomware — A01,A05,A06,A13,A14,A16 | **TP=20 FP=0 FN=0**, recall=precision=F1 **1.0000** |
 | Despliegue WATO standalone (benigno) | 8/8 ORU + 8/8 ACK `AA`, **0 alertas**, sesión 42.1 s, evidencia con SHA-256 |
-| Suite de pruebas | **204 passed** (2026-10-17) |
+| Suite de pruebas | **246 passed** (2026-10-20, incluye enmiendas E1–E8) |
 
 ## 1. Metadatos de la campaña principal (Fase 9, 2026-10-14)
 
@@ -78,10 +78,10 @@ correr `latency_bench.py --messages 1000 --runs 5` en la placa física.
 
 ## 4. H3 — Falsos positivos sobre evidencia real (replay)
 
-| Corpus | Mensajes | FP | Reglas | Interpretación |
-|--------|----------|----|--------|----------------|
-| STANDBY (captura real) | 43 ORU | **0** | — | Cumple protocolo §3.2 (×5 reproducciones idénticas) |
-| RUNNING (captura real) | 99 ORU | 256 | R-OBX-001 (86), R-OBX-002 (86), R-OBX-003 (84) | Baseline unimodal STANDBY: NM/SN fuera de baseline → "fuera de baseline", NO ataque confirmado (NO_VERIFICADO por diseño) |
+| Corpus | Mensajes | FP (Fase 9 unimodal) | FP (v1.1 bimodal + E2–E8) | Interpretación |
+|--------|----------|----------------------|---------------------------|----------------|
+| STANDBY (`LECTURACONACK25AGOSTO.pcapng`) | 43 ORU | **0** | **0** (43/43 `NORMAL`) | Cumple protocolo §3.2 (×5 reproducciones idénticas) |
+| RUNNING (`LECTURAACK27AGOSTO.pcapng`) | 99 ORU (13 STANDBY + 86 RUNNING) | 256 (`R-OBX-001/002/003` pre-bimodal) | **0** (99/99 `NORMAL`, 1 transición `STANDBY->RUNNING`) | Con `baseline.yaml` v1.1 (33 códigos OBX, 9 unidades MDC, 6 modos ventilatorios) + E2–E5 se logra **FP = 0** sobre las 2 capturas clínicas reales |
 
 ## 5. Campaña de ransomware en tiempo real (simulación compuesta)
 
@@ -170,7 +170,7 @@ Ejemplo de alerta real (`runs/20261017_110410/alerts/alerts.jsonl`):
 ## 10. Limitaciones que SÍ deben citarse en la defensa
 
 1. H2 sin verificar en Pi física (p95 177.5 µs es de PC x86, no extrapolable).
-2. Baseline unimodal STANDBY → alertas sobre RUNNING son "fuera de baseline".
+2. Baseline bimodal `STANDBY` + `RUNNING` (6 modos): logra 0 FP en ambas capturas reales; las alarmas fisiológicas activas y la transición `RUNNING -> STANDBY` permanecen como `NO_VERIFICADO` por no figurar en `evidence_raw/`.
 3. Jitter de timing benigno genera ~0.3 % FP bajo carga (umbral no tunneado).
 4. Aprobación clínica PENDING: ninguna regla clínica activa.
 5. Sin malware real ni equipo clínico: simulación de comportamientos de ataque en

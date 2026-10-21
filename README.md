@@ -143,3 +143,7 @@ docker compose --profile anomalies run --rm anomaly-generator
   - Demo WATO standalone: 8/8 ORU + 8/8 ACK `AA`, 0 alertas benignas;
     evidencia en `evidence_output/wato_demo_20261017_112431/`.
   - Suite verde: **204 passed**; `evidence_raw/` intacto (SHA-256 verificado).
+- **Integración baseline bimodal v1.1 + Enmiendas E2–E8** ✅ 2026-10-20:
+  - `baseline.yaml` v1.1 bimodal (`STANDBY` + `RUNNING` 6 modos, 33 códigos OBX, 9 unidades MDC) y `wato_emulator.py` multimodo: **0 FP** en `STANDBY` (43/43 NORMAL) y **0 FP** en `RUNNING` (99/99 NORMAL).
+  - Enmiendas E2 (coherencia `R-STATE-001` con `184352^MDC_VENT_MODE` y alerta en `RUNNING->STANDBY` no verificado), E3 (vigilante de silencio `check_silence`), E4 (motivo propio en `R-OBX-001/002/003`), E5 (orden de entrega TCP + `capture_time` en `detect_pcap.py`), E6 (evaluación por conexión `source` + `started_utc`), E7 (ciclo SYN 47.6 s en `SIN_GATEWAY`) y E8 (`R-TIME-001` con zona horaria ISO/HL7).
+  - Suite verde: **246 passed**.

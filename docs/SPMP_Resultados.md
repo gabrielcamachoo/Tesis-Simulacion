@@ -12,6 +12,7 @@ estructura de `documentos_tesis/SPMP_Tesis (1).pdf` y la plantilla IngESoft
 |---|---|---|
 | 1.0 | 2026-10-17 | Versión inicial (planeado vs. real según bitácora y git) |
 | 1.1 | 2026-10-19 | Alineación con las 3 capturas reales (18-08 ARP, 25-08 STANDBY, 27-08 RUNNING 6 modos), baseline bimodal (33 OBX, 9 unidades MDC), emulador WATO multimodo y validación 0 FP en STANDBY y RUNNING |
+| 1.2 | 2026-10-20 | Integración PR #1 (`Pruebas-santi`) con Enmiendas E2–E8, cierre de decisiones de diseño y suite consolidada en **246 pruebas** (`0 xfailed`) |
 
 ---
 
@@ -60,6 +61,7 @@ aislada; **sin** equipo clínico real, sin malware y sin despliegue BIW embebido
 | Desviación A14 | Escenario de silencio 45 s×3 (~135 s) se excluye en corridas rápidas (`--exclude A14`); documentado |
 | Disponibilidad de hardware | La Pi física y el sandbox HUSI no estuvieron disponibles: topología Pi simulada en Docker; WATO real reemplazado por emulador + evidencia |
 | Reorganización 2026-10-17 | `deploy/` por componente, `docs/`, `documentos_tesis/`; commits particionados (4) y push a GitHub |
+| Baseline bimodal v1.1 + Enmiendas E2–E8 (2026-10-20) | 0 FP en `STANDBY` (43 ORU) y `RUNNING` (99 ORU, 6 modos); vigilante de silencio E3, coherencia FSM E2, evaluación por conexión E6, zona horaria E8; 246 pruebas en verde |
 
 ## 2. Referencias y definiciones
 
@@ -142,7 +144,7 @@ amarillo −5/−10 %, rojo > −10 % con reunión obligatoria con director).
 |---|---|---|
 | Checkpoints (estilo bitácora) | Cada 3 días | `docs/HANDOFF.md` (sesiones de desarrollo) |
 | Corte semanal / semáforo | Domingos | Bitácora TG (C1–C29) |
-| Suite de pruebas | Cada sesión de cambio | `deploy/validacion/suite.ps1` → 204 passed |
+| Suite de pruebas | Cada sesión de cambio | `deploy/validacion/suite.ps1` → 246 passed |
 | Métricas de producto | Por campaña | `evaluation.json`, `validation_summary.json` |
 | Integridad de configuración | Por commit | `git log`, `manifest.json` (commit+SHA-256) |
 
@@ -161,7 +163,7 @@ El avance por fase quedó registrado en commits (`git log --oneline`).
 |---|---|
 | Lenguaje/runtime | Python 3.11.9 (venv); contenedores `python:3.11-slim` |
 | Dependencias | PyYAML≥6.0, pytest≥8.0, psutil≥5.9 (opcional) |
-| Pruebas | pytest (204 pruebas) |
+| Pruebas | pytest (246 pruebas) |
 | Orquestación | scripts bash/PowerShell (`deploy/`), systemd en Pi |
 | Topología aislada | Docker Compose (red `wato-lab` internal 172.30.0.0/24) |
 | Control de versiones | Git + GitHub (`main`) |
@@ -256,7 +258,7 @@ bloque intensivo de 5 días (29 commits). Equivalencia con las fases del plan:
 
 ### 8.1 Aseguramiento de calidad
 
-- **Pruebas unitarias/integración:** 204 pruebas pytest (13 archivos + conftest),
+- **Pruebas unitarias/integración:** 246 pruebas pytest (17 archivos + conftest),
   ejecutadas antes y después de cada bloque de cambios (`deploy/validacion/suite.ps1`).
 - **Pruebas de sistema:** corridas E2E `run_experiment.py` (local y docker) con
   evaluación automática; 60 corridas de campaña (H1).

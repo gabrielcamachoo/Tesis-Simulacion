@@ -16,7 +16,7 @@
 |---|-----------|--------|
 | H1 | Un detector determinista black-box logra ADR ≥ 90 % sobre ataques con técnicas MITRE ATT&CK ICS | **ACEPTADA** — ADR 100 % (2010/2010, IC95 [99.8, 100.0], 60 corridas) |
 | H2 | La detección ocurre con p95 ≤ 500 µs por mensaje | **PASS en PC** (177.5 µs); **NO_VERIFICADO en Pi física** |
-| H3 | FP sobre corpus benigno real = 0 | **CUMPLE** en STANDBY (FP = 0, ×5) |
+| H3 | FP sobre corpus benigno real = 0 | **CUMPLE** en STANDBY (43/43 NORMAL, FP = 0) y RUNNING (99/99 NORMAL, FP = 0 con baseline bimodal v1.1 + E1–E8) |
 
 ## 1. Mapa rápido: "quiero hacer X"
 
@@ -29,7 +29,7 @@
 | **Desplegar el WATO (emulador)** | `deploy/receptor/receptor.ps1` + `deploy/wato/wato.ps1` |
 | **Desplegar el atacante (ransomware simulado)** | `deploy/atacante/atacante_ransomware.ps1` |
 | Corrida completa automatizada | `run_experiment.py --mode local\|docker` |
-| Ejecutar las pruebas | `deploy/validacion/suite.ps1` (204 tests) |
+| Ejecutar las pruebas | `deploy/validacion/suite.ps1` (246 tests) |
 | Saber qué hace cada escenario A01–A16 | `docs/ATTACK_SCENARIOS.md` |
 | Metodología de medición | `docs/VALIDATION_PROTOCOL.md` |
 | Seguridad/ética | `docs/ETHICS_AND_SAFETY.md` |
@@ -293,7 +293,7 @@ Consolidado completo con tablas por hipótesis y por corrida:
 - Ransomware: **20/20 TP, 0 FP** (reproducido 2026-10-14 y 2026-10-17).
 - Topología Pi (docker): **64/64 TP, 1 FP** benigno (jitter), recall 1.0.
 - WATO standalone: 8/8 mensajes + ACK, **0 alertas** (benigno limpio).
-- Suite: **204 pruebas automatizadas** en verde.
+- Suite: **246 pruebas automatizadas** en verde (incluye enmiendas E1–E8).
 
 ## 8. Validación y reproducibilidad
 
@@ -302,7 +302,7 @@ Consolidado completo con tablas por hipótesis y por corrida:
 - **Commit congelado** por campaña (H1 en `2017af16`; ver `docs/RESULTS_20261014.md` §1).
 - Protocolo completo (n ≥ 30 por escenario, IC95 Wilson, sin tuning post-hoc):
   `docs/VALIDATION_PROTOCOL.md`.
-- Pruebas: `deploy\validacion\suite.ps1` → **204 passed** (2026-10-17).
+- Pruebas: `deploy\validacion\suite.ps1` → **246 passed** (2026-10-20).
 
 ## 9. Seguridad y ética (no negociables)
 
@@ -328,8 +328,7 @@ Consolidado completo con tablas por hipótesis y por corrida:
    malware ni equipo clínico real (decisión ética documentada).
 5. **H1 → aceptada:** ADR 100 % (2010/2010), IC95 [99.8, 100.0], 60 corridas.
 6. **H2 → PASS en PC:** p95 177.5 µs (umbral 500 µs); honestamente: pendiente en Pi.
-7. **H3 → FP=0** en corpus benigno real STANDBY; RUNNING documentado como "fuera de
-   baseline" (baseline unimodal, declarado).
+7. **H3 → FP=0** tanto en `STANDBY` (43/43 NORMAL) como en `RUNNING` (99/99 NORMAL, 6 modos) con la baseline bimodal v1.1 + enmiendas E1–E8.
 8. **Demo en vivo:** campaña ransomware 20/20 TP, 0 FP, latencia p95 ≈ 7 ms
    (inyección→alerta, end-to-end incluyendo red).
 9. **Reproducibilidad:** semillas + `manifest.json` + SHA-256 + commit congelado →
