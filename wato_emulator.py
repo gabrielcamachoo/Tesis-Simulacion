@@ -293,6 +293,39 @@ class WATOEmulator:
                 )
         return obx_lines
 
+    def _build_running_obx(self, timestamp: str, physio: Dict[str, str]) -> List[str]:
+        """Construye los segmentos OBX (17 a 28) de modo RUNNING según el modo
+        ventilatorio activo observado en LECTURAACK27AGOSTO.pcapng."""
+        modes_order = ["VCV", "SIMVVC_PLUS_PS", "PCV", "SIMVPC_PLUS_PS", "PS", "MANUAL"]
+        mode = (self.config.vent_mode or "VCV").upper()
+        if mode == "CYCLE":
+            mode = modes_order[self.stats['messages_sent'] % len(modes_order)]
+        elif mode not in self.VENT_MODE_SETTINGS_OBX:
+            mode = "VCV"
+
+        obx_lines = []
+        for hdr in self.RUNNING_HEADER_OBX:
+            obx_lines.append(hdr.format(timestamp=timestamp))
+
+        settings_templates = self.VENT_MODE_SETTINGS_OBX[mode]
+        for st_line in settings_templates:
+            obx_lines.append(st_line.format(timestamp=timestamp, **physio))
+
+        next_idx = len(obx_lines) + 1
+        is_manual = (mode == "MANUAL")
+        for i, (vtype, code, subid, val_tpl, unit, flag, status) in enumerate(self.MEASURED_OBX_TEMPLATES):
+            seq_num = next_idx + i
+            if is_manual or status == "X":
+                obx_lines.append(
+                    f"OBX|{seq_num}||{code}|{subid}||{unit}||INV|||X|||{timestamp}|"
+                )
+            else:
+                val = val_tpl.format(**physio)
+                obx_lines.append(
+                    f"OBX|{seq_num}|{vtype}|{code}|{subid}|{val}|{unit}|||||{status}|||{timestamp}|"
+                )
+        return obx_lines
+
     def _build_message(self) -> str:
         """Construye mensaje HL7 completo según estado actual."""
         template = self.TEMPLATES.get(self.config.state, self.TEMPLATES[EmulatorState.STANDBY])
