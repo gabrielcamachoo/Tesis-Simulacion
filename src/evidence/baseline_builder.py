@@ -565,7 +565,6 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
             ['SESION_ESTABLECIDA_STANDBY', 'SESION_ESTABLECIDA_STANDBY'],
             ['SESION_ESTABLECIDA_STANDBY', 'SESION_ESTABLECIDA_RUNNING'],
             ['SESION_ESTABLECIDA_RUNNING', 'SESION_ESTABLECIDA_RUNNING'],
-            ['SESION_ESTABLECIDA_RUNNING', 'SESION_ESTABLECIDA_STANDBY'],
         ],
         'fsm_states': {
             'SIN_GATEWAY': {

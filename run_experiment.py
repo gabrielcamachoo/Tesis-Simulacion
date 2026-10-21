@@ -413,6 +413,10 @@ def run_local(args, run_dir: Path, port: int):
             gen_cmd += ["--exclude", args.exclude]
         run_cmd(gen_cmd, "FASE ANÓMALA", env)
 
+        # Respetar la cadencia benigna antes del primer mensaje de la fase 2
+        # (R-TIME-002 es global entre sesiones; evita intervalo < 5 s artificial).
+        time.sleep(args.interval)
+
         run_cmd([PY, "wato_emulator.py", "--host", "127.0.0.1", "--port", port,
                  "--state", "STANDBY", "--count", args.benign_count,
                  "--interval", args.interval, "--ack-timeout", "5",
@@ -462,6 +466,10 @@ def run_docker(args, run_dir: Path):
         if args.exclude:
             gen_cmd += ["--exclude", args.exclude]
         run_cmd(gen_cmd, "FASE ANÓMALA (docker)", env)
+
+        # Respetar la cadencia benigna antes del primer mensaje de la fase 2
+        # (R-TIME-002 es global entre sesiones; evita intervalo < 5 s artificial).
+        time.sleep(args.interval)
 
         run_cmd(["docker", "compose", "--profile", "benign", "run", "--rm",
                  "wato-emulator", "python", "wato_emulator.py",

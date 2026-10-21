@@ -434,8 +434,6 @@ state_transitions_observed:
   - SESION_ESTABLECIDA_RUNNING
 - - SESION_ESTABLECIDA_RUNNING
   - SESION_ESTABLECIDA_RUNNING
-- - SESION_ESTABLECIDA_RUNNING
-  - SESION_ESTABLECIDA_STANDBY
 fsm_states:
   SIN_GATEWAY:
     description: Descubrimiento ARP y reintentos SYN sin respuesta (gateway no disponible,
