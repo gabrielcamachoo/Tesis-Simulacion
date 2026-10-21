@@ -5,8 +5,9 @@ Pruebas de la Enmienda E9 y saneamiento de deudas técnicas (2026-10-20):
    sobre los 6 modos ventilatorios de RUNNING, incluido SIMV-VC+PS con NTE).
 2. A15 (oversized_message) sigue siendo rechazado como message_too_large.
 3. Bloque baseline_builder de settings.yaml sincronizado con baseline.yaml v1.1.
-4. Los 6 subpaquetes de src/ cuentan con __init__.py explícito.
+4. Los 6 subpaquetes de src/ cuentan con __init__.py explícito y exportan __all__.
 5. Sin código muerto en src/mllp/framing.py::_try_extract_frame.
+6. run_experiment.py soporta --state RUNNING y --vent-mode CYCLE.
 """
 
 import ast
@@ -73,13 +74,16 @@ def test_settings_baseline_builder_sincronizado_con_baseline_bimodal():
 
 
 def test_todos_los_subpaquetes_src_tienen_init_py():
-    """Los 6 subpaquetes de src/ cuentan con __init__.py explícito y son importables."""
+    """Los 6 subpaquetes de src/ cuentan con __init__.py explícito y exportan __all__."""
     pkgs = ["mllp", "hl7", "detection", "alerting", "evidence", "config"]
     for p in pkgs:
         init_file = ROOT / "src" / p / "__init__.py"
         assert init_file.exists(), f"Falta {init_file}"
         mod = __import__(f"src.{p}", fromlist=["*"])
         assert mod.__doc__ and len(mod.__doc__.strip()) > 0
+        assert hasattr(mod, "__all__") and len(mod.__all__) > 0
+        for sym in mod.__all__:
+            assert getattr(mod, sym) is not None
 
 
 def test_framing_sin_codigo_muerto_tras_return():
@@ -94,3 +98,16 @@ def test_framing_sin_codigo_muerto_tras_return():
                     assert not isinstance(stmt, ast.Return), (
                         f"Código inalcanzable tras return en línea {stmt.lineno}"
                     )
+
+
+def test_run_experiment_soporta_state_running_y_vent_mode(monkeypatch):
+    """run_experiment.parse_args acepta --state RUNNING --vent-mode SIMVVC_PLUS_PS."""
+    import run_experiment as rexp
+
+    monkeypatch.setattr(
+        sys, "argv",
+        ["run_experiment.py", "--mode", "local", "--state", "RUNNING", "--vent-mode", "SIMVVC_PLUS_PS"]
+    )
+    args = rexp.parse_args()
+    assert args.state == "RUNNING"
+    assert args.vent_mode == "SIMVVC_PLUS_PS"
