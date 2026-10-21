@@ -1,0 +1,42 @@
+{
+  "tool": "detect_pcap.py",
+  "schema_version": "1.0",
+  "label": "STANDBY_v11",
+  "timestamp_utc_inicio": "2026-10-21T02:27:58.852675+00:00",
+  "timestamp_utc_fin": "2026-10-21T02:27:58.944233+00:00",
+  "pcap": "C:\\Users\\OsoGa\\OneDrive\\Documentos\\Tesis\\Tesis-Simulacion\\evidence_raw\\pcap\\LECTURACONACK25AGOSTO.pcapng",
+  "pcap_sha256": "41761f0a9d8baa50d216a431298869cefc5361b6e7f2a0b42ded315555febbba",
+  "anonimizado": true,
+  "modo": "offline (sin red; Modalidad B)",
+  "realtime": false,
+  "flujos": [
+    "192.168.23.200:1550 -> 192.168.23.250:2070"
+  ],
+  "n_flujos": 1,
+  "n_mensajes": 43,
+  "n_skipped": 0,
+  "n_anonymized": 43,
+  "anomalias": 0,
+  "eventos_normales": 43,
+  "eventos_totales": 43,
+  "alertas_por_regla": {},
+  "latencia_proceso_ms": {
+    "p50": 0.1803,
+    "max": 3.947
+  },
+  "elapsed_s": 0.091,
+  "config_sha256": "299b301b658d7d03fed21b2086570e5fcbb01c0c6dd1c47976413afcd5d565a5",
+  "baseline_sha256": "fe433f2a8a527f9a3cfd1d1e3288b2e04f70d1ba3d2808b4b185d88a88e6bdc1",
+  "rules_sha256": "8973b94bbf8fe0a02100aea5c19e924a1d38bcb77f0469497b80454f4ae8623a",
+  "limitaciones": [
+    "R-MLLP-001 no evaluable offline (solo tramas MLLP completas)",
+    "R-TIME-002 evaluada con la hora de los paquetes de la captura (Enmienda E5); el silencio sin mensaje posterior (vigilante E3) solo existe en el receptor en vivo",
+    "sin ACK observados en el camino emisor->receptor (el ACK sale del receptor hacia el emisor; ver replay_evidence.py)"
+  ],
+  "runtime": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.14.7",
+    "host_declarado": "PC o Raspberry Pi (offline)"
+  },
+  "advertencia": "LAB ONLY — análisis offline de evidencia aislada; no abrir ni reenviar tráfico hacia dispositivos médicos, hospitales o sistemas de terceros."
+}

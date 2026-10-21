@@ -21,7 +21,7 @@ anestésico Mindray WATO EX-35 (Tesis G18 SIDRE, Pontificia Universidad Javerian
 | Topología Raspberry Pi (docker) — A01–A16 | **recall 1.0000**, precision 0.9846 (1 FP jitter), 15/15 escenarios 100 % |
 | Campaña atacante ransomware — A01,A05,A06,A13,A14,A16 | **TP=20 FP=0 FN=0**, recall=precision=F1 **1.0000** |
 | Despliegue WATO standalone (benigno) | 8/8 ORU + 8/8 ACK `AA`, **0 alertas**, sesión 42.1 s, evidencia con SHA-256 |
-| Suite de pruebas | **246 passed** (2026-10-20, incluye enmiendas E1–E8) |
+| Suite de pruebas | **251 passed** (2026-10-20, incluye enmiendas E1–E9) |
 
 ## 1. Metadatos de la campaña principal (Fase 9, 2026-10-14)
 
@@ -52,7 +52,7 @@ anestésico Mindray WATO EX-35 (Tesis G18 SIDRE, Pontificia Universidad Javerian
 | A12 | Frecuencia fuera de baseline (tormenta) | R-TIME-002 | 600 | 600 | 100.0 |
 | A13 | Reconexiones repetidas | R-TIME-002 | 150 | 150 | 100.0 |
 | A14 | Silencio periódico (secuestro del canal) | R-TIME-002 | 90 | 90 | 100.0 |
-| A15 | Mensaje sobredimensionado (>4096 B) | R-MLLP-001 | 90 | 90 | 100.0 |
+| A15 | Mensaje sobredimensionado (>5120 B, Enmienda E9) | R-MLLP-001 | 90 | 90 | 100.0 |
 | A16 | Cambio de identidad a mitad de sesión | R-ID-001 | 90 | 90 | 100.0 |
 | **GLOBAL** | | | **2010** | **2010** | **100.0** |
 

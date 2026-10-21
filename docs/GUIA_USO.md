@@ -89,7 +89,7 @@ python -m venv .venv
 $env:LAB_AUTHORIZED = "YES"
 # (el marcador LAB_ONLY.marker ya existe en la raíz; ambos son exigidos por el código)
 
-# 3. Verificación rápida: la suite completa debe dar 246 passed
+# 3. Verificación rápida: la suite completa debe dar 251 passed
 .venv\Scripts\python.exe -m pytest -q
 ```
 

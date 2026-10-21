@@ -40,17 +40,15 @@
 - Docs Fase 5/6 sincronizadas: README, THREAT_MODEL, ETHICS_AND_SAFETY, LAB_ARCHITECTURE,
   ATTACK_SCENARIOS, VALIDATION_PROTOCOL, RESULTS_TEMPLATE, LIMITATIONS,
   docs/TRACEABILITY_MATRIX.csv, **docs/RASPBERRY_PI_SETUP.md** (borrador Fase 6, sin ejecutar).
-- Suite completa: **246 passed, 0 xfailed** (re-correr tras cualquier cambio).
+- Suite completa: **251 passed, 0 xfailed** (re-correr tras cualquier cambio).
 
 ## 3. Pendientes y áreas de mejora continua (en orden de prioridad)
 
 1. **Hardware en Raspberry Pi física (Fase 6):**
    - Ejecutar el despliegue con `deploy/pi/` (01_instalar...06_campana) en la Pi 4 real sobre red aislada.
    - Medir formalmente H2 con `latency_bench.py --messages 1000 --runs 5` directamente en hardware ARM y verificar p95 ≤ 500 µs (hasta ahora PASS en PC x86, clasificado honestamente como `NO_VERIFICADO` en hardware).
-2. **Margen de tamaño de trama en SIMV-VC+PS vs `max_message_size`:**
-   - En `wato_emulator.py`, el modo SIMV-VC+PS con 28 segmentos OBX genera tramas de ~3977 bytes, a 119 B del límite de laboratorio `max_message_size: 4096` configurado para atrapar A15. Evaluar si conviene elevar `max_message_size` a 4500 o 5120 bytes en `settings.yaml` para dotar de holgura ante variaciones en MSH-7 o identidades largas.
-3. **Campaña de re-congelamiento formal H1/H2/H3 con baseline bimodal v1.1:**
-   - La campaña original sellada de 60 corridas (`2017af16`) usó la baseline unimodal STANDBY (con 256 alertas históricas sobre RUNNING). Con la baseline bimodal v1.1 y las Enmiendas E1–E8 se verificó 0 FP en replays y corrida local de prueba (TP=64 FP=0). Se recomienda ejecutar una campaña automatizada completa de 30 corridas (`run_matrix.py`) con Docker activo para regenerar un `validation_summary.json` formal bimodal sellado con nuevo `SHA256SUMS.txt`.
+2. **Campaña Docker de 30 corridas con `run_matrix.py` bajo baseline bimodal v1.1 + E1–E9:**
+   - Se selló el paquete de verificación bimodal `analysis_output/validation/bimodal_v12_20261020/` (E2E local TP=64 FP=0 TN=12, H2 bench p95=206.31 µs PASS, H3 STANDBY 43/43 NORMAL y RUNNING 99/99 NORMAL) con `SHA256SUMS.txt` actualizado. Cuando se desee regenerar la matriz de 30 corridas en contenedores con Docker Desktop activo, ejecutar `run_matrix.py --runs 30 --mode docker --exclude A14 --tag bimodal_main`.
 4. **Captura y perfilado de alarmas fisiológicas reales:**
    - El estado `ALARM_SIMULATED` del emulador es sintético. Si en el sandbox hospitalario futuro se logra capturar tráfico con alarma real activa (o desaturación en pulmón de prueba), modelar los códigos y transiciones fisiológicas correspondientes, sujetas a la aprobación clínica formal (`clinical_approval_status: PENDING`).
 5. **Limpieza y mantenimiento de entorno Docker:**
@@ -59,7 +57,7 @@
 ## 4. Comandos útiles
 
 ```powershell
-# Suite completa (debe decir 246 passed)
+# Suite completa (debe decir 251 passed)
 & "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" -m pytest tests/ -q
 
 # Corrida local completa (67 inyecciones, ~3 min)
@@ -81,7 +79,7 @@ $env:LAB_AUTHORIZED="YES"
 - Semillas (`_send_setup` de A02/A03/A04) NO cuentan como inyecciones en ground truth.
 - Evaluador: alertas dentro de la ventana de inyección → correlacionadas (no FP).
 - `allowed_ips` exact-match (sin CIDR): 192.168.23.250, 127.0.0.1, ::1, 172.30.0.10/11.
-- framer `max_message_size: 4096` → A15 dispara R-MLLP-001.
+- framer `max_message_size: 5120` (Enmienda E9: +1143 B sobre SIMV-VC+PS 3977 B) → A15 dispara R-MLLP-001.
 - `runs/` y `evidence_output/` en `.gitignore` (regenerables); `evidence_raw/` solo lectura.
 - **Evidencia docker en named volume** `lab_output` (montado en `/lab_output`), NO en el
   bind del repo; `run_experiment.py` la copia al host con `docker compose cp` antes del
@@ -512,3 +510,34 @@ resolvieron todos los puntos pendientes dejados para decisión/confirmación en 
   1. Ejecución del banco en placa Raspberry Pi física (medición ARM de H2).
   2. Ajuste preventivo del margen `max_message_size` (4096 vs 3977 B en SIMV-VC+PS).
   3. Re-sellado de campaña oficial 30 corridas con `run_matrix.py` bajo baseline bimodal.
+
+## 17. Adenda - Enmienda E9, saneamiento de deudas técnicas y sellado bimodal v1.2 (2026-10-20)
+
+Desarrollo de los puntos de mejora del Handoff (§3 y `docs/AUDITORIA_REPO.md` §10):
+
+- **Enmienda E9 — Margen `max_message_size: 5120` y sincronización de `settings.yaml`:**
+  - Se elevó `wato_observed_standby.mllp.max_message_size` de `4096` a **`5120` B (5 KiB)** en
+    `src/config/settings.yaml`, otorgando **+1143 B (~29 %)** de holgura sobre la trama
+    máxima de `RUNNING` (`SIMV-VC+PS` emulado con `NTE` = 3977 B; real máx. = 3945 B) y
+    conservando la detección al 100 % de `A15` (`oversized_message`, ~16 KiB).
+  - Se sincronizó la sección `baseline_builder` de `src/config/settings.yaml` con
+    `baseline.yaml` v1.1 bimodal (`source_sessions`, `schema_version: "1.1"`, `message_length`
+    hasta 3945 B, 36 entradas de códigos OBX, 9 unidades MDC, `["CWE", "NM", "SN"]` y las
+    5 transiciones FSM observadas).
+- **Cierre de deudas técnicas en `src/` (`docs/AUDITORIA_REPO.md` §10):**
+  - Creados `src/hl7/__init__.py`, `src/detection/__init__.py` y `src/config/__init__.py`
+    (y documentados `src/mllp/__init__.py` y `src/evidence/__init__.py`), unificando los 6
+    subpaquetes de `src/`.
+  - Eliminado el bloque de código muerto inalcanzable tras `return None, 0` en
+    `src/mllp/framing.py::_try_extract_frame`.
+  - Nuevas pruebas en `tests/test_enmienda_e9.py` (5 pruebas, incluyendo verificación AST
+    contra código muerto post-`return`). Suite total: **`251 passed, 0 xfailed`**.
+- **Bench H2 y sellado `analysis_output/validation/bimodal_v12_20261020/`:**
+  - `latency_bench.py --messages 1000 --runs 3 --seed 20261020` →
+    `analysis_output/validation/latency_20261020_214029.json`: **p50 = 71.8 µs,
+    p95 = 206.31 µs, p99 = 374.71 µs** (≪ 500 µs → **PASS en PC**; Pi física sigue
+    `NO_VERIFICADO`).
+  - Paquete sellado en `analysis_output/validation/bimodal_v12_20261020/`
+    (`validation_bimodal_summary.json`, `evaluation.json`, `manifest.json`, manifiestos
+    offline `STANDBY` 43/43 y `RUNNING` 99/99, y bench H2) + `SHA256SUMS.txt` regenerado
+    (210 archivos sellados).

@@ -167,15 +167,11 @@ ningún archivo fue modificado durante la auditoría.
 
 ## 10. Hallazgos y deudas técnicas
 
-1. `src/hl7/`, `src/detection/` y `src/config/` **no tienen `__init__.py`**
-   (funcionan como namespace packages; inconsistente con `src/mllp`, `src/evidence`,
-   `src/alerting` que sí lo tienen).
+1. *(Resuelto 2026-10-20, E9)* `src/hl7/`, `src/detection/` y `src/config/` cuentan ahora con `__init__.py` explícito, unificando los 6 subpaquetes de `src/`.
 2. Dos parseadores HL7 paralelos: `src/hl7/parser.py::parse_hl7_message` (objetos) y
    `src/evidence/analyze_evidence.py::parse_hl7_message` (dict); coexisten sin conflicto.
-3. Código muerto inalcanzable en `src/mllp/framing.py::_try_extract_frame` (bloque
-   tras `return None, 0`, líneas ~227–240).
-4. Baseline unimodal (solo STANDBY): RUNNING produce alertas "fuera de baseline"
-   (documentado, sin umbral).
+3. *(Resuelto 2026-10-20, E9)* Eliminado el código muerto inalcanzable en `src/mllp/framing.py::_try_extract_frame`.
+4. *(Resuelto 2026-10-20, v1.1 + E2–E5)* Baseline bimodal (`STANDBY` + `RUNNING` 6 modos, 33 códigos OBX, 9 unidades MDC): 0 FP en `STANDBY` (43/43 NORMAL) y 0 FP en `RUNNING` (99/99 NORMAL).
 5. Reloj WATO con offset observado **+17 min 10 s** respecto al host.
 6. H2 (latencia ≤ 500 µs) medido en PC x86; **NO_VERIFICADO en Raspberry Pi física**.
 7. Escenario A14 (silencio 45 s ×3) dura ~135 s: corridas rápidas usan `--exclude A14`.
