@@ -14,10 +14,13 @@ Pipeline de extracción idéntico al de analyze_evidence/replay_evidence:
 Limitaciones documentadas (se registran en el manifiesto):
   - R-MLLP-001 no es evaluable: solo se procesan tramas MLLP completas
     (los framing errors del receptor requieren la Modalidad A/replay).
-  - R-TIME-002 usa el reloj de pared del proceso; sin --realtime los
-    mensajes se procesan a velocidad de CPU y la regla puede dispararse
-    por el propio modo offline. --realtime aplica los deltas de captura
-    con tope por mensaje (--max-sleep).
+  - R-TIME-002 y la ventana de replay (R-SEQ-002) se evalúan con la hora
+    de llegada de cada paquete en la captura (Enmienda E5), no con el reloj
+    de pared del proceso: el resultado no depende de la velocidad de CPU.
+    --realtime solo reproduce el ritmo de la captura (sleep con tope
+    --max-sleep); ya no cambia el resultado de las reglas.
+  - El vigilante de silencio (E3) es del receptor en vivo; offline un
+    silencio se ve en el intervalo del mensaje siguiente.
   - Los timestamps MSH-7 originales se preservan (anonimización no toca
     MSH-7): R-TIME-001 sí es evaluable offline.
 
@@ -112,6 +115,35 @@ def extract_flows(pcap_path: Path):
     return out
 
 
+def delivery_order(flows):
+    """Enmienda E5: [(t_entrega, flow, content)] en el orden en que una
+    aplicación receptora los habría recibido.
+
+    - Dentro de un flujo, TCP entrega en orden de secuencia: un mensaje no
+      llega a la aplicación antes que el anterior. Si un segmento se
+      retransmite (p. ej. MCID 91 en la captura con Nessus: 92 llega a los
+      910 s, 91 recién a los 916 s), la hora de entrega es el máximo
+      acumulado, no la hora del paquete suelto (que daría intervalos
+      negativos).
+    - Entre flujos se intercalan por hora de entrega (orden estable), como
+      los vería el receptor con varias conexiones.
+    """
+    events = []
+    for fl in flows:
+        last = None
+        for i, (content, ts) in enumerate(fl["messages"]):
+            t = ts if ts else None
+            if t is not None and last is not None and t < last:
+                t = last
+            if t is not None:
+                last = t
+            events.append((t, fl["flow_idx"], i, fl, content))
+    # Mensajes sin hora (no debería ocurrir) conservan su posición de flujo
+    events.sort(key=lambda e: (e[0] if e[0] is not None else float("-inf"),
+                               e[1], e[2]))
+    return [(t, fl, content) for t, _, _, fl, content in events]
+
+
 def run_detect(pcap_path: Path, outdir: Path, config: Path,
                baseline_path: Path, rules_path: Path,
                label: str = "", realtime: bool = False,
@@ -138,69 +170,70 @@ def run_detect(pcap_path: Path, outdir: Path, config: Path,
     lat_ms = []
     prev_ts = None
     try:
-        for fl in flows:
+        for ts, fl, content in delivery_order(flows):
             session_id = (f"offline:{fl['flow_idx']}:"
                           f"{fl['src_ip']}:{fl['src_port']}")
-            for content, ts in fl["messages"]:
-                if realtime and prev_ts is not None and ts:
-                    delta = min(max(0.0, ts - prev_ts), max_sleep)
-                    if delta > 0:
-                        time.sleep(delta)
-                if ts:
-                    prev_ts = ts
+            if realtime and prev_ts is not None and ts:
+                delta = min(max(0.0, ts - prev_ts), max_sleep)
+                if delta > 0:
+                    time.sleep(delta)
+            if ts:
+                prev_ts = ts
 
-                raw = content
-                if anonymize:
-                    anon = anonymize_hl7_message(content)
-                    if anon != content:
-                        n_anonymized += 1
-                    raw = anon
-                try:
-                    hl7_text = raw.decode("utf-8", errors="replace")
-                except Exception:
-                    n_skipped += 1
-                    continue
-                parsed = parse_hl7_message(hl7_text)
-                if parsed is None or not parsed.segments:
-                    n_skipped += 1
-                    continue
+            raw = content
+            if anonymize:
+                anon = anonymize_hl7_message(content)
+                if anon != content:
+                    n_anonymized += 1
+                raw = anon
+            try:
+                hl7_text = raw.decode("utf-8", errors="replace")
+            except Exception:
+                n_skipped += 1
+                continue
+            parsed = parse_hl7_message(hl7_text)
+            if parsed is None or not parsed.segments:
+                n_skipped += 1
+                continue
 
-                n_messages += 1
-                frame = SB + raw + EOM
-                result = engine.process_message(
+            n_messages += 1
+            frame = SB + raw + EOM
+            result = engine.process_message(
+                session_id=session_id,
+                source_ip=fl["src_ip"],
+                source_port=fl["src_port"],
+                parsed_message=parsed,
+                raw_bytes=raw,
+                mllp_frame=frame,
+                # Hora del paquete en la captura (capture_time, main 2026-10-20).
+                # E5: también con --realtime, que ahora solo marca el ritmo.
+                capture_time=ts if ts else None)
+            lat_ms.append(result.processing_time_ms)
+            if result.alerts:
+                anomalies += len(result.alerts)
+                for alert in result.alerts:
+                    by_rule[alert.rule_id] = by_rule.get(alert.rule_id, 0) + 1
+                    alert_logger.log_alert(alert)
+            else:
+                normals += 1
+                digest = hashlib.sha256(raw).hexdigest()
+                alert_logger.log_normal(
                     session_id=session_id,
-                    source_ip=fl["src_ip"],
-                    source_port=fl["src_port"],
-                    parsed_message=parsed,
-                    raw_bytes=raw,
-                    mllp_frame=frame,
-                    capture_time=ts if (ts and not realtime) else None)
-                lat_ms.append(result.processing_time_ms)
-                if result.alerts:
-                    anomalies += len(result.alerts)
-                    for alert in result.alerts:
-                        by_rule[alert.rule_id] = by_rule.get(alert.rule_id, 0) + 1
-                        alert_logger.log_alert(alert)
-                else:
-                    normals += 1
-                    digest = hashlib.sha256(raw).hexdigest()
-                    alert_logger.log_normal(
-                        session_id=session_id,
-                        source=f"{fl['src_ip']}:{fl['src_port']}",
-                        msg_control_id=parsed.message_control_id or "N/A",
-                        state=result.session_state.current_state,
-                        evidence_hash=digest)
+                    source=f"{fl['src_ip']}:{fl['src_port']}",
+                    msg_control_id=parsed.message_control_id or "N/A",
+                    state=result.session_state.current_state,
+                    evidence_hash=digest)
     finally:
         alert_logger.close()
 
     elapsed = round(time.monotonic() - t0, 3)
     limitations = [
         "R-MLLP-001 no evaluable offline (solo tramas MLLP completas)",
-        ("R-TIME-002 depende del reloj de pared: sin --realtime puede "
-         "dispararse por la velocidad de procesamiento, no por la captura")
-        if not realtime else
-        (f"R-TIME-002 con pacing de captura tope {max_sleep}s/mensaje "
-         "(huecos mayores se comprimen)"),
+        ("R-TIME-002 evaluada con la hora de los paquetes de la captura "
+         "(Enmienda E5); el silencio sin mensaje posterior (vigilante E3) "
+         "solo existe en el receptor en vivo"
+         + (f"; --realtime: pacing de captura tope {max_sleep}s/mensaje, "
+            "solo cosmético" if realtime else "")),
         "sin ACK observados en el camino emisor->receptor (el ACK sale del "
         "receptor hacia el emisor; ver replay_evidence.py)",
     ]
@@ -276,8 +309,9 @@ def parse_args():
     p.add_argument("--rules", default=str(ROOT / "config" / "rules.yaml"))
     p.add_argument("--label", default="", help="Etiqueta del corpus (ej: STANDBY)")
     p.add_argument("--realtime", action="store_true",
-                   help="Aplica deltas de captura entre mensajes (para "
-                        "R-TIME-002 más fiel; más lento)")
+                   help="Reproduce el ritmo de la captura (sleep con tope). "
+                        "No cambia el resultado: R-TIME-002 ya usa la hora "
+                        "de cada paquete (Enmienda E5)")
     p.add_argument("--max-sleep", type=float, default=2.0,
                    help="Tope de sleep por mensaje en --realtime (default 2.0)")
     p.add_argument("--no-anonymize", action="store_true",

@@ -13,7 +13,7 @@ import random
 import signal
 import sys
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
@@ -256,8 +256,42 @@ class WATOEmulator:
 
     def _generate_timestamp(self) -> str:
         """Genera timestamp HL7 en formato YYYYMMDDHHMMSS±ZZZZ."""
-        now = datetime.now(timezone.utc)
-        return now.strftime("%Y%m%d%H%M%S%z")[:-2] + ":" + now.strftime("%z")[-2:]
+        capture_timezone = timezone(timedelta(hours=-5))
+        now = datetime.now(timezone.utc).astimezone(capture_timezone)
+        return now.strftime("%Y%m%d%H%M%S%z")
+
+    def _build_running_obx(self, timestamp: str, physio: Dict[str, str]) -> List[str]:
+        """Construye los segmentos OBX (17 a 28) de modo RUNNING según el modo
+        ventilatorio activo observado en LECTURAACK27AGOSTO.pcapng."""
+        modes_order = ["VCV", "SIMVVC_PLUS_PS", "PCV", "SIMVPC_PLUS_PS", "PS", "MANUAL"]
+        mode = (self.config.vent_mode or "VCV").upper()
+        if mode == "CYCLE":
+            mode = modes_order[self.stats['messages_sent'] % len(modes_order)]
+        elif mode not in self.VENT_MODE_SETTINGS_OBX:
+            mode = "VCV"
+
+        obx_lines = []
+        for hdr in self.RUNNING_HEADER_OBX:
+            obx_lines.append(hdr.format(timestamp=timestamp))
+
+        settings_templates = self.VENT_MODE_SETTINGS_OBX[mode]
+        for st_line in settings_templates:
+            obx_lines.append(st_line.format(timestamp=timestamp, **physio))
+
+        next_idx = len(obx_lines) + 1
+        is_manual = (mode == "MANUAL")
+        for i, (vtype, code, subid, val_tpl, unit, flag, status) in enumerate(self.MEASURED_OBX_TEMPLATES):
+            seq_num = next_idx + i
+            if is_manual or status == "X":
+                obx_lines.append(
+                    f"OBX|{seq_num}||{code}|{subid}||{unit}||INV|||X|||{timestamp}|"
+                )
+            else:
+                val = val_tpl.format(**physio)
+                obx_lines.append(
+                    f"OBX|{seq_num}|{vtype}|{code}|{subid}|{val}|{unit}|||||{status}|||{timestamp}|"
+                )
+        return obx_lines
 
     def _build_running_obx(self, timestamp: str, physio: Dict[str, str]) -> List[str]:
         """Construye los segmentos OBX (17 a 28) de modo RUNNING según el modo
@@ -305,6 +339,15 @@ class WATOEmulator:
                 physio[key] = str(random.randint(min_v, max_v))
             else:
                 physio[key] = f"{random.uniform(min_v, max_v):.1f}"
+
+        physio.update({
+            'tv_setting': str(random.randint(400, 450)),
+            'rr_setting': '12',
+            'peep_setting': '6',
+            'plat': str(random.randint(29, 35)),
+            'tv_exp': str(random.randint(60, 80)),
+            'tv_insp': str(random.randint(60, 80)),
+        })
         
         # Alarm code/text para ALARM_SIMULATED
         alarm_code, alarm_text = random.choice(self.ALARM_CODES)

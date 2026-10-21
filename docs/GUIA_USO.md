@@ -213,10 +213,10 @@ $env:LAB_AUTHORIZED = "YES"
 
 Salidas: `analysis_output/offline_detect_<label>_<ts>/alerts/alerts.jsonl` y
 `detect_pcap_manifest.json` (hash del PCAP, anomalías por regla, normales,
-limitaciones). **Sin `--realtime`** los mensajes se procesan a velocidad de CPU:
-R-TIME-002 se dispara por el modo offline (limitación registrada en el manifiesto;
-sobre STANDBY real: 43 mensajes, 1 NORMAL + 42 R-TIME-002). Para frecuencia más
-fiel: `--realtime --max-sleep 15` (aplica deltas de captura con tope).
+limitaciones). R-TIME-002 se evalúa con la hora de cada paquete de la captura
+(Enmienda E5, HANDOFF §14), en el orden en que TCP los entrega: sobre STANDBY real
+43 mensajes → 43 NORMAL (antes de E5: 1 NORMAL + 42 R-TIME-002 por la velocidad de
+CPU). `--realtime` solo reproduce el ritmo de la captura; no cambia el resultado.
 R-MLLP-001 no es evaluable offline (solo llegan tramas completas).
 
 ```powershell

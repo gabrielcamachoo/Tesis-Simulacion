@@ -128,7 +128,10 @@ def analyze_sessions_from_csv(sessions_csv: str, messages_csv: str) -> BaselineS
     state_transitions = [
         ["SIN_GATEWAY", "HANDSHAKE"],
         ["HANDSHAKE", "SESION_ESTABLECIDA_STANDBY"],
-        ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_STANDBY"]
+        ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_STANDBY"],
+        # Enmienda E2 (2026-10-19): OBSERVADO en LECTURAACK27AGOSTO
+        ["SESION_ESTABLECIDA_STANDBY", "SESION_ESTABLECIDA_RUNNING"],
+        ["SESION_ESTABLECIDA_RUNNING", "SESION_ESTABLECIDA_RUNNING"]
     ]
     
     msg_count = len(messages)
@@ -568,7 +571,9 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
             'SIN_GATEWAY': {
                 'description': 'Descubrimiento ARP y reintentos SYN sin respuesta (gateway no disponible, observado en 18-08 y 25-08)',
                 'observed_duration_range': [0, 299],  # segundos
-                'behavior': 'ARP Who has 192.168.23.200? Tell 192.168.23.250; SYN cada ~30s'
+                # Enmienda E7 (2026-10-20): ciclo SYN medido en LECTURA25AGOSYO.pcapng
+                # (sha256 cd9122c67bd3082c...), 19 ciclos, puertos 2048-2066.
+                'behavior': 'ARP Who has 192.168.23.200? Tell 192.168.23.250; por puerto efímero SYN en t=0, reintentos a +1.6 s, +16.6 s y +31.6 s, RST del WATO a +46.6 s; nuevo SYN con puerto+1 a +47.6 s (ciclo ~47.6 s)'
             },
             'HANDSHAKE': {
                 'description': 'Establecimiento TCP exitoso hacia puerto 1550',
@@ -591,6 +596,8 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
             'SESION_ESTABLECIDA_RUNNING': {
                 'description': 'Sesión activa de ventilación mecánica (27-08 msg 14..99) en modos VCV, SIMV-VC+PS, PCV, SIMV-PC+PS, PS y MANUAL',
                 'observed_duration_range': [0, 860],
+                # Enmienda E2 (pruebas-santi): 184352 en 86/86 RUNNING, 0/56 STANDBY.
+                'required_obx_codes': ['184352'],
                 'behavior': 'ORU^R01 cada 10.000s con 17 a 28 segmentos OBX (5 CWE estado/modo + 0..11 ajustes F + 12 mediciones R/X)',
                 'message_profile': {
                     'type': 'ORU^R01^ORU_R01',

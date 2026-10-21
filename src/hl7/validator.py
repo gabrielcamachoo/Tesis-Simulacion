@@ -6,8 +6,9 @@ Reglas deterministas para detectar anomalías estructurales.
 
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Any, Set
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
+import re
 
 from .parser import HL7Message, parse_hl7_message
 from ..detection.baseline import Baseline
@@ -190,15 +191,23 @@ def validate_timestamp_regression(timestamp: str, last_timestamp: Optional[str])
         # Formato HL7: YYYYMMDDHHMMSS[.SSS][+/-ZZZZ]
         curr = _parse_hl7_timestamp(timestamp)
         last = _parse_hl7_timestamp(last_timestamp)
-        if curr and last and curr < last:
-            return False, f"R-TIME-001: Regressive timestamp: {timestamp} < {last_timestamp}"
+        if curr and last:
+            # Enmienda E8: si ambos traen zona horaria se comparan instantes.
+            # Antes se ignoraba el offset: 17:03:21-0500 (emulador, hora del
+            # WATO) parecía anterior a 22:03:21+00:00 (generador, UTC), aunque
+            # es el mismo instante -> FP de R-TIME-001 al cambiar de emisor.
+            co, lo = _parse_hl7_offset(timestamp), _parse_hl7_offset(last_timestamp)
+            if co is not None and lo is not None:
+                curr, last = curr - co, last - lo
+            if curr < last:
+                return False, f"R-TIME-001: Regressive timestamp: {timestamp} < {last_timestamp}"
     except Exception:
         pass  # Si no se puede parsear, no validar
     return True, ""
 
 
 def _parse_hl7_timestamp(ts: str) -> Optional[datetime]:
-    """Parsea timestamp HL7 a datetime (best effort)."""
+    """Parsea timestamp HL7 a datetime (best effort, sin zona)."""
     # Tomar primeros 14 dígitos: YYYYMMDDHHMMSS
     digits = ''.join(c for c in ts if c.isdigit())
     if len(digits) >= 14:
@@ -207,6 +216,19 @@ def _parse_hl7_timestamp(ts: str) -> Optional[datetime]:
         except ValueError:
             pass
     return None
+
+
+_HL7_OFFSET = re.compile(r'([+-])(\d{2}):?(\d{2})$')
+
+
+def _parse_hl7_offset(ts: str) -> Optional[timedelta]:
+    """Offset de zona horaria al final del DTM HL7 (±ZZZZ; se acepta ±ZZ:ZZ,
+    que es lo que escribe anomaly_generator). None si no trae zona."""
+    m = _HL7_OFFSET.search(ts.strip()[14:]) if len(ts.strip()) > 14 else None
+    if not m:
+        return None
+    sign = 1 if m.group(1) == '+' else -1
+    return sign * timedelta(hours=int(m.group(2)), minutes=int(m.group(3)))
 
 
 def validate_frequency(interval: float, baseline: Baseline) -> tuple:
