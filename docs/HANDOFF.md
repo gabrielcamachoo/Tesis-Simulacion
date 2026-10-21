@@ -40,7 +40,7 @@
 - Docs Fase 5/6 sincronizadas: README, THREAT_MODEL, ETHICS_AND_SAFETY, LAB_ARCHITECTURE,
   ATTACK_SCENARIOS, VALIDATION_PROTOCOL, RESULTS_TEMPLATE, LIMITATIONS,
   docs/TRACEABILITY_MATRIX.csv, **docs/RASPBERRY_PI_SETUP.md** (borrador Fase 6, sin ejecutar).
-- Suite completa: **251 passed, 0 xfailed** (re-correr tras cualquier cambio).
+- Suite completa: **252 passed, 0 xfailed** (re-correr tras cualquier cambio).
 
 ## 3. Pendientes y áreas de mejora continua (en orden de prioridad)
 
@@ -57,7 +57,7 @@
 ## 4. Comandos útiles
 
 ```powershell
-# Suite completa (debe decir 251 passed)
+# Suite completa (debe decir 252 passed)
 & "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" -m pytest tests/ -q
 
 # Corrida local completa (67 inyecciones, ~3 min)
@@ -531,7 +531,7 @@ Desarrollo de los puntos de mejora del Handoff (§3 y `docs/AUDITORIA_REPO.md` �
   - Eliminado el bloque de código muerto inalcanzable tras `return None, 0` en
     `src/mllp/framing.py::_try_extract_frame`.
   - Nuevas pruebas en `tests/test_enmienda_e9.py` (5 pruebas, incluyendo verificación AST
-    contra código muerto post-`return`). Suite total: **`251 passed, 0 xfailed`**.
+    contra código muerto post-`return`). Suite total: **`252 passed, 0 xfailed`**.
 - **Bench H2 y sellado `analysis_output/validation/bimodal_v12_20261020/`:**
   - `latency_bench.py --messages 1000 --runs 3 --seed 20261020` →
     `analysis_output/validation/latency_20261020_214029.json`: **p50 = 71.8 µs,
@@ -541,3 +541,18 @@ Desarrollo de los puntos de mejora del Handoff (§3 y `docs/AUDITORIA_REPO.md` �
     (`validation_bimodal_summary.json`, `evaluation.json`, `manifest.json`, manifiestos
     offline `STANDBY` 43/43 y `RUNNING` 99/99, y bench H2) + `SHA256SUMS.txt` regenerado
     (210 archivos sellados).
+
+## 18. Adenda - API pública (`__all__`) en `src/` y soporte bimodal en `run_experiment.py` (2026-10-20)
+
+- **API pública (`__all__`) en los 6 subpaquetes de `src/`:**
+  - `src/config/__init__.py`, `src/alerting/__init__.py` y `src/evidence/__init__.py`
+    re-exportan sus clases y funciones públicas en `__all__`.
+  - `src/hl7/__init__.py` y `src/detection/__init__.py` exponen su `__all__` completo
+    usando carga perezosa a nivel de módulo (`__getattr__`, PEP 562) para `validator` y
+    `engine`, evitando el ciclo de importación `hl7.validator <-> detection.baseline`.
+- **Soporte bimodal (`--state RUNNING --vent-mode`) en `run_experiment.py`:**
+  - Añadidos `--state {STANDBY,RUNNING}` y `--vent-mode {VCV,SIMVVC_PLUS_PS,PCV,SIMVPC_PLUS_PS,PS,MANUAL,CYCLE}`
+    al orquestador (`run_local`, `run_docker` y `manifest.json`), permitiendo ejecutar
+    campañas E2E con tráfico benigno multimodo en `RUNNING`.
+- **Suite completa:** **`252 passed, 0 xfailed`**.
+
