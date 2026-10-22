@@ -27,6 +27,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Segmentos comunes usados por los estados que comparten la cabecera WATO.
+COMMON_MSH = (
+    "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
+    "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
+    "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
+)
+COMMON_PID = "PID|||^^^^PI||^^^^^^L|||"
+COMMON_PV1 = "PV1||I|^^^"
+COMMON_OBR = (
+    "OBR|1|{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
+    "{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
+    "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
+)
+
 # Importar componentes del proyecto
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 from src.mllp.framing import SB, EOM, frame_hl7_message, deframe_hl7_message
