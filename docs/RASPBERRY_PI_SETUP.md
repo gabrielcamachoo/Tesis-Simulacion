@@ -31,20 +31,26 @@ con los mismos interlocks de seguridad que en el host Windows:
 ## 3. Aislamiento de red
 
 1. Conectar la Pi únicamente a la red de laboratorio (switch/AP aislado; nada de ISP).
-2. Configurar IP fija de lab (ej. `192.168.23.x`) y firewall de salida por defecto:
+2. Topología operativa de esta fase:
+   - Simulador WATO remoto: `192.168.5.114`
+   - Raspberry Pi física (receptor): `192.168.5.134`
+   - Puerto de recepción: `1550/tcp` (MLLP)
+3. Configurar IP fija de lab (`192.168.5.134`) y firewall de salida por defecto:
 
 ```bash
 sudo apt install -y ufw
 sudo ufw default deny outgoing
 sudo ufw default deny incoming
-sudo ufw allow in on eth0 to any port 1550 proto tcp   # solo si hay emulador remoto
+sudo ufw allow in on eth0 from 192.168.5.114 to any port 1550 proto tcp
+# Si administras por SSH, permitir ANTES de enable solo desde IP de administración conocida:
+# sudo ufw allow in on eth0 from <IP_ADMIN> to any port 22 proto tcp
 sudo ufw enable
 ```
 
-3. El receptor escucha por defecto en `127.0.0.1` (loopback). Usar `--host 0.0.0.0` solo
-   dentro de una red Docker internal o de laboratorio estrictamente aislada, y **nunca**
+4. El receptor en la Pi debe escuchar en `0.0.0.0:1550` para aceptar el simulador remoto.
+   Este despliegue solo aplica en red de laboratorio estrictamente aislada y **nunca**
    con IP pública (lo bloquea además `block_public_ips`).
-4. Cualquier IP emisora nueva debe agregarse a la allowlist exacta (sin CIDR) en
+5. Cualquier IP emisora nueva debe agregarse a la allowlist exacta (sin CIDR) en
    `baseline.yaml` → `network_parameters.allowed_ips` — de lo contrario la regla
    `R-NET-001` alerta IP no autorizada (comportamiento esperado, no un bug).
 
@@ -93,21 +99,24 @@ Notas:
 
 ## 6. Operación
 
-### 6.1 Modo local (loopback, más simple)
+### 6.1 Modo remoto (simulador WATO -> Pi física)
 
 ```bash
 export LAB_AUTHORIZED=YES
 
-# Terminal 1 — receptor (escribe runs/ y alertas)
-.venv/bin/python mllp_receiver.py --host 127.0.0.1 --port 1550 --verbose
+# Terminal 1 — receptor en la Pi (escribe runs/ y alertas)
+.venv/bin/python mllp_receiver.py --host 0.0.0.0 --port 1550 --verbose
 # (escribe en evidence_output/ por defecto; el orquestador usa runs/<timestamp>)
-
-# Terminal 2 — tráfico benigno (STANDBY sintético)
-.venv/bin/python wato_emulator.py --host 127.0.0.1 --count 10 --interval 6.0
-
-# O bien, corrida completa automatizada (benigno → A01–A16 → benigno → evaluación)
-.venv/bin/python run_experiment.py --mode local --exclude A14
 ```
+
+Desde el emisor remoto (`192.168.5.114`, Windows PowerShell):
+
+```powershell
+.\deploy\wato\wato.ps1 -TargetHost 192.168.5.134 -Port 1550 -Count 10 -Interval 10 -State STANDBY
+```
+
+No ejecutar `wato_emulator.py` en la Raspberry Pi para este flujo.
+`deploy/pi/pi_detector_docker.ps1` no se usa en este escenario con Pi física.
 
 ### 6.2 Servicio persistente con systemd
 
@@ -120,7 +129,7 @@ After=network-online.target
 [Service]
 WorkingDirectory=/home/pi/wato
 Environment=LAB_AUTHORIZED=YES
-ExecStart=/home/pi/wato/.venv/bin/python mllp_receiver.py --host 127.0.0.1 --port 1550
+ExecStart=/home/pi/wato/.venv/bin/python mllp_receiver.py --host 0.0.0.0 --port 1550
 Restart=on-failure
 User=pi
 
