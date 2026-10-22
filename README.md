@@ -5,6 +5,21 @@ host comprometido en la red de monitores multiparámetro Mindray WATO EX-35.
 No existe contacto con equipo clínico real: todo se ejecuta contra evidencia
 capturada previamente y un emulador en red aislada.
 
+> **Versión con simulación Pi (21-10-2026).** En esta versión la Raspberry Pi se
+> ejecuta simulada: la topología de la Pi corre en Docker con el mismo código y la
+> misma red aislada (`deploy/pi/pi_detector_docker.ps1`). El montaje en la Pi física
+> está documentado en `deploy/pi/` y `docs/RASPBERRY_PI_SETUP.md`, pero todavía no se
+> ha corrido en el hardware, así que la latencia (H2) sigue sin verificar en la Pi.
+>
+> **Estado del detector.** El detector está en un punto sólido. Las capturas reales
+> dan 0 falsos positivos en STANDBY (43/43 mensajes NORMAL,
+> `LECTURACONACK25AGOSTO.pcapng`) y en RUNNING (99/99 mensajes NORMAL,
+> `LECTURAACK27AGOSTO.pcapng`), con las 252 pruebas automatizadas pasando
+> (verificado el 21-10-2026 con `detect_pcap.py` y `pytest`).
+>
+> Desde esta versión el código queda congelado: solo se documenta y se ejecutan las
+> corridas oficiales.
+
 ## Estructura
 
 ```
