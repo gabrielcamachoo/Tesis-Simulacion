@@ -196,6 +196,8 @@ def write_manifest(run_dir: Path, args, mode: str, started_iso: str,
         "commit_git": git_info(),
         "configuracion": {
             "mode": mode,
+            "state": getattr(args, "state", "STANDBY"),
+            "vent_mode": getattr(args, "vent_mode", "CYCLE"),
             "benign_count": args.benign_count,
             "interval_s": args.interval,
             "anomaly_count": args.anomaly_count,
@@ -244,6 +246,12 @@ def parse_args():
         description="Orquestador de experimentos del laboratorio HL7/MLLP")
     p.add_argument("--mode", choices=["auto", "local", "docker"], default="auto",
                    help="Modo de ejecución (default: auto)")
+    p.add_argument("--state", choices=["STANDBY", "RUNNING"], default="STANDBY",
+                   help="Estado operativo de las fases benignas (default: STANDBY)")
+    p.add_argument("--vent-mode",
+                   choices=["VCV", "SIMVVC_PLUS_PS", "PCV", "SIMVPC_PLUS_PS", "PS", "MANUAL", "CYCLE"],
+                   default="CYCLE",
+                   help="Modo ventilatorio cuando --state=RUNNING (default: CYCLE)")
     p.add_argument("--benign-count", type=int, default=6,
                    help="Mensajes benignos por fase (default 6)")
     p.add_argument("--interval", type=float, default=6.0,
@@ -398,7 +406,9 @@ def run_local(args, run_dir: Path, port: int):
         wait_port("127.0.0.1", port)
 
         run_cmd([PY, "wato_emulator.py", "--host", "127.0.0.1", "--port", port,
-                 "--state", "STANDBY", "--count", args.benign_count,
+                 "--state", getattr(args, "state", "STANDBY"),
+                 "--vent-mode", getattr(args, "vent_mode", "CYCLE"),
+                 "--count", args.benign_count,
                  "--interval", args.interval, "--ack-timeout", "5",
                  "--seed", str(args.phase_seeds["benign1"])],
                 "FASE BENIGNA 1", env)
@@ -413,8 +423,14 @@ def run_local(args, run_dir: Path, port: int):
             gen_cmd += ["--exclude", args.exclude]
         run_cmd(gen_cmd, "FASE ANÓMALA", env)
 
+        # Respetar la cadencia benigna antes del primer mensaje de la fase 2
+        # (R-TIME-002 es global entre sesiones; evita intervalo < 5 s artificial).
+        time.sleep(args.interval)
+
         run_cmd([PY, "wato_emulator.py", "--host", "127.0.0.1", "--port", port,
-                 "--state", "STANDBY", "--count", args.benign_count,
+                 "--state", getattr(args, "state", "STANDBY"),
+                 "--vent-mode", getattr(args, "vent_mode", "CYCLE"),
+                 "--count", args.benign_count,
                  "--interval", args.interval, "--ack-timeout", "5",
                  "--seed", str(args.phase_seeds["benign2"])],
                 "FASE BENIGNA 2", env)
@@ -448,7 +464,9 @@ def run_docker(args, run_dir: Path):
         run_cmd(["docker", "compose", "--profile", "benign", "run", "--rm",
                  "wato-emulator", "python", "wato_emulator.py",
                  "--host", "mllp-receiver", "--port", "1550",
-                 "--state", "STANDBY", "--count", args.benign_count,
+                 "--state", getattr(args, "state", "STANDBY"),
+                 "--vent-mode", getattr(args, "vent_mode", "CYCLE"),
+                 "--count", args.benign_count,
                  "--interval", args.interval, "--ack-timeout", "5",
                  "--seed", str(args.phase_seeds["benign1"])],
                 "FASE BENIGNA 1 (docker)", env)
@@ -463,10 +481,16 @@ def run_docker(args, run_dir: Path):
             gen_cmd += ["--exclude", args.exclude]
         run_cmd(gen_cmd, "FASE ANÓMALA (docker)", env)
 
+        # Respetar la cadencia benigna antes del primer mensaje de la fase 2
+        # (R-TIME-002 es global entre sesiones; evita intervalo < 5 s artificial).
+        time.sleep(args.interval)
+
         run_cmd(["docker", "compose", "--profile", "benign", "run", "--rm",
                  "wato-emulator", "python", "wato_emulator.py",
                  "--host", "mllp-receiver", "--port", "1550",
-                 "--state", "STANDBY", "--count", args.benign_count,
+                 "--state", getattr(args, "state", "STANDBY"),
+                 "--vent-mode", getattr(args, "vent_mode", "CYCLE"),
+                 "--count", args.benign_count,
                  "--interval", args.interval, "--ack-timeout", "5",
                  "--seed", str(args.phase_seeds["benign2"])],
                 "FASE BENIGNA 2 (docker)", env)

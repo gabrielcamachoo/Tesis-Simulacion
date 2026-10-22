@@ -1,0 +1,10 @@
+seed_base=100001
+seed_benign1=100001
+seed_anomalies=1100004
+seed_benign2=2100004
+mode=local
+exclude=A14
+anomaly_count=3
+benign_count=6
+interval=6.0
+nota=derivados +1000003/+2000003 entre fases para evitar MCID idénticos (R-SEQ-001); orden de escenarios en scenario_order.txt

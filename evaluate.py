@@ -45,6 +45,10 @@ class Injection:
     target: str = ""
     mitre_ics: str = ""
     threat: str = ""
+    # E6: conexión de origen (ip:puerto local del generador) e inicio de la
+    # anomalía. Vacíos en ground truth antiguos -> comportamiento anterior.
+    source: str = ""
+    started_utc: str = ""
     # Calculado durante matching
     matched_alert_id: Optional[str] = None
     matched_rule: Optional[str] = None
@@ -58,6 +62,7 @@ class AlertRecord:
     rule_id: str
     timestamp_utc: str
     label: str = "ANOMALO"
+    source: str = ""
     matched_injection_id: Optional[str] = None
 
 
@@ -84,6 +89,9 @@ class EvaluationResult:
     per_rule: Dict[str, Dict] = field(default_factory=dict)
     unmatched_alerts: List[str] = field(default_factory=list)
     correlated_alerts: int = 0  # alertas extra dentro de ventana de una inyección
+    # E6: FP que caen dentro de la ventana de una inyección pero vienen de
+    # OTRA conexión (tráfico benigno). Antes se ocultaban como correlacionadas.
+    fp_other_source_in_window: int = 0
     missed_injections: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
@@ -116,6 +124,8 @@ def load_ground_truth(path: Path) -> List[Injection]:
                 target=data.get("target", ""),
                 mitre_ics=data.get("mitre_ics", ""),
                 threat=data.get("threat", ""),
+                source=data.get("source", ""),
+                started_utc=data.get("started_utc", ""),
             ))
     return injections
 
@@ -148,8 +158,18 @@ def load_alerts(path: Path) -> Tuple[List[AlertRecord], int, List[datetime]]:
                 rule_id=rule_id,
                 timestamp_utc=data.get("timestamp_utc", ""),
                 label=label,
+                source=data.get("source", ""),
             ))
     return alerts, normal_count, timestamps
+
+
+def same_source(inj: Injection, al: AlertRecord) -> bool:
+    """E6: la alerta puede venir de esta inyección solo si llegó por la misma
+    conexión. Sin dato de origen (ground truth antiguo o alerta 'N/A') se
+    conserva el comportamiento anterior (solo ventana temporal)."""
+    if not inj.source or not al.source or al.source == "N/A":
+        return True
+    return inj.source == al.source
 
 
 def match_injections(injections: List[Injection],
@@ -177,6 +197,8 @@ def match_injections(injections: List[Injection],
 
         for al in alerts:
             if al.alert_id in used_alerts:
+                continue
+            if not same_source(inj, al):
                 continue
             t1 = parse_ts(al.timestamp_utc)
             delta = (t1 - t0).total_seconds()
@@ -233,28 +255,50 @@ def percentile(values: List[float], pct: float) -> float:
     return vs[lo] + (vs[hi] - vs[lo]) * (k - lo)
 
 
+def _in_window(inj: Injection, t1: datetime, window_s: float) -> bool:
+    """Ventana de correlación: desde el inicio de la anomalía (started_utc;
+    para A14 el comienzo del silencio) hasta timestamp_utc + window_s."""
+    t_end = parse_ts(inj.timestamp_utc)
+    t_start = parse_ts(inj.started_utc) if inj.started_utc else t_end
+    if t_start == datetime.min or t_start > t_end:
+        t_start = t_end
+    return (-0.05 <= (t1 - t_start).total_seconds()
+            and (t1 - t_end).total_seconds() <= window_s)
+
+
 def partition_unmatched(alerts: List[AlertRecord], injections: List[Injection],
                         window_s: float = DEFAULT_MATCH_WINDOW_S
                         ) -> Tuple[List[AlertRecord], int]:
     """
     Separa alertas sin match en:
-    - FP reales (fuera de toda ventana de inyección)
-    - correlacionadas: caen dentro de la ventana de ALGUNA inyección (son
-      alertas adicionales legítimas del mismo evento, p. ej. R-TIME-002
-      disparado junto a la regla esperada) -> no cuentan como FP.
+    - FP reales
+    - correlacionadas: caen dentro de la ventana de una inyección Y vienen de
+      la misma conexión (alertas adicionales legítimas del mismo evento,
+      p. ej. R-TIME-002 junto a la regla esperada, o el vigilante de
+      silencio durante A14) -> no cuentan como FP.
+    E6: una alerta de OTRA conexión (tráfico benigno) dentro de la ventana
+    es FP: antes se contaba como correlacionada y quedaba oculta.
     """
     true_fp: List[AlertRecord] = []
     correlated = 0
-    times = [parse_ts(i.timestamp_utc) for i in injections]
     for al in alerts:
         t1 = parse_ts(al.timestamp_utc)
-        in_window = any(-0.05 <= (t1 - t0).total_seconds() <= window_s
-                        for t0 in times)
-        if in_window:
+        if any(same_source(inj, al) and _in_window(inj, t1, window_s)
+               for inj in injections):
             correlated += 1
         else:
             true_fp.append(al)
     return true_fp, correlated
+
+
+def count_other_source_in_window(fps: List[AlertRecord],
+                                 injections: List[Injection],
+                                 window_s: float = DEFAULT_MATCH_WINDOW_S) -> int:
+    """Cuántos FP habrían quedado ocultos con el criterio anterior (solo
+    ventana temporal, sin mirar la conexión)."""
+    return sum(1 for al in fps
+               if any(_in_window(inj, parse_ts(al.timestamp_utc), window_s)
+                      for inj in injections))
 
 
 def parse_expected_counts(run_dir: Path) -> Optional[Dict[str, int]]:
@@ -395,6 +439,8 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
     res.fn = len(injections) - n_match
     res.fp = len(true_fp)
     res.correlated_alerts = correlated
+    res.fp_other_source_in_window = count_other_source_in_window(
+        true_fp, injections, window_s)
     res.tn = normal_count
 
     m = compute_metrics(res.tp, res.fp, res.tn, res.fn)
@@ -478,6 +524,9 @@ def format_report(res: EvaluationResult) -> str:
     lines.append("=" * 70)
     lines.append(f"Espacio de confusión: TP={res.tp} FP={res.fp} TN={res.tn} FN={res.fn} "
                  f"(+{res.correlated_alerts} alertas correlacionadas)")
+    if res.fp_other_source_in_window:
+        lines.append(f"  de los FP, {res.fp_other_source_in_window} caen en la ventana de "
+                     f"una inyección pero vienen de otra conexión (tráfico benigno)")
     lines.append(f"Recall:    {res.recall:.4f}")
     lines.append(f"Precision: {res.precision:.4f}")
     lines.append(f"F1:        {res.f1_score:.4f}")

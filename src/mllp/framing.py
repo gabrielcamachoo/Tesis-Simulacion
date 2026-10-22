@@ -223,21 +223,6 @@ class MLLPFramer:
                 self.buffer = b''
                 self.state = FrameState.WAITING_SB
             return None, 0
-            
-            frame = MLLPFrame(
-                raw_bytes=raw_frame,
-                content=content,
-                start_pos=self.message_start,
-                end_pos=eom_pos + 2,
-                encoding=self.encoding
-            )
-            
-            # Avanzar buffer
-            consumed = eom_pos + 2
-            self.buffer = self.buffer[consumed:]
-            self.state = FrameState.WAITING_SB
-            
-            return frame, consumed
         
         # Si hay un SB mientras estamos en READING_MESSAGE, reiniciar
         # (Este caso se maneja en el loop principal de feed)

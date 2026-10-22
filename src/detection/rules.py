@@ -147,7 +147,7 @@ DEFAULT_RULES = [
         default_severity="MEDIUM",
         mitre_technique="T0814",
         mitre_justification="DoS/flooding o supresión de mensajes (MITRE T0814: Denial of Service)",
-        limitations="Baseline STANDBY: 10s exactos; RUNNING puede variar; p95*1.5 = 15s"
+        limitations="Baseline STANDBY: 10s exactos; RUNNING puede variar; p95*1.5 = 15s. Enmienda E3: vigilante de silencio alerta una vez por episodio a los 15 s sin mensajes"
     ),
     Rule(
         rule_id="R-OBX-001",
@@ -187,7 +187,7 @@ DEFAULT_RULES = [
         default_severity="HIGH",
         mitre_technique="T1692.002",
         mitre_justification="Cambio inválido de estado de sesión (T1692.002, analítica AN2045; T0869 es Standard Application Layer Protocol)",
-        limitations="FSM inferido de 1 captura; transiciones RUNNING/ALARM NO_VERIFICADO"
+        limitations="Enmienda E2: STANDBY->RUNNING OBSERVADO (27-08) y coherencia RUNNING exige OBX 184352; RUNNING->STANDBY permitido en baseline sin captura que lo muestre (pendiente Gabriel); ALARM NO_VERIFICADO"
     ),
 ]
 

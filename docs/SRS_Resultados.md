@@ -13,6 +13,7 @@ ISO/IEC/IEEE 29148:2018 [5]) · estructura alineada con `documentos_tesis/SRS_Te
 |---|---|---|
 | 1.0 | 2026-10-17 | Versión inicial basada en auditoría completa del código |
 | 1.1 | 2026-10-19 | Alineación completa con las 3 capturas reales (`WATOPARANALIZAR18AGOSTO.pcap`, `LECTURACONACK25AGOSTO.pcapng`, `LECTURAACK27AGOSTO.pcapng`): baseline bimodal STANDBY+RUNNING (33 códigos OBX, 9 unidades MDC, 6 modos ventilatorios), emulador WATO fiel al protocolo IHE PCD-01 / IEEE 11073-10101 MDC + `99MNDRY`, y corrección de anonimización de OIDs ISO |
+| 1.2 | 2026-10-20 | Integración de Enmiendas E2–E9: coherencia `R-STATE-001` (`184352^MDC_VENT_MODE` obligatorio en `RUNNING` y alerta en `RUNNING->STANDBY` no observado), vigilante de silencio `check_silence()` (E3), motivo propio por regla en `R-OBX-001/002/003` (E4), orden de entrega TCP + `capture_time` en `detect_pcap.py` (E5), evaluación por conexión `source` + `started_utc` (E6), ciclo SYN 47.6 s en `SIN_GATEWAY` (E7), comparación con zona horaria en `R-TIME-001` (E8) y margen `max_message_size: 5120 B` + cierre de deudas técnicas (E9); suite en **251 pruebas** |
 
 ---
 
@@ -206,8 +207,7 @@ evidencia); en Docker: `172.30.0.20:1550` en red interna. Bind por defecto del
 CLI de desarrollo: `127.0.0.1` (settings del servidor de laboratorio: `0.0.0.0`).
 
 **RIF-002 MLLP.** Delimitadores SB `0x0B` … EB `0x1C` CR `0x0D`; payload UTF-8
-(MSH-18 `UNICODE UTF-8`); `max_message_size` de laboratorio 4096 B (para detectar
-A15; el máximo del protocolo configurado es 65535 B).
+(MSH-18 `UNICODE UTF-8`); `max_message_size` de laboratorio 5120 B (Enmienda E9: +1143 B de margen sobre `SIMV-VC+PS` y detecta A15; el máximo del protocolo es 65535 B).
 
 **RIF-003 HL7.** Perfil observado: v2.6, ORU^R01^ORU_R01, IHE PCD-01 [3],
 separadores `|^~\&`, processing ID `P`, ACK requerido (`AL`). *(La afirmación de
@@ -234,7 +234,7 @@ contexto "Mindray usa HL7 v2.3.1" no está verificada; ver Apéndice A.)*
 | RNF-004 | Seguridad | Sin IP pública en bind/targets; bloqueo de rutas hospitalarias; rate ≤ 10 msg/s; ≤ 5 conexiones concurrentes; cooldown 30 s; payload generador ≤ 32768 B; presupuesto ≤ 70 anomalías/corrida | Implementado (settings + SafetyGuard + preflight) |
 | RNF-005 | Portabilidad | Python 3.11+; runtime solo stdlib + PyYAML; PCAP reader en Python puro (Raspberry Pi OS sin dependencias de sistema) | Implementado; verificado en Windows y en contenedores `python:3.11-slim` |
 | RNF-006 | Reproducibilidad | Semillas PRNG por corrida/fase; SHA-256 de artefactos; manifest con commit; evidencia sellada con `SHA256SUMS.txt` | Implementado (corridas 2026-10-14 y 2026-10-17) |
-| RNF-007 | Mantenibilidad | Suite automatizada ≥ 200 pruebas; sin ML; reglas declarativas YAML | Implementado: **209 pruebas** |
+| RNF-007 | Mantenibilidad | Suite automatizada ≥ 200 pruebas; sin ML; reglas declarativas YAML | Implementado: **251 pruebas** |
 | RNF-008 | Disponibilidad del lab | El sistema no arranca sin interlocks (marker + env) | Implementado (fail-closed) |
 | RNF-009 | Privacidad | Datos clínicos anonimizados por defecto en todos los derivados; `evidence_raw/` inmutable | Implementado (ANON_ENABLED=True) |
 
@@ -285,7 +285,7 @@ contexto "Mindray usa HL7 v2.3.1" no está verificada; ver Apéndice A.)*
 4. **Corpus RUNNING verificado:** a partir del análisis de `LECTURAACK27AGOSTO.pcapng` (99 ORU + 99 ACK: 13 `STANDBY` y 86 `RUNNING`), los **12 códigos de medición ISO/IEEE 11073-10101 MDC** (`151586`, `151688`, `151784`, `151819`, `151832`, `151840`, `151880`, `151957`, `151976`, `152196`, `152660`, `152664`) y las **9 unidades MDC** pasaron de `NO_VERIFICADO` a **`OBSERVADO`**, logrando **0 falsos positivos** en detección offline y replay tanto para `STANDBY` (43 ORU) como para `RUNNING` (99 ORU).
 5. **H2 en Raspberry Pi física:** `NO_VERIFICADO` (no hay hardware con IP asignado en este host; la topología Pi está simulada en Docker y local).
 6. **Aprobación clínica:** `clinical_approval_status: PENDING`; las reglas de rangos fisiológicos siguen deshabilitadas hasta contar con aval clínico.
-7. **Deuda técnica de código:** faltan `__init__.py` en `src/hl7`, `src/detection`, `src/config`; dos parseadores HL7 paralelos (`src/hl7/parser.py` y `analyze_evidence.py`).
+7. **Deuda técnica de código:** resuelta la unificación de `__init__.py` en los 6 subpaquetes de `src/` y eliminado el código muerto en `framing.py` (Enmienda E9); coexisten dos parseadores HL7 especializados (`src/hl7/parser.py` para runtime y `analyze_evidence.py` para forense).
 8. **Limitación de replay/offline:** `R-MLLP-001` no es evaluable en detección offline (solo tramas MLLP completas); `R-TIME-002` en modo offline evalúa los timestamps de captura del PCAP (`capture_time`).
 
 ## 6. Evidencia para demostración (pasos exactos)
@@ -315,7 +315,7 @@ $env:LAB_AUTHORIZED = "YES"
 # Resultado: runs/<timestamp>/evaluation.txt con recall/precision/F1 y latencias
 ```
 
-**C. Verificación de pruebas:** `deploy\validacion\suite.ps1` → `204 passed`.
+**C. Verificación de pruebas:** `deploy\validacion\suite.ps1` → `251 passed`.
 
 ---
 

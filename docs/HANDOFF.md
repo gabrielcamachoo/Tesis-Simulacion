@@ -1,6 +1,6 @@
 # HANDOFF — Contexto y pasos siguientes
 
-> Última actualización: 2026-10-14 (sesión asistente 2: E2E docker validado, §7).
+> Última actualización: 2026-10-20 (cierre post-integración PR #1: baseline bimodal v1.1 + Enmiendas E2–E8, §16).
 
 ## 1. Contexto del proyecto
 
@@ -40,21 +40,24 @@
 - Docs Fase 5/6 sincronizadas: README, THREAT_MODEL, ETHICS_AND_SAFETY, LAB_ARCHITECTURE,
   ATTACK_SCENARIOS, VALIDATION_PROTOCOL, RESULTS_TEMPLATE, LIMITATIONS,
   docs/TRACEABILITY_MATRIX.csv, **docs/RASPBERRY_PI_SETUP.md** (borrador Fase 6, sin ejecutar).
-- Suite completa: **161 passed** (re-correr tras cualquier cambio).
+- Suite completa: **252 passed, 0 xfailed** (re-correr tras cualquier cambio).
 
-## 3. Pendientes (en orden)
+## 3. Pendientes y áreas de mejora continua (en orden de prioridad)
 
-1. **Raspberry Pi (Fase 6):** ejecutar `docs/RASPBERRY_PI_SETUP.md` en hardware real;
-   marcar la checklist del doc. Medir H2 (latencia ACK) ahí.
-2. **Fase 9 (validación):** ≥30 corridas/escenario con semillas fijas, según
-   `docs/VALIDATION_PROTOCOL.md`; diligenciar `docs/RESULTS_TEMPLATE.md`.
-3. Limpieza opcional: `docker volume rm investigacion-de-la-tesis_lab_output`
-   (los datos de cada corrida ya viven en `runs/<ts>/` tras el cp).
+1. **Hardware en Raspberry Pi física (Fase 6):**
+   - Ejecutar el despliegue con `deploy/pi/` (01_instalar...06_campana) en la Pi 4 real sobre red aislada.
+   - Medir formalmente H2 con `latency_bench.py --messages 1000 --runs 5` directamente en hardware ARM y verificar p95 ≤ 500 µs (hasta ahora PASS en PC x86, clasificado honestamente como `NO_VERIFICADO` en hardware).
+2. **Campaña Docker de 30 corridas con `run_matrix.py` bajo baseline bimodal v1.1 + E1–E9:**
+   - Se selló el paquete de verificación bimodal `analysis_output/validation/bimodal_v12_20261020/` (E2E local TP=64 FP=0 TN=12, H2 bench p95=206.31 µs PASS, H3 STANDBY 43/43 NORMAL y RUNNING 99/99 NORMAL) con `SHA256SUMS.txt` actualizado. Cuando se desee regenerar la matriz de 30 corridas en contenedores con Docker Desktop activo, ejecutar `run_matrix.py --runs 30 --mode docker --exclude A14 --tag bimodal_main`.
+4. **Captura y perfilado de alarmas fisiológicas reales:**
+   - El estado `ALARM_SIMULATED` del emulador es sintético. Si en el sandbox hospitalario futuro se logra capturar tráfico con alarma real activa (o desaturación en pulmón de prueba), modelar los códigos y transiciones fisiológicas correspondientes, sujetas a la aprobación clínica formal (`clinical_approval_status: PENDING`).
+5. **Limpieza y mantenimiento de entorno Docker:**
+   - Limpieza periódica de volúmenes temporales: `docker volume rm investigacion-de-la-tesis_lab_output` o `docker compose down -v`.
 
 ## 4. Comandos útiles
 
 ```powershell
-# Suite completa (debe decir 161 passed)
+# Suite completa (debe decir 252 passed)
 & "C:\Users\OsoGa\AppData\Local\Python\bin\python.exe" -m pytest tests/ -q
 
 # Corrida local completa (67 inyecciones, ~3 min)
@@ -76,7 +79,7 @@ $env:LAB_AUTHORIZED="YES"
 - Semillas (`_send_setup` de A02/A03/A04) NO cuentan como inyecciones en ground truth.
 - Evaluador: alertas dentro de la ventana de inyección → correlacionadas (no FP).
 - `allowed_ips` exact-match (sin CIDR): 192.168.23.250, 127.0.0.1, ::1, 172.30.0.10/11.
-- framer `max_message_size: 4096` → A15 dispara R-MLLP-001.
+- framer `max_message_size: 5120` (Enmienda E9: +1143 B sobre SIMV-VC+PS 3977 B) → A15 dispara R-MLLP-001.
 - `runs/` y `evidence_output/` en `.gitignore` (regenerables); `evidence_raw/` solo lectura.
 - **Evidencia docker en named volume** `lab_output` (montado en `/lab_output`), NO en el
   bind del repo; `run_experiment.py` la copia al host con `docker compose cp` antes del
@@ -327,3 +330,229 @@ fisico sigue sin IP/disponible). Sin cambios de codigo; interlocks de siempre.
   en `analysis_output/validation/{pi_sim,ransomware_sim}_20261017_*`.
 - Estado git: solo docs/deploy/nuevos .md; nada de src/config/baseline.
   Sin commits en esta sesion (coordinar con sesion paralela, ver §10).
+
+## 13. Adenda - rama pruebas-santi (2026-10-19, enmiendas E2 y E3)
+
+Trabajo de Santiago (con asistente) sobre `main` descargado el 2026-10-19. Sin tocar
+`evidence_raw/`; todo cambio de baseline se aplica en `baseline.yaml` Y en
+`src/evidence/baseline_builder.py`, igual que la Enmienda E1. Propuesta para revisión
+de Gabriel antes de mezclar a `main`.
+
+- **Enmienda E2 - R-STATE-001 (FSM).** Hallazgo: `_infer_state` buscaba 'STANDBY'
+  en el componente 0 de OBX-5, que es numérico (`202836`), así que los 158 ORU reales
+  quedaban `SESION_ESTABLECIDA_UNKNOWN` y la regla nunca podía disparar (el FP=0 de la
+  matriz de trazabilidad era por regla inerte). Cambios:
+  - Estado por código OBSERVADO: `202836` STANDBY, `202902` RUNNING (respaldo por nombre).
+  - Mensaje sin OBX 202886 no se trata como transición.
+  - Transición STANDBY->RUNNING agregada (OBSERVADA 1 vez en LECTURAACK27AGOSTO:
+    13 STANDBY -> 86 RUNNING). RUNNING->STANDBY sigue NO_VERIFICADO y alerta.
+  - Coherencia: estado RUNNING exige `184352^MDC_VENT_MODE` (presente 86/86 RUNNING,
+    0/56 STANDBY). Nº de OBX en RUNNING varía 17-28 según modo: no se exige conteo.
+- **Enmienda E3 - vigilante de silencio (R-TIME-002).** Hallazgo: un canal caído sin
+  mensaje posterior nunca alertaba (60 s -> 0 alertas). `DetectionEngine.check_silence()`
+  alerta una vez por episodio al superar el límite de baseline (p95*1.5 = 15 s);
+  `mllp_receiver.py` lo consulta cada 1 s. No se arma antes del primer mensaje.
+- **Pruebas:** `tests/test_enmiendas_e2_e3.py` (13 pruebas con ORU reales de
+  `evidence_raw/`). Las 13 fallan sobre `main` y pasan con E2/E3. Suite: **217 passed**.
+- **Verificación (2026-10-19, local, semilla 100001):**
+  - Capturas reales con reloj de captura: STANDBY 43/43 reconocidos, 0 alertas;
+    RUNNING 13 STANDBY + 86 RUNNING, 0 R-STATE-001 (R-OBX sin cambio: 256, fuera de
+    alcance); Nessus 14-sep: estados STANDBY, R-TIME-002=4 sin cambio.
+  - Campaña A01-A16 a 6 s y 10 s: 67/67 TP, recall 1.000 (igual que antes).
+    Aparecen 3 alertas fuera de ventana por corrida: son los 3 silencios de A14,
+    detectados por E3 ~30 s ANTES del timestamp de ground truth (A14 registra la
+    inyección al enviar el mensaje posterior al silencio de 45 s). No son FP reales;
+    queda por decidir cómo etiquetar A14 en `anomaly_generator.py`/`evaluate.py`.
+  - Prueba de evasión (ORU STANDBY real con OBX-5 cambiado a RUNNING, IP/MSH-3/
+    cadencia correctas): antes 0 alertas -> ahora 3 R-STATE-001 HIGH.
+    Prueba de caída (60 s sin mensajes): antes 0 -> ahora 1 alerta a los 16 s.
+- **Pendientes (no hechos a propósito):** perfil OBX de RUNNING (256 alertas), reloj de
+  captura en `detect_pcap.py`, razón correcta en alertas R-OBX-002/003, límite 4096 B
+  frente a RUNNING real de hasta 3894 B, texto "SYN cada ~30s" (real: ciclo 47.6 s).
+
+## 14. Adenda - rama pruebas-santi (2026-10-20, enmiendas E4 a E7)
+
+Continuación de §13, mismas reglas (sin tocar `evidence_raw/`; baseline en
+`baseline.yaml` Y `baseline_builder.py`). Propuesta para revisión de Gabriel.
+
+- **E4 - motivo de R-OBX-002/003** (`src/detection/engine.py`). Todas las alertas R-OBX
+  usaban `errors[0]`, así que R-OBX-002/003 mostraban "Unauthorized OBX code: 184352".
+  Ahora cada una lleva su propio error (p. ej. "Unauthorized unit: 263762^MDC_DIM_MILLI_L
+  for code 20015"). Los conteos no cambian (RUNNING real: 86/86/84).
+- **E5 - hora de captura en `detect_pcap.py`.** `process_message(..., now=None)`: con
+  `None` (receptor en vivo) el comportamiento es idéntico; offline se pasa la hora del
+  paquete. Los mensajes se procesan en el orden en que TCP los entrega (máximo
+  acumulado por flujo) e intercalados entre flujos (`delivery_order`). `--realtime`
+  queda solo como ritmo de reproducción. Resultados:
+  - STANDBY 25-ago: antes 1 NORMAL + 42 R-TIME-002 -> ahora **43 NORMAL**.
+  - RUNNING 27-ago: 0 alertas de tiempo; quedan solo R-OBX (86/86/84, ver pendientes).
+  - Nessus 14-sep (`analconnessusactivo`, fuera del repo): **R-TIME-002=5, R-TIME-001=0**.
+    El arnés de §13 (orden por hora de paquete) daba además R-TIME-001=1; el MCID 91 se
+    retransmitió (primera copia capturada a los 916 s, después de la 92) y TCP entrega
+    91 antes que 92, así que no hay timestamp regresivo real. Las 5 alertas: hueco de
+    25.8 s, entrega simultánea 91/92 (0 s), 4.2 s y dos huecos de 20 s.
+- **E6 - evaluación por conexión** (`anomaly_generator.py`, `evaluate.py`). Ajusta la
+  decisión de §5 "alertas en ventana -> correlacionadas": el ground truth guarda
+  `source` (ip:puerto local de la conexión de la inyección) y `started_utc` (inicio de
+  la anomalía; en A14 el comienzo del silencio). Una alerta solo se correlaciona con
+  inyecciones de su misma conexión, desde `started_utc` hasta `timestamp_utc`+ventana.
+  Ground truth antiguo sin esos campos se evalúa igual que antes (re-evaluada la corrida
+  `20261019_105937`: mismo TP=67 FP=3).
+- **E7 - texto SIN_GATEWAY** (baseline). Medido en LECTURA25AGOSYO (19 ciclos, puertos
+  2048-2066): SYN a 0, +1.6, +16.6, +31.6 s, RST del WATO a +46.6 s, nuevo puerto a
+  +47.6 s. Antes decía "SYN cada ~30s". En esa misma captura hay 30 SYN de .200 hacia
+  el puerto 1550 del WATO respondidos con RST (el WATO no escucha en 1550).
+- **Pruebas:** `tests/test_enmiendas_e4_e5.py` (10) y `tests/test_enmienda_e6.py` (8);
+  17 de las 18 fallan sin las enmiendas. Suite: **235 passed**.
+- **Verificación (2026-10-20, local, semilla 100001):**
+  - Campaña A01-A16 a 6 s y a 10 s: TP=67 FN=0 FP=1 TN=11 (+94 correlacionadas), igual
+    en las dos. Antes: FP=3. Cambio de composición: los 3 silencios de A14 pasan a
+    correlacionados (son detecciones reales, §13), y aparece 1 FP que antes quedaba
+    oculto: el primer mensaje benigno de la fase 2 (conexión del emulador) alerta
+    R-TIME-002 "Interval too short: 0.33 s" porque llega justo después de la última
+    inyección (R-TIME-002 es global entre sesiones, §5).
+  - Evasión y caída (arnés de §13): sin cambio, 3 R-STATE-001 y 1 silencio a los 16 s.
+  - Modo docker: NO_VERIFICADO en esta rama (no hay Docker en el entorno de prueba).
+    `source` sale de `getsockname()` del generador; en la red interna sin NAT debería
+    coincidir con el `source` de la alerta.
+- **No hecho a propósito:** intervalos por sesión en R-TIME-002. Evitaría el FP de arriba,
+  pero contradice §5 (estado global) y rompería A13, que se detecta justamente por
+  reconexiones en sesiones nuevas. Decisión para Gabriel.
+- **Pendientes:** perfil OBX de RUNNING (las 256 alertas R-OBX sobre RUNNING real
+  siguen porque la baseline es solo STANDBY), límite `max_message_size: 4096` frente a
+  RUNNING real de hasta 3894 B (margen 5 %).
+
+## 15. Adenda - integración pruebas-santi sobre main del 2026-10-20 (rama pruebas-santi-v2)
+
+Main descargado el 2026-10-20 (commits de Gabriel del 19-oct ~22:25: baseline bimodal
+STANDBY+RUNNING, emulador de 6 modos, `capture_time` en el motor, estados por código,
+anonimizador sin romper el OID IHE). Las enmiendas §13-§14 se re-aplicaron encima con
+este criterio: **donde main ya resolvía lo mismo, queda la versión de main**; de
+pruebas-santi entra solo lo que main no tiene.
+
+- **Fallo en main: `wato_emulator.py` no compila.** Tiene 4 bloques de conflicto de git
+  sin resolver (`<<<<<<< HEAD` / `>>>>>>> f15c0259...`), así que `tests/test_integration.py`
+  no se puede ni recolectar y el emulador no corre. Resuelto con el lado `f15c0259`
+  (6 modos), que es el único coherente con el resto del archivo (`_build_running_obx`,
+  `--vent-mode`, `RUNNING_HEADER_OBX` están fuera del conflicto y solo existen en ese
+  lado) y con las pruebas nuevas de main. **Gabriel debe confirmarlo**: el lado HEAD
+  quitaba la línea NTE "SYNTHETIC-NOT-FOR-CLINICAL-USE".
+- **Queda la versión de main (descartado lo nuestro):** E5 `now` -> se usa
+  `capture_time` de main; `_infer_state` de main (además devuelve un estado propio para
+  valores desconocidos, que alerta: mejor que la E2, que los ignoraba). Las pruebas E2-E5
+  se adaptaron a `capture_time` y a que el RUNNING real ya no da alertas R-OBX.
+- **Se conserva de pruebas-santi (main no lo tiene):** coherencia RUNNING ⇒ OBX 184352
+  (E2), vigilante de silencio (E3), motivo propio en R-OBX con varias violaciones en un
+  mismo mensaje (E4), orden de entrega TCP en `detect_pcap` (E5), evaluación por
+  conexión (E6) y ciclo SYN medido en SIN_GATEWAY (E7; se mantiene el ARP y el rango
+  0-299 s de main). Sobre el main resuelto, 19 de nuestras pruebas fallan (los huecos).
+- **E8 nueva - R-TIME-001 con zona horaria** (`src/hl7/validator.py`). Al integrar
+  apareció un FP nuevo: el emulador de main escribe MSH-7 con -0500 (como el WATO) y el
+  generador en UTC (+00:00); el validador comparaba solo dígitos, así que el primer
+  benigno de la fase 2 (17:03:21-0500 = 22:03:21Z) era "regresivo" frente a 22:03:21+00:00.
+  Ahora, si ambos traen offset se comparan instantes; si no, como antes. A04 sigue 3/3.
+  En main este FP existe pero el evaluador anterior lo oculta.
+- **Para decisión de Gabriel:** `state_transitions_observed` incluye RUNNING->STANDBY,
+  pero ninguna captura lo muestra (27-08: solo STANDBY->RUNNING). Se dejó como está en
+  main; `test_running_a_standby_no_verificado_sigue_alertando` queda `xfail(strict)`.
+- **Verificación (2026-10-20, local, semilla 100001):** suite 245 passed + 1 xfailed.
+  STANDBY 43/43 NORMAL; RUNNING 99/99 NORMAL; Nessus R-TIME-002=5 (sin el -5.797 s que
+  da main por la retransmisión). Evasión 3 R-STATE-001, caída 1 alerta (main: 0 y 0).
+  Campaña 6 s y 10 s: TP=67 FN=0 FP=1 TN=11 (el FP es el R-TIME-002 global de §14).
+  Main resuelto sin enmiendas: FP=0 reportado, con 2 alertas falsas ocultas como
+  "correlacionadas" (R-TIME-001 por zona horaria y R-TIME-002 0.32 s).
+- **Riesgo:** emulador SIMV-VC+PS = trama de 3977 B (real máx. 3897 B; +80 B por la NTE),
+  a 119 B del `max_message_size: 4096`.
+- **Docs de main desactualizados (no tocados):** `GUIA_USO.md` línea "baseline es
+  unimodal STANDBY" y `RESULTADOS_TESIS.md` (256 alertas RUNNING) describen el estado
+  anterior a la baseline bimodal.
+
+## 16. Adenda - cierre de integración sobre main (2026-10-20, post PR #1)
+
+Continuación directa tras el merge de `Pruebas-santi` en `main` (`850ba39`). Se
+resolvieron todos los puntos pendientes dejados para decisión/confirmación en §14 y §15:
+
+- **Limpieza post-merge en `wato_emulator.py`:** el merge commit `a34f6da` había
+  duplicado la definición de `_build_running_obx`; se eliminó el duplicado y se
+  confirmó la versión de 6 modos ventilatorios (`VCV`, `SIMVVC_PLUS_PS`, `PCV`,
+  `SIMVPC_PLUS_PS`, `PS`, `MANUAL`, `CYCLE`) con el segmento opcional de auditoría
+  `NTE|1|SYNTHETIC-NOT-FOR-CLINICAL-USE...` (la trama máxima en `SIMV-VC+PS` es
+  3977 B < `max_message_size: 4096`).
+- **Decisión FSM `RUNNING -> STANDBY` (E2):** dado que ninguna captura de
+  `evidence_raw/` contiene la transición `SESION_ESTABLECIDA_RUNNING ->
+  SESION_ESTABLECIDA_STANDBY` (`LECTURAACK27AGOSTO.pcapng` solo muestra 13 `STANDBY`
+  → 86 `RUNNING`), se retiró de `state_transitions_observed` tanto en `baseline.yaml`
+  como en `src/evidence/baseline_builder.py` y se quitó el `@pytest.mark.xfail` de
+  `test_running_a_standby_no_verificado_sigue_alertando` en
+  `tests/test_enmiendas_e2_e3.py`. Toda transición no observada alerta `R-STATE-001`.
+- **Decisión sobre el FP de transición en `run_experiment.py` (§14):** se mantiene
+  `R-TIME-002` **global entre sesiones** (§5, indispensable para que `A13`
+  `repeated_reconnections` detecte 5/5). La causa del único FP en la transición
+  `FASE ANÓMALA -> FASE BENIGNA 2` (0.33 s < 5.0 s) era que el orquestador lanzaba el
+  emulador de la fase 2 inmediatamente al terminar el generador de anomalías. Se
+  añadió `time.sleep(args.interval)` antes de `FASE BENIGNA 2` (en `run_local` y
+  `run_docker`), respetando la cadencia benigna sin disparar el vigilante de silencio
+  E3 (15 s).
+- **Verificación ejecutada (2026-10-20):**
+  - Suite completa: **`246 passed` en 39.28 s** (`0 xfailed`).
+  - Detección offline (`detect_pcap.py`):
+    - `LECTURACONACK25AGOSTO.pcapng` (`STANDBY_v11`): **43/43 `NORMAL`, 0 anomalías**.
+    - `LECTURAACK27AGOSTO.pcapng` (`RUNNING_v11`): **99/99 `NORMAL`, 0 anomalías**.
+  - Corrida E2E local (`runs/20261020_212558`, `--exclude A14 --seed 100001`):
+    **64/64 inyecciones detectadas (TP=64, FN=0), 12/12 mensajes benignos limpios
+    (TN=12, FP=0), `recall=1.000`, `precision=1.000`, `F1=1.000`**.
+- **Documentación sincronizada:** `README.md`, `MANUAL_TESIS.md`, `docs/GUIA_USO.md`,
+  `docs/RESULTADOS_TESIS.md`, `docs/LIMITATIONS.md`, `docs/SRS_Resultados.md` (v1.2),
+  `docs/SPMP_Resultados.md` (v1.2), `docs/TRACEABILITY_MATRIX.csv` y este
+  `docs/HANDOFF.md` actualizados al estado bimodal v1.1 + Enmiendas E1–E8.
+
+- **Próximos pasos y mejoras recomendadas:**
+  1. Ejecución del banco en placa Raspberry Pi física (medición ARM de H2).
+  2. Ajuste preventivo del margen `max_message_size` (4096 vs 3977 B en SIMV-VC+PS).
+  3. Re-sellado de campaña oficial 30 corridas con `run_matrix.py` bajo baseline bimodal.
+
+## 17. Adenda - Enmienda E9, saneamiento de deudas técnicas y sellado bimodal v1.2 (2026-10-20)
+
+Desarrollo de los puntos de mejora del Handoff (§3 y `docs/AUDITORIA_REPO.md` §10):
+
+- **Enmienda E9 — Margen `max_message_size: 5120` y sincronización de `settings.yaml`:**
+  - Se elevó `wato_observed_standby.mllp.max_message_size` de `4096` a **`5120` B (5 KiB)** en
+    `src/config/settings.yaml`, otorgando **+1143 B (~29 %)** de holgura sobre la trama
+    máxima de `RUNNING` (`SIMV-VC+PS` emulado con `NTE` = 3977 B; real máx. = 3945 B) y
+    conservando la detección al 100 % de `A15` (`oversized_message`, ~16 KiB).
+  - Se sincronizó la sección `baseline_builder` de `src/config/settings.yaml` con
+    `baseline.yaml` v1.1 bimodal (`source_sessions`, `schema_version: "1.1"`, `message_length`
+    hasta 3945 B, 36 entradas de códigos OBX, 9 unidades MDC, `["CWE", "NM", "SN"]` y las
+    5 transiciones FSM observadas).
+- **Cierre de deudas técnicas en `src/` (`docs/AUDITORIA_REPO.md` §10):**
+  - Creados `src/hl7/__init__.py`, `src/detection/__init__.py` y `src/config/__init__.py`
+    (y documentados `src/mllp/__init__.py` y `src/evidence/__init__.py`), unificando los 6
+    subpaquetes de `src/`.
+  - Eliminado el bloque de código muerto inalcanzable tras `return None, 0` en
+    `src/mllp/framing.py::_try_extract_frame`.
+  - Nuevas pruebas en `tests/test_enmienda_e9.py` (5 pruebas, incluyendo verificación AST
+    contra código muerto post-`return`). Suite total: **`252 passed, 0 xfailed`**.
+- **Bench H2 y sellado `analysis_output/validation/bimodal_v12_20261020/`:**
+  - `latency_bench.py --messages 1000 --runs 3 --seed 20261020` →
+    `analysis_output/validation/latency_20261020_214029.json`: **p50 = 71.8 µs,
+    p95 = 206.31 µs, p99 = 374.71 µs** (≪ 500 µs → **PASS en PC**; Pi física sigue
+    `NO_VERIFICADO`).
+  - Paquete sellado en `analysis_output/validation/bimodal_v12_20261020/`
+    (`validation_bimodal_summary.json`, `evaluation.json`, `manifest.json`, manifiestos
+    offline `STANDBY` 43/43 y `RUNNING` 99/99, y bench H2) + `SHA256SUMS.txt` regenerado
+    (210 archivos sellados).
+
+## 18. Adenda - API pública (`__all__`) en `src/` y soporte bimodal en `run_experiment.py` (2026-10-20)
+
+- **API pública (`__all__`) en los 6 subpaquetes de `src/`:**
+  - `src/config/__init__.py`, `src/alerting/__init__.py` y `src/evidence/__init__.py`
+    re-exportan sus clases y funciones públicas en `__all__`.
+  - `src/hl7/__init__.py` y `src/detection/__init__.py` exponen su `__all__` completo
+    usando carga perezosa a nivel de módulo (`__getattr__`, PEP 562) para `validator` y
+    `engine`, evitando el ciclo de importación `hl7.validator <-> detection.baseline`.
+- **Soporte bimodal (`--state RUNNING --vent-mode`) en `run_experiment.py`:**
+  - Añadidos `--state {STANDBY,RUNNING}` y `--vent-mode {VCV,SIMVVC_PLUS_PS,PCV,SIMVPC_PLUS_PS,PS,MANUAL,CYCLE}`
+    al orquestador (`run_local`, `run_docker` y `manifest.json`), permitiendo ejecutar
+    campañas E2E con tráfico benigno multimodo en `RUNNING`.
+- **Suite completa:** **`252 passed, 0 xfailed`**.
+

@@ -147,6 +147,19 @@ Ejemplos:
         # 6. Servidor en hilo
         server_thread = threading.Thread(target=server.serve_forever, daemon=True)
         server_thread.start()
+
+        # Enmienda E3: vigilante de silencio (R-TIME-002). Revisa cada 1 s si
+        # el canal lleva más del límite de baseline sin mensajes.
+        def silence_watchdog():
+            while not shutdown_event.wait(1.0):
+                try:
+                    alert = detection_engine.check_silence()
+                    if alert:
+                        alert_logger.log_alert(alert)
+                except Exception as e:
+                    logger.error(f"Vigilante de silencio: {e}")
+
+        threading.Thread(target=silence_watchdog, daemon=True).start()
         
         logger.info("Servidor MLLP ejecutándose. Ctrl+C para detener.")
         

@@ -29,9 +29,7 @@ tesis como resultado; se declara como limitación. Complementa `docs/THREAT_MODE
 
 ## 3. Baseline y falsos positivos
 
-- Baseline STANDBY: 4 códigos OBX tipo CWE; RUNNING contiene ~23 códigos NM/SN
-  **NO_VERIFICADOS** → las reglas OBX pueden alertar sobre tráfico legítimo en RUNNING
-  (semitono esperado, cuantificable en Fase 9).
+- Baseline bimodal v1.1 (`STANDBY` + `RUNNING`): incorpora los 4 códigos CWE de `STANDBY` y los 29 códigos adicionales NM/SN/CWE de los 6 modos ventilatorios de `RUNNING` (33 códigos OBX y 9 unidades MDC en total), logrando 0 FP en ambas capturas reales (`LECTURACONACK25AGOSTO.pcapng` y `LECTURAACK27AGOSTO.pcapng`). En la Fase 9 inicial (con baseline unimodal `STANDBY`) se cuantificaron 256 alertas `R-OBX-*` sobre `RUNNING`. Segmentos de alarma fisiológica activa y la transición `RUNNING -> STANDBY` siguen `NO_VERIFICADOS`.
 - MSH-4 frecuentemente vacío en WATO → R-ID-002 con baja discriminación.
 - Límites `p95*1.5` de frecuencia calibrados sobre intervalos de ~10 s de STANDBY.
 
@@ -52,9 +50,10 @@ tesis como resultado; se declara como limitación. Complementa `docs/THREAT_MODE
 - **H2 (latencia ≤ 500 µs): NO VERIFICADO para la Raspberry Pi** — PASS de referencia
   en PC (p95 177.5 µs agregado, peor caso sintético). Repetir el bench en la Pi antes
   de afirmar H2 (`docs/RESULTS_20261014.md` §3, `docs/RASPBERRY_PI_SETUP.md`).
-- FP en RUNNING: **cuantificado** (256 alertas no-NORMAL sobre 99 ORU de evidencia
-  real, ~2.6/mensaje; reglas R-OBX-001/002/003 sobre códigos fuera de baseline
-  STANDBY). STANDBY: FP = 0 (5 replays independientes).
+- FP en evidencia real (H3): **STANDBY FP = 0** (43/43 NORMAL) y **RUNNING FP = 0**
+  (99/99 NORMAL) tras la actualización a baseline bimodal v1.1 + enmiendas E2–E5
+  (en Fase 9 inicial con baseline unimodal STANDBY se cuantificaron 256 alertas
+  R-OBX-001/002/003 sobre los 86 ORU en RUNNING).
 
 ## 6. Mapeo MITRE ATT&CK
 

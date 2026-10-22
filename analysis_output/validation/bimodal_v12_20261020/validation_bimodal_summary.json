@@ -1,0 +1,56 @@
+{
+  "version": "1.2-bimodal-E1-E9",
+  "sealed_at_utc": "2026-10-21T02:43:05.738899+00:00",
+  "pytest_suite": {
+    "passed": 251,
+    "xfailed": 0,
+    "failed": 0
+  },
+  "enmiendas_incluidas": [
+    "E1",
+    "E2",
+    "E3",
+    "E4",
+    "E5",
+    "E6",
+    "E7",
+    "E8",
+    "E9"
+  ],
+  "h1_e2e_local_run": {
+    "run_id": "20261020_212558",
+    "seed": 100001,
+    "tp": 64,
+    "fp": 0,
+    "tn": 12,
+    "fn": 0,
+    "recall": 1.0,
+    "precision": 1.0,
+    "f1_score": 1.0
+  },
+  "h2_latency_bench_pc": {
+    "file": "latency_20261020_214029.json",
+    "messages": 3000,
+    "runs": 3,
+    "p50_us": 71.8,
+    "p95_us": 206.31,
+    "p99_us": 374.71,
+    "threshold_p95_us": 500.0,
+    "status_pc": "PASS",
+    "status_pi": "NO_VERIFICADO"
+  },
+  "h3_real_captures_offline": {
+    "STANDBY": {
+      "pcap": "LECTURACONACK25AGOSTO.pcapng",
+      "messages": 43,
+      "normal": 43,
+      "fp": 0
+    },
+    "RUNNING": {
+      "pcap": "LECTURAACK27AGOSTO.pcapng",
+      "messages": 99,
+      "normal": 99,
+      "fp": 0
+    }
+  }
+}
