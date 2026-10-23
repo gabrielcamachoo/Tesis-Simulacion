@@ -11,7 +11,7 @@ ExecStartPre=/home/pi/wato/.venv/bin/python /home/pi/wato/deploy/receptor/make_d
 ExecStart=/home/pi/wato/.venv/bin/python mllp_receiver.py --config /home/pi/wato/evidence_output/settings_deploy.yaml --host 0.0.0.0 --port 1550 --verbose --outdir /home/pi/wato/evidence_output
 Restart=on-failure
 RestartSec=5
-User=pi
+User=tesis
 # Interlocks: sin privilegios de red salientes extra; el SafetyGuard valida
 # LAB_AUTHORIZED + /LAB_ONLY.marker al arrancar el proceso.
 
