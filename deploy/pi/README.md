@@ -1,41 +1,87 @@
-# Raspberry Pi — Detector de ciberataques HL7/MLLP (despliegue)
+# Despliegue en Raspberry Pi (flujo Windows -> Pi física)
 
-La Pi ejecuta el **detector** del laboratorio (receptor MLLP + motor de reglas +
-alertas JSONL). Nunca va inline en el WATO real: observa/sintetiza tráfico en la
-red aislada del lab. Documentación completa: `docs/RASPBERRY_PI_SETUP.md`.
+Este flujo es **remoto** y sin Docker:
 
-## Orden de uso
+- PC Windows con emulador WATO (IP variable por prueba; ejemplo validado `192.168.5.114`)
+- Raspberry Pi con receptor/detector (IP configurable; ejemplo validado `192.168.5.134`)
+- Transporte `TCP/MLLP` puerto `1550`
 
-| Paso | Script | Qué hace |
-|------|--------|----------|
-| 1 | `01_instalar.sh` | apt + venv + `requirements.txt` + suite pytest + `/LAB_ONLY.marker` |
-| 2 | `02_red_aislada.sh` | ufw: sin egress, sin ingress (solo 1550/tcp desde `192.168.5.114`) |
-| 3 | `03_instalar_servicio.sh` | servicio systemd `mllp-receiver` (arranque automático) |
-| 4a | `04_detector_online.sh` | **detector en línea**: escucha `0.0.0.0:1550`, alerta al vuelo |
-| 4b | `05_detector_offline.sh <pcap>` | **detector pasivo** (Modalidad B): `detect_pcap.py` sin abrir red |
-| 5 | `06_campana_validacion.sh [semilla]` | corrida completa benigno→A01–A16→evaluación en la Pi |
+```text
+Windows (wato_emulator.py / deploy/wato/wato.ps1)
+        -> Raspberry Pi (mllp_receiver.py + detector) :1550
+```
 
-## Topología activa en laboratorio
+## Qué script usar en la Pi
 
-- Simulador WATO (remoto): `192.168.5.114`
-- Raspberry Pi física (receptor/detector): `192.168.5.134`
-- Flujo: `192.168.5.114` -> `192.168.5.134:1550` (TCP/MLLP)
+| Script | Propósito |
+|---|---|
+| `01_instalar.sh` | prepara `.venv` y dependencias |
+| `03_instalar_servicio.sh` | instala `mllp-receiver.service` con usuario/ruta reales |
+| `07_preparar_prueba_remota.sh` | automatiza baseline allowlist + UFW exacto + systemd + verificaciones |
+| `04_detector_online.sh` | ejecución manual foreground del receptor (si no usas systemd) |
 
-## Alimentar al detector
+`deploy/pi/pi_detector_docker.ps1` **no aplica** para este flujo con Pi física.
 
-- **WATO (benigno):** `deploy/wato/wato.ps1` desde el equipo remoto `192.168.5.114`
-  apuntando a `192.168.5.134:1550`.
-- **Atacante (ransomware simulado):** `deploy/atacante/atacante_ransomware.ps1`
-  (el orquestador levanta receptor+emulador+atacante él mismo; para la Pi física
-  usar `06_campana_validacion.sh` o `run_experiment.py --mode local`).
-- No ejecutar el simulador WATO en la Pi física para este flujo.
-- `deploy/pi/pi_detector_docker.ps1` no se usa en esta modalidad (Pi física + emisor remoto).
+## Ejecución recomendada (Pi)
 
-## Interlocks (no negociables)
+```bash
+cd /home/tesis/Tesis-Simulacion
+git fetch origin
+git switch PruebasRaspi
+git pull --ff-only origin PruebasRaspi
 
-- `LAB_AUTHORIZED=YES` + `/LAB_ONLY.marker` (si falta, nada arranca).
-- Red de lab aislada: sin IP pública, sin Internet en runtime
-  (`block_public_ips: true`).
-- Cualquier IP emisora nueva debe agregarse exacta (sin CIDR) en
-  `baseline.yaml → network_parameters.allowed_ips`.
-- H2 (p95 ≤ 500 µs) **solo** se verifica con `latency_bench.py` en esta Pi física.
+sudo bash deploy/pi/07_preparar_prueba_remota.sh \
+  --wato-ip 192.168.5.114 \
+  --iface eth0 \
+  --service-user tesis \
+  --repo-path /home/tesis/Tesis-Simulacion \
+  --pi-ip 192.168.5.134
+```
+
+Opcional para no perder SSH al endurecer reglas:
+
+```bash
+sudo bash deploy/pi/07_preparar_prueba_remota.sh \
+  --wato-ip 192.168.5.114 \
+  --admin-ip <IP_ADMIN_SSH>
+```
+
+## Ejecución en Windows
+
+Desde PowerShell (en el repo local del PC):
+
+```powershell
+.\deploy\wato\probar_pi.ps1 `
+  -PiHost 192.168.5.134 `
+  -Port 1550 `
+  -Count 10 `
+  -Interval 10 `
+  -State STANDBY
+```
+
+Solo conectividad:
+
+```powershell
+.\deploy\wato\probar_pi.ps1 -PiHost 192.168.5.134 -ConnectivityOnly
+```
+
+## Alta/baja de IP del PC de prueba
+
+1. `baseline.yaml` -> `network_parameters.allowed_ips` (IPv4 exacta, sin CIDR)
+2. Regla UFW exacta al puerto 1550 para esa IP
+
+Alta manual rápida:
+
+```bash
+sudo ufw allow in on eth0 from <IP_PC> to any port 1550 proto tcp
+```
+
+Baja de IP vieja:
+
+```bash
+# baseline.yaml -> eliminar solo la IP exacta en network_parameters.allowed_ips
+sudo ufw status numbered
+sudo ufw delete <NUMERO_REGLA>
+```
+
+Guía detallada completa: `docs/RASPBERRY_PI_SETUP.md`.
