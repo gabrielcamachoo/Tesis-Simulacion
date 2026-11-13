@@ -519,6 +519,7 @@ network_parameters:
   client_role: WATO inicia conexión activa (cliente TCP / DOR IHE PCD-01)
   allowed_ips:
   - 192.168.23.250
+  - 192.168.5.114
   - 127.0.0.1
   - ::1
   - 172.30.0.10
