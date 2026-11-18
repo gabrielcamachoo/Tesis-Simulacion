@@ -1,12 +1,19 @@
+# PC Windows "WATO" (192.168.5.114). Opcion A: el emisor benigno le manda a la
+# Pi (receptor MLLP en 192.168.5.134:1550). Docker Desktop hace NAT de salida,
+# asi que la Pi ve el trafico con la IP del PC (.114), que esta en el baseline.
 services:
+  # Receptor local OPCIONAL (solo pruebas en el mismo PC, no participa en la
+  # prueba con la Pi): docker compose --profile receptor-local up -d
+  # y WATO_RECEIVER_HOST=wato para que el emisor le mande a el.
   wato:
+    profiles: ["receptor-local"]
     build:
       context: ../../..
       dockerfile: deploy/docker/simwato/Dockerfile
     environment:
       LAB_AUTHORIZED: "YES"
     ports:
-      - "0.0.0.0:1550:1550"
+      - "127.0.0.1:1550:1550"
     command:
       - python
       - mllp_receiver.py
@@ -28,22 +35,18 @@ services:
       - wato-lab
     restart: unless-stopped
 
-  # Emisor benigno dentro de la red Compose. El receptor se resuelve por
-  # el nombre de servicio "wato"; no usa localhost ni una IP fisica del host.
+  # Emisor benigno: sale del PC hacia la Pi por la red fisica.
   wato-benign:
     build:
       context: ../../..
       dockerfile: deploy/docker/simwato/Dockerfile
     environment:
       LAB_AUTHORIZED: "YES"
-    depends_on:
-      wato:
-        condition: service_healthy
     command:
       - python
       - wato_emulator.py
       - --host
-      - "${WATO_RECEIVER_HOST:-wato}"
+      - "${WATO_RECEIVER_HOST:-192.168.5.134}"
       - --port
       - "1550"
       - --bind-host
@@ -62,6 +65,7 @@ services:
       - "0"
     networks:
       - wato-lab
+    restart: unless-stopped
 
 networks:
   wato-lab:
