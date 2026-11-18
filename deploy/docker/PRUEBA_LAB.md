@@ -108,6 +108,40 @@ TARGET_IP=192.168.5.134 docker compose -f deploy/docker/simatacante/docker-compo
 regla del escenario, `por_ip` muestra la **IP de Kali**. En tcpdump,
 `<KALI_IP> > 192.168.5.134.1550`.
 
+### Ataques disponibles (A01–A16)
+
+Un escenario suelto se lanza cambiando `--scenario` (y `--count`, máx. el techo de la tabla):
+
+```bash
+LAB_AUTHORIZED=YES python3 anomaly_generator.py --scenario A05 --count 3 \
+  --host 192.168.5.134 --port 1550 --config src/config/settings.yaml
+```
+
+| ID | Qué manda Kali | Regla que debe salir en la Pi | Techo `--count` |
+|---|---|---|---|
+| A01 | Remitente lógico (MSH-3/MSH-4) desconocido | R-ID-001 | 10 |
+| A02 | Número de control (MSH-10) repetido | R-SEQ-001 | 10 |
+| A03 | Reenvío de un mensaje previo con número de control nuevo | R-SEQ-002 | 10 |
+| A04 | Fecha (MSH-7) que retrocede | R-TIME-001 | 10 |
+| A05 | Trama MLLP sin cierre (`0x1C 0x0D`) | R-MLLP-001 | 5 |
+| A06 | Bytes basura antes del inicio (`0x0B`) | R-MLLP-001 | 5 |
+| A07 | Mensaje sin segmento MSH | R-HL7-001 | 5 |
+| A08 | Segmentos en orden inválido | R-HL7-003 | 5 |
+| A09 | Tipo de mensaje fuera del baseline (ADT, ORM) | R-HL7-002 | 10 |
+| A10 | OBX con tipo de dato inesperado | R-OBX-003 | 10 |
+| A11 | OBX con unidad no permitida | R-OBX-002 | 10 |
+| A12 | Ráfaga de mensajes (≤20 en 5 s) | R-TIME-002 | 20 |
+| A13 | Reconexiones repetidas | R-TIME-002 | 5 |
+| A14 | Silencio de 45 s y luego mensaje (tarda; se omite con `--exclude-a14`) | R-TIME-002 | 3 |
+| A15 | Mensaje gigante (~32 KiB) | R-MLLP-001 | 5 |
+| A16 | Cambio de identidad lógica a mitad de sesión | R-ID-001 | 5 |
+
+- En la **campaña externa** cada mensaje de Kali además dispara **R-NET-001** (IP no autorizada).
+- Modo **ransomware** (solo A01, A05, A06, A13, A14, A16):
+  `TARGET_IP=192.168.5.134 docker compose -f deploy/docker/simatacante/docker-compose.yml run --rm attacker ransomware`
+- El ground truth de cada corrida queda en `runs/` (Python) o `runs/docker-attacker/` (Docker).
+- Detalle completo (STRIDE, MITRE, techos): `docs/ATTACK_SCENARIOS.md`.
+
 ---
 
 ## 5. Campaña interna (Kali autorizada)
