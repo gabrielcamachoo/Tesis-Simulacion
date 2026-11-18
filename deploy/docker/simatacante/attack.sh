@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TARGET="${WATO_IP:-192.168.5.114}"
+# TARGET_IP manda; WATO_IP queda por compatibilidad. Default: la Pi receptora.
+TARGET="${TARGET_IP:-${WATO_IP:-192.168.5.134}}"
 PORT="${MLLP_PORT:-1550}"
 MODE="${1:-all}"
 shift || true
