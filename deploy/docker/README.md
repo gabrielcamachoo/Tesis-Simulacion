@@ -197,6 +197,23 @@ Comportamientos esperados (no son fallas):
   el mismo número de control.
 - **R-TIME-002 por silencio al final**, si se apaga el emisor (paso 7).
 
+## Simulación de esta topología en red virtual (18-11-2026)
+
+Misma idea que la siguiente sección, pero con la Pi como receptor: namespaces
+`pi` (`.134`: `mllp_receiver.py` + `detect_live.py` sobre su propia interfaz),
+`pc` (`.114`: emisor STANDBY cada 10 s) y `kali` (`.50`), unidos por un bridge.
+Campañas A01–A16 sin A14, `--count 3` (64 inyecciones). **Simulación, no hardware
+real.**
+
+| Prueba | Resultado |
+|---|---|
+| Benigno solo, 60 s | 7 mensajes, 0 anomalías |
+| Campaña externa (`EXTRA_ALLOWED_IPS` vacío) | 64/64 detectadas (recall 1.0, F1 0.985); R-NET-001 ×63, todas sobre `192.168.5.50` |
+| Campaña interna (`EXTRA_ALLOWED_IPS=192.168.5.50`) | 64/64 detectadas sin ninguna R-NET-001 (recall 1.0, F1 0.985) |
+| Falsos positivos (cada campaña) | 2, ambos R-TIME-002 del emisor `.114` durante el ataque (efecto de cadencia descrito arriba) |
+| Emisor apagado | 1 R-TIME-002 por silencio (vigilante E3) |
+| Emisor en toda la corrida | 0 timeouts de ACK, 0 reconexiones, 0 errores |
+
 ## Resultados de la simulación en red virtual (18-11-2026)
 
 > Estos números salieron de una **simulación en red virtual** (Linux, namespaces
