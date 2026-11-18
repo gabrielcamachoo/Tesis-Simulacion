@@ -9,7 +9,8 @@
 > clínico real y sin malware.
 
 > **Versión final de código.** La Raspberry Pi ya corrió en hardware real como
-> receptor (22-10-2026: 10/10 mensajes con ACK `AA`). Además existe el modo pasivo en
+> receptor (22-10-2026: 10/10 mensajes con ACK `AA`, según el PR #3; los logs aún no
+> están en el repositorio). Además existe el modo pasivo en
 > vivo (`detect_live.py`, puerto espejo), probado en una red virtual de tres máquinas;
 > falta repetirlo en la Pi física y medir H2 allí. Guía por máquina:
 > `deploy/docker/README.md`.

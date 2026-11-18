@@ -10,7 +10,8 @@ capturada previamente y un emulador en red aislada.
 >
 > - **Receptor** (`deploy/pi/`): la Pi física recibe el tráfico MLLP del emisor WATO
 >   remoto (`192.168.5.114 → 192.168.5.134:1550`). Probado en la Pi el 22-10-2026:
->   10 mensajes STANDBY, 10 ACK `AA`, 0 errores.
+>   10 mensajes STANDBY, 10 ACK `AA`, 0 errores (registrado en el PR #3; los logs de
+>   esa corrida todavía no están en el repositorio).
 > - **Pasivo en vivo** (`deploy/docker/`, `detect_live.py`): la Pi escucha un puerto
 >   espejo del switch sin abrir conexiones. Probado en una red virtual con tres
 >   máquinas (estación, emisor WATO y Kali): 51/51 inyecciones detectadas, el emisor
