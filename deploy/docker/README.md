@@ -8,7 +8,7 @@ Compose para todo: cada equipo construye y corre su contenedor con
 
 | Máquina | IP | Carpeta | Qué hace |
 |---|---|---|---|
-| WATO receptor + emisor benigno | `192.168.5.114` | `simwato/` | Corre `mllp_receiver.py` en `0.0.0.0:1550` y `wato_emulator.py` por loopback `127.0.0.1:1550` |
+| WATO receptor + emisor benigno | `192.168.5.114` | `simwato/` | Corre `mllp_receiver.py` en `0.0.0.0:1550` y `wato_emulator.py` hacia `192.168.5.114:1550` desde la interfaz física |
 | Kali (atacante) | p. ej. `192.168.5.50` | `simatacante/` | Corre `anomaly_generator.py`: tráfico MLLP sintético A01–A16, sin malware |
 | Raspberry Pi (detector pasivo) | `192.168.5.134` | `raspberry/` | Escucha el **puerto espejo** del switch con `detect_live.py`; no abre ni reenvía conexiones |
 
@@ -18,9 +18,10 @@ Compose para todo: cada equipo construye y corre su contenedor con
                     └── puerto espejo ──► Raspberry Pi (captura)
 ```
 
-El emisor benigno corre dentro de la misma máquina WATO, hacia el receptor
-local `127.0.0.1:1550`. El tráfico benigno no sale por el switch; Kali sí llega
-por red desde su propia IP y puede ser observado por la Pi.
+El emisor benigno corre dentro de la misma máquina WATO y sale por
+`192.168.5.114:1550`. Configure el switch para mirrorear el puerto que recibe
+o envía tráfico de `.114`; así la Pi verá también el tráfico benigno y el ataque
+Kali. Una captura solo de loopback no permite a la Pi verlo.
 
 ## Requisitos (todas las máquinas)
 
@@ -74,8 +75,8 @@ Opciones (variables de entorno):
 | `WATO_STATE` | `STANDBY` | `RUNNING` para ventilación |
 | `WATO_VENT_MODE` | `VCV` | En RUNNING: `VCV`, `SIMVVC_PLUS_PS`, `PCV`, `SIMVPC_PLUS_PS`, `PS`, `MANUAL` o `CYCLE` (alterna los 6) |
 | `WATO_INTERVAL` | `10.0` | Segundos entre mensajes (el WATO real manda cada 10 s) |
-| `WATO_RECEIVER_HOST` | `127.0.0.1` | Receptor local del emisor |
-| `WATO_BIND_HOST` | `127.0.0.1` | IP local desde la que sale el emisor |
+| `WATO_RECEIVER_HOST` | `192.168.5.114` | Receptor físico del emisor |
+| `WATO_BIND_HOST` | `192.168.5.114` | IP física desde la que sale el emisor |
 
 El emisor no se detiene: si el ataque satura la estación (máx. 5 conexiones),
 reintenta cada 2 s y sigue cuando la estación se libera.
@@ -97,8 +98,8 @@ El ground truth queda en `runs/docker-attacker/<corrida>/ground_truth.jsonl`.
 ## Orden de la prueba
 
 1. Pi (§1) y WATO (§2).
-2. Esperar 1–2 minutos. El receptor local y el emisor benigno deben estar
-   activos; no debería haber anomalías del emisor loopback capturadas por la Pi.
+2. Esperar 1–2 minutos. El receptor y el emisor benigno deben estar activos;
+   en la Pi deben aparecer mensajes benignos procedentes de `192.168.5.114`.
 3. Ejecutar el ataque desde Kali (§3).
 4. Dejar correr 1–2 minutos más y revisar `docker logs` del WATO.
 5. Opcional: detener `wato-benign`; a los ~15 s la Pi debe dar **R-TIME-002 por

@@ -19,14 +19,14 @@ services:
     volumes:
       - ../../../runs/docker-wato:/lab_output
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import socket;s=socket.create_connection(('127.0.0.1',1550),2);s.close()\""]
+      test: ["CMD-SHELL", "python -c \"import socket;s=socket.create_connection(('192.168.5.114',1550),2);s.close()\""]
       interval: 5s
       timeout: 3s
       retries: 10
     restart: unless-stopped
 
-  # Emisor benigno de la misma maquina WATO (.114). Usa loopback contra el
-  # receptor local: reproduce emision y recepcion en una sola maquina.
+  # Emisor benigno de la misma maquina WATO (.114). Sale por la IP fisica
+  # del equipo para que el switch pueda ver el flujo y copiarlo al puerto SPAN.
   wato-benign:
     build:
       context: ../../..
@@ -41,11 +41,11 @@ services:
       - python
       - wato_emulator.py
       - --host
-      - "${WATO_RECEIVER_HOST:-127.0.0.1}"
+      - "${WATO_RECEIVER_HOST:-192.168.5.114}"
       - --port
       - "1550"
       - --bind-host
-      - "${WATO_BIND_HOST:-127.0.0.1}"
+      - "${WATO_BIND_HOST:-192.168.5.114}"
       - --state
       - "${WATO_STATE:-STANDBY}"
       - --vent-mode

@@ -16,8 +16,8 @@ services:
       MLLP_PORT: "${MLLP_PORT:-1550}"
       CAPTURE_OUTDIR: "/lab_output"
       # IP extra opcional SOLO para la campaña interna. La topologia WATO
-      # puede dejarse vacia: el emisor benigno usa loopback local.
-      EXTRA_ALLOWED_IPS: "${EXTRA_ALLOWED_IPS:-}"
+      # puede dejarse vacia; el emisor benigno usa la IP 192.168.5.114.
+      EXTRA_ALLOWED_IPS: "${EXTRA_ALLOWED_IPS:-192.168.5.114}"
       CAPTURE_FILTER: "${CAPTURE_FILTER:-tcp port 1550}"
       ROTATE_SECONDS: "${ROTATE_SECONDS:-3600}"
     volumes:
