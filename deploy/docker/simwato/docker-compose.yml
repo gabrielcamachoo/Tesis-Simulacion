@@ -20,6 +20,9 @@ services:
       - ../../../runs/docker-wato:/lab_output
     restart: unless-stopped
 
+  # Prueba local de humo: el emisor manda a 127.0.0.1 en ESTA máquina, así
+  # que su tráfico NO pasa por el switch y la Pi no lo ve. Para la prueba con
+  # la Pi use deploy/docker/simemisor desde otra máquina.
   wato-benign:
     profiles: ["benign"]
     build:
@@ -32,14 +35,18 @@ services:
       - python
       - wato_emulator.py
       - --host
-      - 127.0.0.1
+      - "${WATO_RECEIVER_HOST:-127.0.0.1}"
       - --port
       - "1550"
       - --state
       - "${WATO_STATE:-STANDBY}"
+      - --vent-mode
+      - "${WATO_VENT_MODE:-VCV}"
       - --count
-      - "${WATO_COUNT:-10}"
+      - "${WATO_COUNT:-0}"
       - --interval
-      - "${WATO_INTERVAL:-6.0}"
+      - "${WATO_INTERVAL:-10.0}"
       - --ack-timeout
       - "5"
+      - --max-reconnects
+      - "0"

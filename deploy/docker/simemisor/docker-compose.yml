@@ -1,0 +1,45 @@
+# Emisor WATO benigno CONTINUO (el "equipo médico" emulado).
+#
+# Se ejecuta en una máquina DISTINTA de la estación receptora (simWATO,
+# 192.168.5.114), para que su tráfico cruce el switch y la Pi lo capture por
+# el puerto espejo. Puede ser el mismo equipo de Kali.
+#
+# - --count 0: envía sin parar, con la estructura real del WATO EX-35.
+# - --max-reconnects 0: si el ataque satura el receptor, sigue reintentando
+#   y retoma solo cuando el receptor se recupera.
+# - BIND_IP (opcional): IP de origen del emisor. En Kali sirve para separar
+#   el tráfico benigno (IP autorizada) del atacante (IP no autorizada) con una
+#   IP secundaria:  sudo ip addr add 192.168.5.115/24 dev eth0
+services:
+  emisor:
+    container_name: simemisor-wato
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/simwato/Dockerfile
+    network_mode: host
+    environment:
+      LAB_AUTHORIZED: "YES"
+    command:
+      - python
+      - wato_emulator.py
+      - --host
+      - "${WATO_RECEIVER_HOST:-192.168.5.114}"
+      - --port
+      - "${MLLP_PORT:-1550}"
+      - --bind-host
+      - "${BIND_IP:-0.0.0.0}"
+      - --state
+      - "${WATO_STATE:-STANDBY}"
+      - --vent-mode
+      - "${WATO_VENT_MODE:-VCV}"
+      - --count
+      - "0"
+      - --interval
+      - "${WATO_INTERVAL:-10.0}"
+      - --ack-timeout
+      - "5"
+      - --max-reconnects
+      - "0"
+      - --reconnect-delay
+      - "2"
+    restart: unless-stopped
