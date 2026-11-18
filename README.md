@@ -59,6 +59,8 @@ docs/ETHICS_AND_SAFETY.md, docs/SIMULACION_RANSOMWARE.md, docs/RASPBERRY_PI_SETU
 docs/TRACEABILITY_MATRIX.csv (trazabilidad requisito→métrica).
 ```
 
+Los comandos Docker separados por máquina están en `deploy/docker/README.md`.
+
 ## Requisitos
 
 - Python 3.11+ (probado en 3.11.9; sin dependencias de sistema: el lector de
