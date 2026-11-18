@@ -183,3 +183,59 @@ def test_pcap_de_evidencia_rota_con_sha256(tmp_path):
     # Los archivos rotados juntos contienen exactamente los paquetes originales
     total = sum(len(list(iter_packets(str(a)))) for a in archivos)
     assert total == len(pk)
+
+
+# ---------------------------------------------------------------- framing
+def _tcp(src, sport, dst, dport, seq, flags, payload=b"", ts=0.0):
+    ip_len = 20 + 20 + len(payload)
+    eth = b"\x00\x11\x22\x33\x44\x55" + b"\x66\x77\x88\x99\xaa\xbb" + b"\x08\x00"
+    ip = struct.pack("!BBHHHBBH4s4s", 0x45, 0, ip_len, 1, 0, 64, 6, 0,
+                     socket.inet_aton(src), socket.inet_aton(dst))
+    tcp = struct.pack("!HHIIBBHHH", sport, dport, seq, 0, 5 << 4, flags, 65535, 0, 0)
+    return (ts, eth + ip + tcp + payload)
+
+
+def _primer_mensaje():
+    from detect_pcap import extract_flows
+    for fl in extract_flows(STANDBY):
+        if fl["messages"]:
+            return fl["messages"][0][0]
+
+
+SYN, ACK, FIN, PSH = 0x02, 0x10, 0x01, 0x08
+SRC = "192.168.23.250"   # IP autorizada: solo debe saltar la regla de framing
+
+
+def _flujo(payloads, desde_syn=True, cierre=True):
+    seq, t, pk = 1000, 1_800_000_000.0, []
+    if desde_syn:
+        pk.append(_tcp(SRC, 40000, "192.168.23.200", 1550, seq - 1, SYN, ts=t))
+    for p in payloads:
+        t += 0.1
+        pk.append(_tcp(SRC, 40000, "192.168.23.200", 1550, seq, PSH | ACK, p, ts=t))
+        seq += len(p)
+    if cierre:
+        pk.append(_tcp(SRC, 40000, "192.168.23.200", 1550, seq, FIN | ACK, ts=t + 0.1))
+    return pk
+
+
+def test_a05_trama_sin_delimitador_final(tmp_path):
+    msg = _primer_mensaje()
+    det = _run(tmp_path, _flujo([b"\x0b" + msg]))          # sin 0x1C 0x0D y cierra
+    assert det.by_rule.get("R-MLLP-001") == 1
+    assert det.messages == 0
+
+
+def test_a06_bytes_antes_del_inicio(tmp_path):
+    msg = _primer_mensaje()
+    det = _run(tmp_path, _flujo([b"XYZ\x0b" + msg + b"\x1c\x0d"]))
+    assert det.by_rule.get("R-MLLP-001") == 1
+    assert det.messages == 1
+
+
+def test_captura_que_empieza_a_mitad_de_trama_no_alerta(tmp_path):
+    msg = _primer_mensaje()
+    cola = msg[len(msg) // 2:] + b"\x1c\x0d"
+    det = _run(tmp_path, _flujo([cola, b"\x0b" + msg + b"\x1c\x0d"], desde_syn=False))
+    assert "R-MLLP-001" not in det.by_rule
+    assert det.messages == 1

@@ -60,7 +60,7 @@ from src.config.settings import load_settings
 from src.detection.baseline import load_baseline
 from src.detection.rules import RuleSet
 from src.detection.engine import DetectionEngine
-from src.alerting.json_logger import AlertLogger
+from src.alerting.json_logger import Alert, AlertLabel, AlertLogger, AlertSeverity
 from src.hl7.parser import parse_hl7_message
 
 LAB_ONLY_WARNING = (
@@ -90,9 +90,9 @@ class _Flow:
     """Estado de un flujo emisor -> :puerto MLLP."""
 
     __slots__ = ("src_ip", "src_port", "next_seq", "pending", "pending_bytes",
-                 "buf", "last_ts", "idx")
+                 "buf", "last_ts", "idx", "from_syn")
 
-    def __init__(self, src_ip, src_port, idx):
+    def __init__(self, src_ip, src_port, idx, from_syn=False):
         self.src_ip = src_ip
         self.src_port = src_port
         self.next_seq = None
@@ -101,6 +101,9 @@ class _Flow:
         self.buf = bytearray()
         self.last_ts = None
         self.idx = idx
+        # Visto desde el SYN: el primer byte es inicio de trama. Si la
+        # captura empezó a mitad de conexión, no se juzga lo previo al 0x0B.
+        self.from_syn = from_syn
 
 
 class PcapRotator:
@@ -208,12 +211,12 @@ class LiveDetector:
             if d.dport != self.port:
                 # Sentido receptor -> emisor (ACK HL7): solo cierre de flujo
                 if d.flags & (TCP_FIN | TCP_RST):
-                    self.flows.pop((d.dst_ip, d.dport, d.src_ip, d.sport), None)
+                    self._close_flow((d.dst_ip, d.dport, d.src_ip, d.sport), ts)
                 return
             key = (d.src_ip, d.sport, d.dst_ip, d.dport)
             fl = self.flows.get(key)
             if d.flags & TCP_SYN and not d.flags & TCP_ACK:
-                fl = _Flow(d.src_ip, d.sport, self.n_flows)
+                fl = _Flow(d.src_ip, d.sport, self.n_flows, from_syn=True)
                 self.n_flows += 1
                 fl.next_seq = (d.seq + 1) & 0xFFFFFFFF
                 self.flows[key] = fl
@@ -225,7 +228,37 @@ class LiveDetector:
             if d.payload:
                 self._segment(fl, d.seq, d.payload, ts)
             if d.flags & (TCP_FIN | TCP_RST):
-                self.flows.pop(key, None)
+                self._close_flow(key, ts)
+
+    def _close_flow(self, key, ts: float):
+        """Al cerrarse la conexión, una trama abierta sin 0x1C 0x0D es un
+        error de framing visible desde la red (R-MLLP-001, A05)."""
+        fl = self.flows.pop(key, None)
+        if fl is None or not fl.buf:
+            return
+        if fl.buf[:1] == SB:
+            self._framing_alert(fl, ts, f"trama MLLP incompleta al cerrar la "
+                                        f"conexión ({len(fl.buf)} B sin delimitador final)")
+        fl.buf.clear()
+
+    def _framing_alert(self, fl: _Flow, ts: float, error: str):
+        if not self.engine.rules.is_enabled("R-MLLP-001"):
+            return
+        reason = f"R-MLLP-001: {error}"
+        alert = Alert(
+            alert_id=f"ALERT-FRAME-{int(ts * 1000)}-{fl.idx}",
+            rule_id="R-MLLP-001",
+            timestamp_utc=datetime.fromtimestamp(ts, timezone.utc).isoformat(),
+            session_id=f"live:{fl.idx}:{fl.src_ip}:{fl.src_port}",
+            source=f"{fl.src_ip}:{fl.src_port}",
+            message_control_id="N/A",
+            severity=AlertSeverity.HIGH,
+            reason=reason,
+            evidence_hash=hashlib.sha256(reason.encode()).hexdigest(),
+            experimental_state="FRAMING_ERROR",
+            label=AlertLabel.ANOMALO)
+        self._count("R-MLLP-001", fl.src_ip)
+        self.alert_logger.log_alert(alert)
 
     def _segment(self, fl: _Flow, seq: int, payload: bytes, ts: float):
         if fl.next_seq is None:
@@ -246,6 +279,7 @@ class LiveDetector:
                 fl.next_seq = first
                 self.discarded_bytes += len(fl.buf)
                 fl.buf.clear()
+                fl.from_syn = False   # tras un hueco el flujo puede retomar a mitad de trama
                 self.resyncs += 1
                 self._drain(fl)
             return
@@ -282,9 +316,13 @@ class LiveDetector:
         while True:
             sb = fl.buf.find(SB)
             if sb < 0:
+                if fl.from_syn and bytes(fl.buf).strip():
+                    self._framing_alert(fl, t, f"{len(fl.buf)} B fuera de una trama MLLP")
                 self.discarded_bytes += len(fl.buf)
                 fl.buf.clear()
                 return
+            if sb > 0 and fl.from_syn and bytes(fl.buf[:sb]).strip():
+                self._framing_alert(fl, t, f"{sb} B antes del inicio de trama 0x0B")
             eom = fl.buf.find(EOM, sb + 1)
             if eom < 0:
                 if sb > 0:
