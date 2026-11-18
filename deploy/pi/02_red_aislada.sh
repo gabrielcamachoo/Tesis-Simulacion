@@ -8,12 +8,16 @@
 #   ADMIN_IP     IP de administracion para SSH (22/tcp). Si se ejecuta por SSH
 #                sin ADMIN_IP, el script se detiene ANTES de activar el
 #                firewall para no dejarlo por fuera de la Pi.
-#   LAB_IFACE    interfaz del laboratorio (default eth0)
+#   KALI_IP      IP de Kali (VM en modo puente) autorizada a llegar al 1550.
+#                Opcional; sin ella UFW descarta el handshake del atacante y
+#                el detector solo veria SYN sueltos.
+#   LAB_IFACE    interfaz del laboratorio (default wlan0; eth0 si se cablea)
 set -euo pipefail
 
-LAB_IFACE="${LAB_IFACE:-eth0}"
+LAB_IFACE="${LAB_IFACE:-wlan0}"
 WATO_SIM_IP="${WATO_SIM_IP:-192.168.5.114}"
 ADMIN_IP="${ADMIN_IP:-}"
+KALI_IP="${KALI_IP:-}"
 
 if [[ -n "${SSH_CONNECTION:-}" && -z "$ADMIN_IP" ]]; then
   echo "ERROR: estas conectado por SSH y no definiste ADMIN_IP."
@@ -32,10 +36,14 @@ if [[ -n "$ADMIN_IP" ]]; then
 fi
 # Solo el emisor WATO autorizado -> receptor MLLP (Pi) en red aislada:
 sudo ufw allow in on "$LAB_IFACE" from "$WATO_SIM_IP" to any port 1550 proto tcp
+if [[ -n "$KALI_IP" ]]; then
+  # Atacante del lab (campañas A01-A16) -> receptor de la Pi.
+  sudo ufw allow in on "$LAB_IFACE" from "$KALI_IP" to any port 1550 proto tcp
+fi
 sudo ufw --force enable
 sudo ufw status verbose
 
-echo "OK red aislada. Receptor habilitado en ${LAB_IFACE}:1550 solo para ${WATO_SIM_IP}."
+echo "OK red aislada. Receptor habilitado en ${LAB_IFACE}:1550 para ${WATO_SIM_IP}${KALI_IP:+ y ${KALI_IP}}."
 [[ -n "$ADMIN_IP" ]] && echo "SSH permitido solo desde ${ADMIN_IP}."
-echo "Nota: en modo pasivo (deploy/docker/raspberry) la Pi solo escucha el puerto"
-echo "espejo; ufw no bloquea la captura (tcpdump lee antes del firewall)."
+echo "Nota: tcpdump (deploy/docker/raspberry) captura antes del firewall, pero si"
+echo "ufw bloquea una IP la conexion nunca se establece y no hay mensajes HL7 que ver."
