@@ -1,3 +1,9 @@
 # Normalizacion de finales de linea para despliegue
 *.sh text eol=lf
 *.service text eol=lf
+
+# Evidencia y resultados sellados: se guardan byte a byte, sin convertir
+# finales de linea, para que los SHA-256 de SHA256SUMS.txt y de
+# evidence_inventory.csv coincidan en Windows y en Linux (cierre 2026-11-18).
+evidence_raw/** -text
+analysis_output/** -text
