@@ -120,28 +120,27 @@ No ejecutar `wato_emulator.py` en la Raspberry Pi para este flujo.
 
 ### 6.2 Servicio persistente con systemd
 
+La unidad real está en `deploy/pi/mllp-receiver.service` y la instala
+`deploy/pi/03_instalar_servicio.sh`, que reemplaza `/home/pi/wato` por la ruta
+real del repo. Puntos clave de esa unidad:
+
 ```ini
-# /etc/systemd/system/mllp-receiver.service
-[Unit]
-Description=Receptor MLLP de laboratorio (HL7/MLLP WATO)
-After=network-online.target
-
 [Service]
-WorkingDirectory=/home/pi/wato
+WorkingDirectory=/home/pi/wato            # el script pone la ruta real
 Environment=LAB_AUTHORIZED=YES
-ExecStart=/home/pi/wato/.venv/bin/python mllp_receiver.py --host 0.0.0.0 --port 1550
+ExecStartPre=.../deploy/receptor/make_deploy_settings.py .../evidence_output/settings_deploy.yaml
+ExecStart=.../.venv/bin/python mllp_receiver.py --config .../evidence_output/settings_deploy.yaml --host 0.0.0.0 --port 1550 --verbose --outdir .../evidence_output
 Restart=on-failure
-User=pi
-
-[Install]
-WantedBy=multi-user.target
+User=tesis                                # usuario de la Pi del laboratorio
 ```
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now mllp-receiver
+bash deploy/pi/03_instalar_servicio.sh
 journalctl -u mllp-receiver -f
 ```
+
+Si el usuario de la Pi no es `tesis`, cambie `User=` en
+`deploy/pi/mllp-receiver.service` antes de instalar.
 
 ### 6.3 Modo Docker en la Pi (opcional)
 

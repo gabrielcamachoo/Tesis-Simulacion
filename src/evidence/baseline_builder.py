@@ -635,6 +635,9 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
             'client_role': 'WATO inicia conexión activa (cliente TCP / DOR IHE PCD-01)',
             'allowed_ips': [
                 '192.168.23.250',
+                # Emisor WATO remoto de la Raspberry Pi física (PruebasRaspi,
+                # 22-10-2026). Debe coincidir con baseline.yaml.
+                '192.168.5.114',
                 '127.0.0.1',
                 '::1',
                 '172.30.0.10',
