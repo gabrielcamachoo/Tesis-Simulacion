@@ -27,20 +27,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Segmentos comunes usados por los estados que comparten la cabecera WATO.
-COMMON_MSH = (
-    "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
-    "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
-    "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
-)
-COMMON_PID = "PID|||^^^^PI||^^^^^^L|||"
-COMMON_PV1 = "PV1||I|^^^"
-COMMON_OBR = (
-    "OBR|1|{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
-    "{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
-    "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
-)
-
 # Importar componentes del proyecto
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 from src.mllp.framing import SB, EOM, frame_hl7_message, deframe_hl7_message
@@ -74,7 +60,7 @@ class EmulatorConfig:
     require_ack: bool = True
     ack_timeout: float = 5.0
     reconnect_delay: float = 2.0
-    max_reconnects: int = 3
+    max_reconnects: int = 3  # 0 = reintentar sin límite (tráfico benigno continuo)
 
 
 class WATOEmulator:
@@ -86,22 +72,112 @@ class WATOEmulator:
       - LECTURACONACK25AGOSTO.pcapng (STANDBY, 4 OBX CWE)
       - LECTURAACK27AGOSTO.pcapng (RUNNING, 6 modos ventilatorios, 17-28 OBX)
     """
-    
-    # Plantillas HL7 con la estructura observada en las capturas WATO.
+
+    COMMON_MSH = (
+        "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
+        "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
+        "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
+    )
+    COMMON_PID = "PID|||^^^^PI||^^^^^^L|||"
+    COMMON_PV1 = "PV1||I|^^^"
+    COMMON_OBR = (
+        "OBR|1|{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
+        "{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
+        "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
+    )
+
+    # Bloques OBX de estado del dispositivo en RUNNING (OBX 1..4 comunes)
+    RUNNING_HEADER_OBX = [
+        "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202902^MDC_EVT_STAT_RUNNING^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+        "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV^99MNDRY|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+        "OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE^99MNDRY|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+        "OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL^99MNDRY|1.3.1.30007|30000^MDC_TRUE^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+    ]
+
+    # Ajustes ventilatorios (OBX-11 = F) observados por modo en LECTURAACK27AGOSTO.pcapng
+    VENT_MODE_SETTINGS_OBX = {
+        "VCV": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50005^MNDRY_VENT_MODE_VCV^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20015^MDC_VOL_AWAY_TIDAL_SETTING^99MNDRY|1.3.2.20015|{vt_set}|263762^MDC_DIM_MILLI_L^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_set}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|8|SN|20000^MDC_RATIO_IE_SETTING^99MNDRY|1.3.2.20000|^1^:^2|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20007^MNDRY_VENT_PAUSE_TIME_PERCENT_SETTING^99MNDRY|1.3.2.20007|0|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|11|NM|20013^MNDRY_VENT_PRESS_LIMIT_SETTING^99MNDRY|1.3.2.20013|{plim_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+        ],
+        "SIMVVC_PLUS_PS": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50008^MNDRY_VENT_MODE_SIMVVC_PLUS_PS^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20015^MDC_VOL_AWAY_TIDAL_SETTING^99MNDRY|1.3.2.20015|{vt_set}|263762^MDC_DIM_MILLI_L^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_set}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|8|NM|20004^MNDRY_VENT_INSP_TIME_SETTING^99MNDRY|1.3.2.20004|1.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20014^MDC_VENT_PRESS_TRIG_SENS_SETTING^99MNDRY|1.3.2.20014|3.0|265216^MDC_DIM_L_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20003^MNDRY_VENT_DELTA_PRESS_SETTING^99MNDRY|1.3.2.20003|15|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|11|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|12|NM|20013^MNDRY_VENT_PRESS_LIMIT_SETTING^99MNDRY|1.3.2.20013|{plim_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|13|NM|20007^MNDRY_VENT_PAUSE_TIME_PERCENT_SETTING^99MNDRY|1.3.2.20007|0|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|14|NM|20044^MNDRY_VENT_TRIG_WINDOW_SETTING^99MNDRY|1.3.2.20044|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|15|NM|20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY|1.3.2.20005|0.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|16|NM|20026^MNDRY_VENT_EXP_TRIGGER_SETTING^99MNDRY|1.3.2.20026|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+        ],
+        "PCV": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50011^MNDRY_VENT_MODE_PCV^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20002^MNDRY_VENT_PRESS_INSP_SETTING^99MNDRY|1.3.2.20002|29|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_set}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|8|SN|20000^MDC_RATIO_IE_SETTING^99MNDRY|1.3.2.20000|^1^:^2|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY|1.3.2.20005|0.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+        ],
+        "SIMVPC_PLUS_PS": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50010^MNDRY_VENT_MODE_SIMVPC_PLUS_PS^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20002^MNDRY_VENT_PRESS_INSP_SETTING^99MNDRY|1.3.2.20002|29|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_set}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|8|NM|20004^MNDRY_VENT_INSP_TIME_SETTING^99MNDRY|1.3.2.20004|1.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20014^MDC_VENT_PRESS_TRIG_SENS_SETTING^99MNDRY|1.3.2.20014|3.0|265216^MDC_DIM_L_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY|1.3.2.20005|0.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|11|NM|20003^MNDRY_VENT_DELTA_PRESS_SETTING^99MNDRY|1.3.2.20003|15|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|12|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|13|NM|20044^MNDRY_VENT_TRIG_WINDOW_SETTING^99MNDRY|1.3.2.20044|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|14|NM|20026^MNDRY_VENT_EXP_TRIGGER_SETTING^99MNDRY|1.3.2.20026|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+        ],
+        "PS": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50006^MNDRY_VENT_MODE_PS^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|6|NM|20003^MNDRY_VENT_DELTA_PRESS_SETTING^99MNDRY|1.3.2.20003|15|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|7|NM|20005^MNDRY_VENT_SLOPE_TIME_SETTING^99MNDRY|1.3.2.20005|0.5|264320^MDC_DIM_SEC^MDC|||||F|||{timestamp}|",
+            "OBX|8|NM|20014^MDC_VENT_PRESS_TRIG_SENS_SETTING^99MNDRY|1.3.2.20014|3.0|265216^MDC_DIM_L_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|9|NM|20026^MNDRY_VENT_EXP_TRIGGER_SETTING^99MNDRY|1.3.2.20026|25|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
+            "OBX|10|NM|20001^MNDRY_RESP_RATE_MIN_SETTING^99MNDRY|1.3.2.20001|4|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
+            "OBX|11|NM|20027^MNDRY_VENT_DELTA_PRESS_APNEA_SETTING^99MNDRY|1.3.2.20027|15|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+            "OBX|12|SN|20043^MNDRY_VENT_APNEA_RATIO_IE_SETTING^99MNDRY|1.3.2.20043|^1^:^2|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+            "OBX|13|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_set}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
+        ],
+        "MANUAL": [
+            "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50000^MNDRY_VENT_MODE_MANUAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
+        ],
+    }
+
+    # Mediciones ventilatorias (OBX-11 = R / X) observadas en LECTURAACK27AGOSTO.pcapng
+    MEASURED_OBX_TEMPLATES = [
+        ("NM", "151957^MDC_VENT_PRESS_MAX^MDC", "1.3.2.151957", "{pip}", "266048^MDC_DIM_CM_H2O^MDC", "", "R"),
+        ("NM", "151819^MDC_PRESS_AWAY_INSP_MEAN^MDC", "1.3.2.151819", "{map}", "266048^MDC_DIM_CM_H2O^MDC", "", "R"),
+        ("NM", "151784^MDC_PRESS_RESP_PLAT^MDC", "1.3.2.151784", "{pplat}", "266048^MDC_DIM_CM_H2O^MDC", "", "R"),
+        ("NM", "151976^MDC_VENT_PRESS_AWAY_END_EXP_POS^MDC", "1.3.2.151976", "{peep}", "266048^MDC_DIM_CM_H2O^MDC", "", "R"),
+        ("NM", "151880^MDC_VOL_MINUTE_AWAY^MDC", "1.3.2.151880", "{mv}", "265216^MDC_DIM_L_PER_MIN^MDC", "", "R"),
+        ("NM", "152664^MDC_VOL_AWAY_TIDAL_EXP^MDC", "1.3.2.152664", "{vte}", "263762^MDC_DIM_MILLI_L^MDC", "", "R"),
+        ("NM", "152660^MDC_VOL_AWAY_TIDAL_INSP^MDC", "1.3.2.152660", "{vti}", "263762^MDC_DIM_MILLI_L^MDC", "", "R"),
+        ("SN", "151832^MDC_RATIO_IE^MDC", "1.3.2.151832", "^1^:^{ie_exp}", "262656^MDC_DIM_DIMLESS^MDC", "", "R"),
+        ("NM", "151840^MDC_RES_AWAY^MDC", "1.3.2.151840", "{raw_res}", "268064^MDC_DIM_CM_H2O_PER_L_PER_SEC^MDC", "", "R"),
+        ("NM", "151688^MDC_COMPL_LUNG^MDC", "1.3.2.151688", "{compl}", "268050^MDC_DIM_MILLI_L_PER_CM_H2O^MDC", "", "R"),
+        ("", "152196^MDC_CONC_AWAY_O2_INSP^MDC", "1.4.1.152196", "", "262688^MDC_DIM_PERCENT^MDC", "INV", "X"),
+        ("NM", "151586^MDC_VENT_RESP_RATE^MDC", "1.3.2.151586", "{rr}", "264928^MDC_DIM_RESP_PER_MIN^MDC", "", "R"),
+    ]
+
+    # Plantillas HL7 sintéticas basadas en evidencia observada
     TEMPLATES = {
         EmulatorState.STANDBY: {
-            'msh': (
-                "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
-                "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
-                "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
-            ),
-            'pid': "PID|||^^^^PI||^^^^^^L|||",
-            'pv1': "PV1||I|^^^",
-            'obr': (
-                "OBR|1|{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
-                "{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
-                "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
-            ),
+            'msh': COMMON_MSH,
+            'pid': COMMON_PID,
+            'pv1': COMMON_PV1,
+            'obr': COMMON_OBR,
             'obx': [
                 "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202836^MDC_EVT_STAT_STANDBY^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
                 "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV^99MNDRY|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
@@ -110,43 +186,11 @@ class WATOEmulator:
             ]
         },
         EmulatorState.RUNNING: {
-            'msh': (
-                "MSH|^~\\&|MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64||||"
-                "{timestamp}||ORU^R01^ORU_R01|{ctrl_id}|P|2.6|||NE|AL||UNICODE UTF-8|||"
-                "IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO"
-            ),
-            'pid': "PID|||^^^^PI||^^^^^^L|||",
-            'pv1': "PV1||I|^^^",
-            'obr': (
-                "OBR|1|{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
-                "{ctrl_id}^MINDRAY_WATOPRO-SERIES^000F14002D3586ec^EUI-64|"
-                "70040^MDC_DEV_SYS_ANESTH^MDC|||{timestamp}|"
-            ),
-            'obx': [
-                "OBX|1|CWE|202886^MDC_EVT_STAT_DEV^MDC|1.1.1.202886|202902^MDC_EVT_STAT_RUNNING^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
-                "OBX|2|CWE|30002^MNDRY_EVT_STAT_MODE_DEV^99MNDRY|1.1.1.30002|30003^MNDRY_EVT_STAT_MODE_NORMAL^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
-                "OBX|3|CWE|30005^MNDRY_EVT_PATIENT_TYPE^99MNDRY|1.1.1.30005|202890^MDC_EVT_STAT_DEV_MODE_ADULT^MDC|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
-                "OBX|4|CWE|30007^MNDRY_EVT_STAT_WARMER_ON_BOOL^99MNDRY|1.3.1.30007|30000^MDC_TRUE^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
-                "OBX|5|CWE|184352^MDC_VENT_MODE^MDC|1.3.1.184352|50005^MNDRY_VENT_MODE_VCV^99MNDRY|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
-                "OBX|6|NM|20015^MDC_VOL_AWAY_TIDAL_SETTING^99MNDRY|1.3.2.20015|{tv_setting}|263762^MDC_DIM_MILLI_L^MDC|||||F|||{timestamp}|",
-                "OBX|7|NM|20016^MDC_VENT_RESP_RATE_SETTING^99MNDRY|1.3.2.20016|{rr_setting}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||F|||{timestamp}|",
-                "OBX|8|SN|20000^MDC_RATIO_IE_SETTING^99MNDRY|1.3.2.20000|^1^:^2|262656^MDC_DIM_DIMLESS^MDC|||||F|||{timestamp}|",
-                "OBX|9|NM|20007^MNDRY_VENT_PAUSE_TIME_PERCENT_SETTING^99MNDRY|1.3.2.20007|0|262688^MDC_DIM_PERCENT^MDC|||||F|||{timestamp}|",
-                "OBX|10|NM|20017^MDC_PRESS_AWAY_END_EXP_POS_SETTING^99MNDRY|1.3.2.20017|{peep_setting}|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
-                "OBX|11|NM|20013^MNDRY_VENT_PRESS_LIMIT_SETTING^99MNDRY|1.3.2.20013|30|266048^MDC_DIM_CM_H2O^MDC|||||F|||{timestamp}|",
-                "OBX|12|NM|151957^MDC_VENT_PRESS_MAX^MDC|1.3.2.151957|{pip}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
-                "OBX|13|NM|151819^MDC_PRESS_AWAY_INSP_MEAN^MDC|1.3.2.151819|{map}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
-                "OBX|14|NM|151784^MDC_PRESS_RESP_PLAT^MDC|1.3.2.151784|{plat}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
-                "OBX|15|NM|151976^MDC_VENT_PRESS_AWAY_END_EXP_POS^MDC|1.3.2.151976|{peep}|266048^MDC_DIM_CM_H2O^MDC|||||R|||{timestamp}|",
-                "OBX|16|NM|151880^MDC_VOL_MINUTE_AWAY^MDC|1.3.2.151880|{mv}|265216^MDC_DIM_L_PER_MIN^MDC|||||R|||{timestamp}|",
-                "OBX|17|NM|152664^MDC_VOL_AWAY_TIDAL_EXP^MDC|1.3.2.152664|{tv_exp}|263762^MDC_DIM_MILLI_L^MDC|||||R|||{timestamp}|",
-                "OBX|18|NM|152660^MDC_VOL_AWAY_TIDAL_INSP^MDC|1.3.2.152660|{tv_insp}|263762^MDC_DIM_MILLI_L^MDC|||||R|||{timestamp}|",
-                "OBX|19|SN|151832^MDC_RATIO_IE^MDC|1.3.2.151832|^1^:^2.1|262656^MDC_DIM_DIMLESS^MDC|||||R|||{timestamp}|",
-                "OBX|20|NM|151840^MDC_RES_AWAY^MDC|1.3.2.151840|95|268064^MDC_DIM_CM_H2O_PER_L_PER_SEC^MDC|||||R|||{timestamp}|",
-                "OBX|21|NM|151688^MDC_COMPL_LUNG^MDC|1.3.2.151688|3|268050^MDC_DIM_MILLI_L_PER_CM_H2O^MDC|||||R|||{timestamp}|",
-                "OBX|22||152196^MDC_CONC_AWAY_O2_INSP^MDC|1.4.1.152196||262688^MDC_DIM_PERCENT^MDC||INV|||X|||{timestamp}|",
-                "OBX|23|NM|151586^MDC_VENT_RESP_RATE^MDC|1.3.2.151586|{rr}|264928^MDC_DIM_RESP_PER_MIN^MDC|||||R|||{timestamp}|",
-            ]
+            'msh': COMMON_MSH,
+            'pid': COMMON_PID,
+            'pv1': COMMON_PV1,
+            'obr': COMMON_OBR,
+            'obx': []  # Construido dinámicamente según vent_mode en _build_message()
         },
         EmulatorState.ALARM_SIMULATED: {
             'msh': COMMON_MSH,
@@ -165,14 +209,21 @@ class WATOEmulator:
     
     # Rangos observados en LECTURAACK27AGOSTO.pcapng para modo RUNNING
     PHYSIOLOGICAL_RANGES = {
-        'tv': (60, 80),        # mL, tidal expirado/inspirado observado
-        'mv': (0.8, 0.9),      # L/min
-        'rr': (12, 13),        # /min
-        'pip': (30, 35),       # cmH2O
-        'map': (10, 18),       # cmH2O
-        'peep': (6, 8),        # cmH2O
-        'fio2': (0, 0),        # %; el WATO deja este OBX vacío
-        'etco2': (35, 45),     # no se usa en RUNNING_VCV
+        'vt_set': (400, 450),     # mL (setting 20015)
+        'rr_set': (12, 14),       # /min (setting 20016)
+        'peep_set': (6, 8),       # cmH2O (setting 20017)
+        'plim_set': (30, 35),     # cmH2O (setting 20013)
+        'vte': (62, 85),          # mL (152664 observado en pulmón de prueba)
+        'vti': (68, 86),          # mL (152660 observado en pulmón de prueba)
+        'mv': (0.6, 1.0),         # L/min (151880 observado)
+        'rr': (10, 14),           # /min (151586 observado)
+        'pip': (31, 35),          # cmH2O (151957 observado)
+        'map': (10, 16),          # cmH2O (151819 observado)
+        'pplat': (29, 34),        # cmH2O (151784 observado)
+        'peep': (5, 8),           # cmH2O (151976 observado)
+        'raw_res': (54, 60),      # cmH2O/(L/s) (151840 observado)
+        'compl': (2, 3),          # mL/cmH2O (151688 observado)
+        'ie_exp': (2.0, 2.3),     # relación I:E medida (^1^:^2.1)
     }
     
     ALARM_CODES = [
@@ -277,25 +328,31 @@ class WATOEmulator:
         
         # PID, PV1, OBR
         for seg_key in ['pid', 'pv1', 'obr']:
-            seg = template[seg_key].format(
-                timestamp=timestamp,
-                ctrl_id=self.ctrl_id,
-                **physio
-            )
+            seg = template[seg_key].format(timestamp=timestamp, ctrl_id=self.ctrl_id, **physio)
             segments.append(seg)
         
         # OBX segments
-        for obx_template in template['obx']:
-            obx = obx_template.format(
-                timestamp=timestamp,
-                ctrl_id=self.ctrl_id,
-                alarm_code=alarm_code,
-                alarm_text=alarm_text,
-                **physio
-            )
-            segments.append(obx)
+        if self.config.state == EmulatorState.RUNNING:
+            segments.extend(self._build_running_obx(timestamp, physio))
+        else:
+            for obx_template in template['obx']:
+                obx = obx_template.format(
+                    timestamp=timestamp,
+                    ctrl_id=self.ctrl_id,
+                    alarm_code=alarm_code,
+                    alarm_text=alarm_text,
+                    **physio
+                )
+                segments.append(obx)
         
-        return '\r'.join(segments) + '\r'
+        # Unir con \r y terminar con \r
+        hl7_message = '\r'.join(segments) + '\r'
+        
+        # Añadir prefijo sintético en comentario NTE opcional (auditabilidad)
+        nte = f"NTE|1|{self.config.synthetic_prefix} - State: {self.config.state.value} - Msg: {self.ctrl_id}"
+        hl7_message = hl7_message.rstrip('\r') + '\r' + nte + '\r'
+        
+        return hl7_message
 
     def _send_message(self, hl7_message: str) -> bool:
         """Envía mensaje HL7 con framing MLLP y espera ACK si configurado."""
@@ -364,8 +421,9 @@ class WATOEmulator:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.settimeout(10)
             
-            # Bind a puerto local si se especifica
-            if self.config.bind_port > 0:
+            # Bind a IP y/o puerto local si se especifica (p. ej. para salir
+            # por la interfaz del laboratorio cuando el equipo tiene varias)
+            if self.config.bind_port > 0 or self.config.bind_host not in ("", "0.0.0.0"):
                 self.sock.bind((self.config.bind_host, self.config.bind_port))
             
             logger.info(f"Connecting to {self.config.receiver_host}:{self.config.receiver_port}")
@@ -412,9 +470,16 @@ class WATOEmulator:
                 if not self._connect():
                     self.reconnect_count += 1
                     self.stats['reconnects'] += 1
-                    if self.reconnect_count >= self.config.max_reconnects:
+                    # max_reconnects <= 0: no se rinde nunca. Útil cuando un
+                    # atacante satura el receptor (A11/A12) y el emisor
+                    # benigno debe seguir transmitiendo al recuperarse.
+                    if (self.config.max_reconnects > 0
+                            and self.reconnect_count >= self.config.max_reconnects):
                         logger.error(f"Max reconnects ({self.config.max_reconnects}) reached, stopping")
                         break
+                    if self.reconnect_count % 10 == 0:
+                        logger.warning(f"Receptor no disponible: {self.reconnect_count} "
+                                       f"reintentos seguidos, sigo intentando")
                     time.sleep(self.config.reconnect_delay)
                     continue
                 self.reconnect_count = 0
@@ -498,7 +563,8 @@ Ejemplos:
     parser.add_argument("--no-ack", action="store_true", help="No esperar ACK (modo fire-and-forget)")
     parser.add_argument("--ack-timeout", type=float, default=5.0, help="Timeout ACK en segundos")
     parser.add_argument("--reconnect-delay", type=float, default=2.0, help="Delay entre reconexiones")
-    parser.add_argument("--max-reconnects", type=int, default=3, help="Máximo reintentos de conexión")
+    parser.add_argument("--max-reconnects", type=int, default=3,
+                        help="Máximo reintentos de conexión seguidos (0 = sin límite)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Logging detallado")
     
     args = parser.parse_args()
