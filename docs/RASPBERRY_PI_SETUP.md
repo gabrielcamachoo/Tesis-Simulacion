@@ -41,9 +41,12 @@ con los mismos interlocks de seguridad que en el host Windows:
 sudo apt install -y ufw
 sudo ufw default deny outgoing
 sudo ufw default deny incoming
-sudo ufw allow in on eth0 from 192.168.5.114 to any port 1550 proto tcp
+# La Pi del lab está por Wi-Fi (wlan0); si se cablea, usar eth0.
+sudo ufw allow in on wlan0 from 192.168.5.114 to any port 1550 proto tcp
+# Kali (VM en adaptador puente) para las campañas de ataque:
+# sudo ufw allow in on wlan0 from <IP_KALI> to any port 1550 proto tcp
 # Si administras por SSH, permitir ANTES de enable solo desde IP de administración conocida:
-# sudo ufw allow in on eth0 from <IP_ADMIN> to any port 22 proto tcp
+# sudo ufw allow in on wlan0 from <IP_ADMIN> to any port 22 proto tcp
 sudo ufw enable
 ```
 

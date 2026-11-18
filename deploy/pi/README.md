@@ -9,14 +9,15 @@ red aislada del lab. Documentación completa: `docs/RASPBERRY_PI_SETUP.md`.
 | Paso | Script | Qué hace |
 |------|--------|----------|
 | 1 | `01_instalar.sh` | apt + venv + `requirements.txt` + suite pytest + `/LAB_ONLY.marker` |
-| 2 | `02_red_aislada.sh` | ufw: sin egress, sin ingress (solo 1550/tcp desde `WATO_SIM_IP`, default `192.168.5.114`). Por SSH: `ADMIN_IP=<tu IP> bash deploy/pi/02_red_aislada.sh` (abre el 22 antes de activar el firewall) |
+| 2 | `02_red_aislada.sh` | ufw: sin egress, sin ingress (solo 1550/tcp desde `WATO_SIM_IP`, default `192.168.5.114`, y desde `KALI_IP` si se define). Interfaz `LAB_IFACE` (default `wlan0`; `eth0` si se cablea). Por SSH: `ADMIN_IP=<tu IP> KALI_IP=<IP de Kali> bash deploy/pi/02_red_aislada.sh` (abre el 22 antes de activar el firewall) |
 | 3 | `03_instalar_servicio.sh` | servicio systemd `mllp-receiver` (arranque automático) |
 | 4a | `04_detector_online.sh` | **detector en línea**: escucha `0.0.0.0:1550`, alerta al vuelo |
 | 4b | `05_detector_offline.sh <pcap>` | **detector pasivo** (Modalidad B): `detect_pcap.py` sin abrir red |
 | 5 | `06_campana_validacion.sh [semilla]` | corrida completa benigno→A01–A16→evaluación en la Pi |
 
-Modo **pasivo en vivo** (puerto espejo, sin recibir conexiones): ver
-`deploy/docker/README.md` (contenedor `raspberry`, usa `detect_live.py`).
+Detector **en vivo** junto al receptor (captura en `wlan0` lo que le llega a la
+Pi): ver `deploy/docker/README.md` (contenedor `raspberry`, usa `detect_live.py`).
+El switch del lab no tiene port mirroring, así que la Pi no es un tap pasivo.
 
 ## Topología activa en laboratorio
 
