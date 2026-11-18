@@ -18,19 +18,25 @@ services:
       - /lab_output/wato
     volumes:
       - ../../../runs/docker-wato:/lab_output
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket;s=socket.create_connection(('127.0.0.1',1550),2);s.close()\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
 
-  # Prueba local de humo: el emisor manda a 127.0.0.1 en ESTA máquina, así
-  # que su tráfico NO pasa por el switch y la Pi no lo ve. Para la prueba con
-  # la Pi use deploy/docker/simemisor desde otra máquina.
+  # Emisor benigno de la misma maquina WATO (.114). Usa loopback contra el
+  # receptor local: reproduce emision y recepcion en una sola maquina.
   wato-benign:
-    profiles: ["benign"]
     build:
       context: ../../..
       dockerfile: deploy/docker/simwato/Dockerfile
     network_mode: host
     environment:
       LAB_AUTHORIZED: "YES"
+    depends_on:
+      wato:
+        condition: service_healthy
     command:
       - python
       - wato_emulator.py
@@ -38,6 +44,8 @@ services:
       - "${WATO_RECEIVER_HOST:-127.0.0.1}"
       - --port
       - "1550"
+      - --bind-host
+      - "${WATO_BIND_HOST:-127.0.0.1}"
       - --state
       - "${WATO_STATE:-STANDBY}"
       - --vent-mode

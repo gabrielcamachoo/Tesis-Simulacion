@@ -1,4 +1,4 @@
-# Docker por máquina — prueba final con la Pi en modo pasivo
+# Docker por máquina — topología final WATO único
 
 Cada bloque se ejecuta **en su propia máquina física**. No se levanta un único
 Compose para todo: cada equipo construye y corre su contenedor con
@@ -8,21 +8,19 @@ Compose para todo: cada equipo construye y corre su contenedor con
 
 | Máquina | IP | Carpeta | Qué hace |
 |---|---|---|---|
-| Estación receptora ("simWATO") | `192.168.5.114` | `simwato/` | Corre `mllp_receiver.py` en `0.0.0.0:1550`: hace de estación central que recibe el HL7 y responde ACK |
-| Emisor WATO (benigno) | otra máquina, p. ej. `192.168.5.115` | `simemisor/` | Corre `wato_emulator.py` **sin parar** (`--count 0`) y sin rendirse si el receptor se cae (`--max-reconnects 0`) |
+| WATO receptor + emisor benigno | `192.168.5.114` | `simwato/` | Corre `mllp_receiver.py` en `0.0.0.0:1550` y `wato_emulator.py` por loopback `127.0.0.1:1550` |
 | Kali (atacante) | p. ej. `192.168.5.50` | `simatacante/` | Corre `anomaly_generator.py`: tráfico MLLP sintético A01–A16, sin malware |
 | Raspberry Pi (detector pasivo) | `192.168.5.134` | `raspberry/` | Escucha el **puerto espejo** del switch con `detect_live.py`; no abre ni reenvía conexiones |
 
 ```text
- Emisor WATO ──MLLP──┐
- (192.168.5.115)     ├──► switch ──► Estación 192.168.5.114:1550
- Kali ───────MLLP────┘       │
- (192.168.5.50)              └── puerto espejo ──► Raspberry Pi (captura)
+ Kali ──MLLP──► WATO 192.168.5.114:1550
+                    │
+                    └── puerto espejo ──► Raspberry Pi (captura)
 ```
 
-**El emisor benigno tiene que ir en una máquina distinta de la estación.** Si
-corre en la misma, manda a `127.0.0.1`, el tráfico no pasa por el switch y la
-Pi no lo ve. Puede ir en el equipo de Kali (ver §3).
+El emisor benigno corre dentro de la misma máquina WATO, hacia el receptor
+local `127.0.0.1:1550`. El tráfico benigno no sale por el switch; Kali sí llega
+por red desde su propia IP y puede ser observado por la Pi.
 
 ## Requisitos (todas las máquinas)
 
@@ -41,13 +39,13 @@ la estación. Sin eso la Pi no ve nada.
 ```bash
 cd ~/Tesis-Simulacion
 CAPTURE_INTERFACE=eth0 \
-EXTRA_ALLOWED_IPS=192.168.5.115 \
   docker compose -f deploy/docker/raspberry/docker-compose.yml up -d --build
 docker logs -f pi-mllp-detector
 ```
 
-- `EXTRA_ALLOWED_IPS`: IP del emisor WATO benigno. Se autoriza **solo para esta
-  corrida**; `baseline.yaml` no cambia.
+- `EXTRA_ALLOWED_IPS`: IP opcional de Kali. Se autoriza **solo para la campaña
+  interna**; en la campaña externa debe quedarse vacía. No modifica
+  `baseline.yaml`.
 - Cada 30 s aparece una línea `[live] paquetes=… mensajes=… anomalías=… por_regla=… por_ip=…`.
   Si `paquetes` no sube, el puerto espejo no está llegando a la Pi.
 - Salidas en `runs/docker-pi/live_<fecha>/`:
@@ -61,19 +59,12 @@ Detener (escribe el resumen final):
 docker compose -f deploy/docker/raspberry/docker-compose.yml down
 ```
 
-## 2. Estación receptora ("simWATO") — `192.168.5.114`
+## 2. WATO único — receptor y emisor en `192.168.5.114`
 
 ```bash
-docker compose -f deploy/docker/simwato/docker-compose.yml up -d --build wato
-docker compose -f deploy/docker/simwato/docker-compose.yml logs -f wato
-```
-
-## 3. Emisor WATO benigno — otra máquina
-
-```bash
-WATO_RECEIVER_HOST=192.168.5.114 \
-  docker compose -f deploy/docker/simemisor/docker-compose.yml up -d --build
-docker logs -f simemisor-wato
+docker compose -f deploy/docker/simwato/docker-compose.yml up -d --build
+docker compose -f deploy/docker/simwato/docker-compose.yml ps
+docker compose -f deploy/docker/simwato/docker-compose.yml logs -f wato wato-benign
 ```
 
 Opciones (variables de entorno):
@@ -83,21 +74,13 @@ Opciones (variables de entorno):
 | `WATO_STATE` | `STANDBY` | `RUNNING` para ventilación |
 | `WATO_VENT_MODE` | `VCV` | En RUNNING: `VCV`, `SIMVVC_PLUS_PS`, `PCV`, `SIMVPC_PLUS_PS`, `PS`, `MANUAL` o `CYCLE` (alterna los 6) |
 | `WATO_INTERVAL` | `10.0` | Segundos entre mensajes (el WATO real manda cada 10 s) |
-| `BIND_IP` | `0.0.0.0` | IP de origen del emisor |
-
-**Si el emisor va en el mismo equipo de Kali**, dele una IP propia para que
-la Pi distinga el tráfico benigno del ataque:
-
-```bash
-sudo ip addr add 192.168.5.115/24 dev eth0
-BIND_IP=192.168.5.115 WATO_RECEIVER_HOST=192.168.5.114 \
-  docker compose -f deploy/docker/simemisor/docker-compose.yml up -d --build
-```
+| `WATO_RECEIVER_HOST` | `127.0.0.1` | Receptor local del emisor |
+| `WATO_BIND_HOST` | `127.0.0.1` | IP local desde la que sale el emisor |
 
 El emisor no se detiene: si el ataque satura la estación (máx. 5 conexiones),
 reintenta cada 2 s y sigue cuando la estación se libera.
 
-## 4. Kali — atacante
+## 3. Kali — atacante
 
 ```bash
 docker compose -f deploy/docker/simatacante/docker-compose.yml build
@@ -113,13 +96,13 @@ El ground truth queda en `runs/docker-attacker/<corrida>/ground_truth.jsonl`.
 
 ## Orden de la prueba
 
-1. Pi (§1) y estación (§2).
-2. Emisor benigno (§3). Esperar 1–2 minutos: en la Pi deben subir `mensajes` y
-   `normales` con `anomalías=0`.
-3. Ataque desde Kali (§4).
-4. Dejar el emisor 1–2 minutos más: debe seguir enviando (ver `docker logs`).
-5. Opcional: detener el emisor; a los ~15 s la Pi debe dar **R-TIME-002 por
-   silencio** (canal caído).
+1. Pi (§1) y WATO (§2).
+2. Esperar 1–2 minutos. El receptor local y el emisor benigno deben estar
+   activos; no debería haber anomalías del emisor loopback capturadas por la Pi.
+3. Ejecutar el ataque desde Kali (§3).
+4. Dejar correr 1–2 minutos más y revisar `docker logs` del WATO.
+5. Opcional: detener `wato-benign`; a los ~15 s la Pi debe dar **R-TIME-002 por
+   silencio** si el vigilante observa el canal.
 6. Detener la Pi y llevar `runs/docker-pi/live_*` y el ground truth de Kali a
    una sola máquina para evaluar:
 
@@ -134,8 +117,8 @@ LAB_AUTHORIZED=YES python evaluate.py \
 
 | Campaña | `EXTRA_ALLOWED_IPS` en la Pi | Qué demuestra |
 |---|---|---|
-| **A. Atacante externo** | solo el emisor (`192.168.5.115`) | Kali no está autorizado: **todo** lo suyo dispara R-NET-001, además de la regla de contenido de cada escenario |
-| **B. Atacante interno** | emisor y Kali (`192.168.5.115,192.168.5.50`) | Kali parece un equipo autorizado: lo detectan **solo** las reglas de contenido (MLLP, HL7, OBX, secuencia, tiempo, identidad) |
+| **A. Atacante externo** | vacío | Kali no está autorizado: **todo** lo suyo puede disparar R-NET-001, además de la regla de contenido de cada escenario |
+| **B. Atacante interno** | Kali (`192.168.5.50`) | Kali parece un equipo autorizado: lo detectan **solo** las reglas de contenido (MLLP, HL7, OBX, secuencia, tiempo, identidad) |
 
 Repórtelas por separado. En la campaña A, un 100 % de detección no prueba las
 reglas de contenido, porque R-NET-001 marca hasta un mensaje normal enviado
