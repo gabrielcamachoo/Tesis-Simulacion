@@ -8,7 +8,7 @@ Compose para todo: cada equipo construye y corre su contenedor con
 
 | Máquina | IP | Carpeta | Qué hace |
 |---|---|---|---|
-| WATO receptor + emisor benigno | `192.168.5.114` | `simwato/` | Corre `mllp_receiver.py` en `0.0.0.0:1550` y `wato_emulator.py` hacia `192.168.5.114:1550` desde la interfaz física |
+| WATO receptor + emisor benigno | `192.168.5.114` | `simwato/` | Corre `mllp_receiver.py` en `0.0.0.0:1550` y `wato_emulator.py` hacia el servicio interno `wato:1550` |
 | Kali (atacante) | p. ej. `192.168.5.50` | `simatacante/` | Corre `anomaly_generator.py`: tráfico MLLP sintético A01–A16, sin malware |
 | Raspberry Pi (detector pasivo) | `192.168.5.134` | `raspberry/` | Escucha el **puerto espejo** del switch con `detect_live.py`; no abre ni reenvía conexiones |
 
@@ -18,10 +18,9 @@ Compose para todo: cada equipo construye y corre su contenedor con
                     └── puerto espejo ──► Raspberry Pi (captura)
 ```
 
-El emisor benigno corre dentro de la misma máquina WATO y sale por
-`192.168.5.114:1550`. Configure el switch para mirrorear el puerto que recibe
-o envía tráfico de `.114`; así la Pi verá también el tráfico benigno y el ataque
-Kali. Una captura solo de loopback no permite a la Pi verlo.
+El emisor benigno corre dentro de la red Compose y se conecta al receptor por
+el nombre de servicio `wato:1550`. El puerto `1550/tcp` se publica hacia
+Windows, por lo que Kali puede alcanzar `192.168.5.114:1550`.
 
 ## Requisitos (todas las máquinas)
 
@@ -75,8 +74,8 @@ Opciones (variables de entorno):
 | `WATO_STATE` | `STANDBY` | `RUNNING` para ventilación |
 | `WATO_VENT_MODE` | `VCV` | En RUNNING: `VCV`, `SIMVVC_PLUS_PS`, `PCV`, `SIMVPC_PLUS_PS`, `PS`, `MANUAL` o `CYCLE` (alterna los 6) |
 | `WATO_INTERVAL` | `10.0` | Segundos entre mensajes (el WATO real manda cada 10 s) |
-| `WATO_RECEIVER_HOST` | `192.168.5.114` | Receptor físico del emisor |
-| `WATO_BIND_HOST` | `192.168.5.114` | IP física desde la que sale el emisor |
+| `WATO_RECEIVER_HOST` | `wato` | Nombre DNS interno del receptor Compose |
+| `WATO_BIND_HOST` | `0.0.0.0` | Interfaz disponible dentro del contenedor |
 
 El emisor no se detiene: si el ataque satura la estación (máx. 5 conexiones),
 reintenta cada 2 s y sigue cuando la estación se libera.
