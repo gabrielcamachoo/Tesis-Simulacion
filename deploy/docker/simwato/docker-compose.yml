@@ -1,0 +1,45 @@
+services:
+  wato:
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/simwato/Dockerfile
+    network_mode: host
+    environment:
+      LAB_AUTHORIZED: "YES"
+    command:
+      - python
+      - mllp_receiver.py
+      - --host
+      - 0.0.0.0
+      - --port
+      - "1550"
+      - --verbose
+      - --outdir
+      - /lab_output/wato
+    volumes:
+      - ../../../runs/docker-wato:/lab_output
+    restart: unless-stopped
+
+  wato-benign:
+    profiles: ["benign"]
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/simwato/Dockerfile
+    network_mode: host
+    environment:
+      LAB_AUTHORIZED: "YES"
+    command:
+      - python
+      - wato_emulator.py
+      - --host
+      - 127.0.0.1
+      - --port
+      - "1550"
+      - --state
+      - "${WATO_STATE:-STANDBY}"
+      - --count
+      - "${WATO_COUNT:-10}"
+      - --interval
+      - "${WATO_INTERVAL:-6.0}"
+      - --ack-timeout
+      - "5"

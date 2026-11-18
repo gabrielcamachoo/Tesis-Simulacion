@@ -1,0 +1,13 @@
+services:
+  attacker:
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/simatacante/Dockerfile
+    network_mode: host
+    environment:
+      LAB_AUTHORIZED: "YES"
+      WATO_IP: "${WATO_IP:-192.168.5.114}"
+      MLLP_PORT: "${MLLP_PORT:-1550}"
+      SEED: "${SEED:-2026101401}"
+    volumes:
+      - ../../../runs/docker-attacker:/lab_output
