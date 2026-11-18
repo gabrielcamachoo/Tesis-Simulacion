@@ -1,22 +1,25 @@
 # MANUAL DE LA TESIS — Detector de anomalías/ataques HL7/MLLP para el WATO EX-35
 
 **Proyecto:** G18 SIDRE · Pontificia Universidad Javeriana
-**Versión:** 2026-10-21 — versión con simulación Pi · Acompaña a `README.md` (estado) y `docs/RESULTADOS_TESIS.md` (números)
+**Versión:** 2026-11-18 — versión final de código · Acompaña a `README.md` (estado) y `docs/RESULTADOS_TESIS.md` (números)
 
 > **Alcance en una frase:** laboratorio reproducible y aislado (caja negra) que detecta
 > indicadores observables de un host comprometido en la red del monitor anestésico
 > Mindray WATO EX-35, usando solo tráfico HL7 v2.x/MLLP, sin contacto con equipo
 > clínico real y sin malware.
 
-> **Esta es la versión con simulación Pi.** La Raspberry Pi se ejecuta simulada en
-> Docker con el mismo código y la misma red aislada (§5.1, Opción B). La Pi física
-> (§2.2 y §5.1, Opción A) está documentada pero aún no se ha corrido en el hardware,
-> así que H2 queda sin verificar en la Pi.
+> **Versión final de código.** La Raspberry Pi ya corrió en hardware real como
+> receptor (22-10-2026: 10/10 mensajes con ACK `AA`, según el PR #3; los logs aún no
+> están en el repositorio). Además existe el detector en
+> vivo (`detect_live.py`). El modo pasivo por puerto espejo está probado solo en una
+> red virtual de tres máquinas: el switch del lab no tiene mirroring, así que en
+> hardware real la Pi es receptor y captura lo que le llega (no es un tap pasivo).
+> Falta correrlo en la Pi física y medir H2 allí. Guía por máquina:
+> `deploy/docker/README.md`.
 >
-> **Estado del detector:** está en un punto sólido. Las capturas reales dan 0 falsos
-> positivos en STANDBY (43/43 NORMAL) y en RUNNING (99/99 NORMAL), y pasan las 252
-> pruebas automatizadas (verificado el 21-10-2026). Desde esta versión el código queda
-> congelado: solo se documenta y se ejecutan las corridas oficiales.
+> **Estado del detector:** 0 falsos positivos con las capturas reales en STANDBY
+> (43/43) y RUNNING (99/99), 273 pruebas automatizadas y sello 210/210
+> (verificado el 18-11-2026). El código queda cerrado.
 
 ---
 
@@ -39,7 +42,7 @@
 | **Desplegar el WATO (emulador)** | `deploy/receptor/receptor.ps1` + `deploy/wato/wato.ps1` |
 | **Desplegar el atacante (ransomware simulado)** | `deploy/atacante/atacante_ransomware.ps1` |
 | Corrida completa automatizada | `run_experiment.py --mode local\|docker` |
-| Ejecutar las pruebas | `deploy/validacion/suite.ps1` (252 tests) |
+| Ejecutar las pruebas | `deploy/validacion/suite.ps1` (273 tests) |
 | Saber qué hace cada escenario A01–A16 | `docs/ATTACK_SCENARIOS.md` |
 | Metodología de medición | `docs/VALIDATION_PROTOCOL.md` |
 | Seguridad/ética | `docs/ETHICS_AND_SAFETY.md` |
@@ -54,7 +57,7 @@
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 
-# 2) Verificar (debe decir N passed, hoy 252):
+# 2) Verificar (debe decir N passed, hoy 273):
 deploy\validacion\suite.ps1
 
 # 3) Autorización del lab (obligatoria, ver §9):

@@ -5,20 +5,28 @@ host comprometido en la red de monitores multiparámetro Mindray WATO EX-35.
 No existe contacto con equipo clínico real: todo se ejecuta contra evidencia
 capturada previamente y un emulador en red aislada.
 
-> **Versión con simulación Pi (21-10-2026).** En esta versión la Raspberry Pi se
-> ejecuta simulada: la topología de la Pi corre en Docker con el mismo código y la
-> misma red aislada (`deploy/pi/pi_detector_docker.ps1`). El montaje en la Pi física
-> está documentado en `deploy/pi/` y `docs/RASPBERRY_PI_SETUP.md`, pero todavía no se
-> ha corrido en el hardware, así que la latencia (H2) sigue sin verificar en la Pi.
+> **Versión final de código (18-11-2026).** La Raspberry Pi ya corrió en hardware real
+> y el código queda cerrado. Hay dos formas de usar la Pi:
 >
-> **Estado del detector.** El detector está en un punto sólido. Las capturas reales
-> dan 0 falsos positivos en STANDBY (43/43 mensajes NORMAL,
-> `LECTURACONACK25AGOSTO.pcapng`) y en RUNNING (99/99 mensajes NORMAL,
-> `LECTURAACK27AGOSTO.pcapng`), con las 252 pruebas automatizadas pasando
-> (verificado el 21-10-2026 con `detect_pcap.py` y `pytest`).
+> - **Receptor** (`deploy/pi/`): la Pi física recibe el tráfico MLLP del emisor WATO
+>   remoto (`192.168.5.114 → 192.168.5.134:1550`). Probado en la Pi el 22-10-2026:
+>   10 mensajes STANDBY, 10 ACK `AA`, 0 errores (registrado en el PR #3; los logs de
+>   esa corrida todavía no están en el repositorio).
+> - **Receptor + detector en vivo** (`deploy/docker/`, `detect_live.py`): el PC `.114`
+>   (emisor benigno WATO) y Kali (VM en adaptador puente, IP propia) le mandan a la
+>   Pi `192.168.5.134:1550`; `detect_live.py` captura en la Pi (`wlan0`) lo que le
+>   llega. El switch del lab no tiene port mirroring, así que la Pi **no es un tap
+>   pasivo** en hardware real: el modo pasivo por espejo solo está validado en una
+>   red virtual y queda como trabajo futuro con un switch administrable.
+>   Falta correrlo en la Pi física y medir allí la latencia (H2).
 >
-> Desde esta versión el código queda congelado: solo se documenta y se ejecutan las
-> corridas oficiales.
+> **Estado del detector.** Las capturas reales dan 0 falsos positivos en STANDBY
+> (43/43 NORMAL, `LECTURACONACK25AGOSTO.pcapng`) y en RUNNING (99/99 NORMAL,
+> `LECTURAACK27AGOSTO.pcapng`), también con el detector en vivo. Pasan las 273
+> pruebas automatizadas y el sello `analysis_output/validation/SHA256SUMS.txt`
+> verifica 210/210 desde un clon limpio (`sha256sum -c SHA256SUMS.txt`).
+>
+> El código no cambia más: solo se documenta y se ejecutan las corridas oficiales.
 
 ## Estructura
 
@@ -58,6 +66,8 @@ docs/ATTACK_SCENARIOS.md, docs/THREAT_MODEL.md, docs/VALIDATION_PROTOCOL.md,
 docs/ETHICS_AND_SAFETY.md, docs/SIMULACION_RANSOMWARE.md, docs/RASPBERRY_PI_SETUP.md,
 docs/TRACEABILITY_MATRIX.csv (trazabilidad requisito→métrica).
 ```
+
+Los comandos Docker separados por máquina están en `deploy/docker/README.md`.
 
 ## Requisitos
 

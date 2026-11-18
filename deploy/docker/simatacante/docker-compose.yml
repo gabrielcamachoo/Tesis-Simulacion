@@ -1,0 +1,14 @@
+services:
+  attacker:
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/simatacante/Dockerfile
+    network_mode: host
+    environment:
+      LAB_AUTHORIZED: "YES"
+      # Destino: la Pi (receptor). WATO_IP se acepta por compatibilidad.
+      TARGET_IP: "${TARGET_IP:-${WATO_IP:-192.168.5.134}}"
+      MLLP_PORT: "${MLLP_PORT:-1550}"
+      SEED: "${SEED:-2026101401}"
+    volumes:
+      - ../../../runs/docker-attacker:/lab_output
