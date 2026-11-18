@@ -41,7 +41,7 @@ services:
       # Solo debug/manual. En Docker Desktop WSL2 con redes internal:true
       # el publish NO se materializa (verificado 2026-10-14); el E2E
       # automatizado no depende de esto (las fases van por DNS interno).
-      - "127.0.0.1:1550:1550"
+      - "0.0.0.0:1550:1550"
     networks:
       lab:
         ipv4_address: 172.30.0.20
