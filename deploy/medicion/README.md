@@ -121,3 +121,13 @@ Salida:
 - **Simwato:** si `cpu_pct` sube en `F2`, no es porque lo ataquen. Puede ser que la Pi tarde más en devolver los ACK.
 
 Solo la tabla resumen va a la documentación de la tesis, con aprobación del equipo. Los CSV crudos se quedan en `runs/`.
+
+## Resultados
+
+| Repetición | Fecha | Carpeta |
+|---|---|---|
+| rep1 | 19-11-2026 | [`resultados/rep1_20261119/`](resultados/rep1_20261119/README.md) |
+
+Nota: si `resource_sampler.py` se lanza en segundo plano (`nohup … &`), Ctrl+C
+no le llega; se detiene con `sudo pkill -f resource_sampler.py`. Las filas ya
+escritas no se pierden.
