@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""
+analyze_resources.py - Resume por fase los CSV de resource_sampler.py (Pi) y
+de deploy/medicion/medir_simwato.ps1 (PC).
+
+Para cada fase (F0, F1, F2, ...) y cada columna numérica saca promedio, p95 y
+máximo. Escribe una tabla Markdown y, por cada CSV, una gráfica SVG de la
+columna --plot con el fondo coloreado por fase.
+
+Uso:
+  python analyze_resources.py runs/recursos/pi_rep*.csv --out runs/recursos/pi_resumen.md
+  python analyze_resources.py runs/recursos/pc_rep*.csv --out runs/recursos/pc_resumen.md --plot cpu_pct
+"""
+
+import argparse
+import csv
+import sys
+from pathlib import Path
+
+from src.evidence.baseline_builder import percentile
+
+COLORS = ["#dbeafe", "#fee2e2", "#fef3c7", "#dcfce7", "#ede9fe", "#fce7f3"]
+
+
+def load(path):
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        return list(csv.DictReader(fh))
+
+
+def numeric_columns(rows):
+    cols = []
+    for c in rows[0]:
+        if c in ("ts_utc", "fase") or c.endswith("_n"):
+            continue
+        try:
+            [float(r[c]) for r in rows if r[c] != ""]
+            cols.append(c)
+        except ValueError:
+            pass
+    return cols
+
+
+def summarize(rows):
+    """{fase: {col: (promedio, p95, max)}} respetando el orden en que aparecen las fases."""
+    cols = numeric_columns(rows)
+    out = {}
+    for fase in dict.fromkeys(r["fase"] for r in rows):
+        sel = [r for r in rows if r["fase"] == fase]
+        out[fase] = {"n": len(sel)}
+        for c in cols:
+            v = sorted(float(r[c]) for r in sel if r[c] != "")
+            if v:
+                out[fase][c] = (sum(v) / len(v), percentile(v, 95), v[-1])
+    return out
+
+
+def to_markdown(title, summary):
+    cols = [c for c in next(iter(summary.values())) if c != "n"]
+    lines = [f"### {title}", "", "| Fase | Muestras | " + " | ".join(cols) + " |",
+             "|---|---|" + "---|" * len(cols)]
+    for fase, s in summary.items():
+        cells = [f"{s[c][0]:.1f} / {s[c][1]:.1f} / {s[c][2]:.1f}" if c in s else "" for c in cols]
+        lines.append(f"| {fase} | {s['n']} | " + " | ".join(cells) + " |")
+    lines += ["", "Cada celda: promedio / p95 / máximo.", ""]
+    return "\n".join(lines)
+
+
+def to_svg(rows, col, title):
+    """Línea de `col` en el tiempo (una muestra = un paso) con bandas por fase."""
+    w, h, pad = 900, 300, 40
+    vals = [float(r[col]) if r[col] != "" else 0.0 for r in rows]
+    top = max(max(vals), 1.0) * 1.1
+    x = lambda i: pad + i * (w - 2 * pad) / max(len(vals) - 1, 1)
+    y = lambda v: h - pad - v * (h - 2 * pad) / top
+    fases = list(dict.fromkeys(r["fase"] for r in rows))
+    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" font-family="sans-serif" font-size="12">',
+             f'<rect width="{w}" height="{h}" fill="white"/>']
+    start = 0
+    for i in range(1, len(rows) + 1):
+        if i == len(rows) or rows[i]["fase"] != rows[start]["fase"]:
+            fase = rows[start]["fase"]
+            color = COLORS[fases.index(fase) % len(COLORS)]
+            parts.append(f'<rect x="{x(start):.1f}" y="{pad}" width="{max(x(i - 1) - x(start), 1):.1f}" '
+                         f'height="{h - 2 * pad}" fill="{color}"/>')
+            parts.append(f'<text x="{x(start) + 3:.1f}" y="{pad + 14}">{fase}</text>')
+            start = i
+    pts = " ".join(f"{x(i):.1f},{y(v):.1f}" for i, v in enumerate(vals))
+    parts += [f'<polyline points="{pts}" fill="none" stroke="#1d4ed8" stroke-width="1.5"/>',
+              f'<text x="{pad}" y="20" font-size="14">{title} — {col} (máx {max(vals):.1f})</text>',
+              f'<text x="{pad}" y="{h - 12}">{rows[0]["ts_utc"]} → {rows[-1]["ts_utc"]}</text>',
+              "</svg>"]
+    return "\n".join(parts)
+
+
+def main():
+    p = argparse.ArgumentParser(description="Resumen por fase de los CSV de recursos")
+    p.add_argument("csv", nargs="+", help="CSV de resource_sampler.py o medir_simwato.ps1")
+    p.add_argument("--out", required=True, help="Markdown de salida (las SVG van al lado)")
+    p.add_argument("--plot", default="cpu_total_pct", help="Columna a graficar")
+    a = p.parse_args()
+
+    out = Path(a.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    md, todas = [], []
+    for f in a.csv:
+        rows = load(f)
+        if not rows:
+            print(f"AVISO: {f} está vacío, se omite", file=sys.stderr)
+            continue
+        todas += rows
+        md.append(to_markdown(Path(f).name, summarize(rows)))
+        if a.plot in rows[0]:
+            svg = out.with_name(Path(f).stem + f"_{a.plot}.svg")
+            svg.write_text(to_svg(rows, a.plot, Path(f).stem), encoding="utf-8")
+    if not todas:
+        print("ERROR: no hay muestras", file=sys.stderr)
+        return 1
+    if len(a.csv) > 1:
+        md.append(to_markdown("Todas las repeticiones juntas", summarize(todas)))
+    out.write_text("\n".join(md), encoding="utf-8")
+    print(out.read_text(encoding="utf-8"))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
