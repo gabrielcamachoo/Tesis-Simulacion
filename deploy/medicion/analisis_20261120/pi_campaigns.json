@@ -1,0 +1,57 @@
+{
+ "alertas_kali": 58972,
+ "antes_de_la_primera_campana": 0,
+ "campanas": 224,
+ "por_repeticion": {
+  "1": 74,
+  "2": 75,
+  "3": 75
+ },
+ "alertas_por_campana": [
+  213,
+  263.3,
+  266
+ ],
+ "cobertura_regla_esperada": {
+  "A01": "224/224",
+  "A02": "224/224",
+  "A03": "224/224",
+  "A04": "224/224",
+  "A05": "224/224",
+  "A06": "224/224",
+  "A07": "224/224",
+  "A08": "224/224",
+  "A09": "224/224",
+  "A10": "224/224",
+  "A11": "224/224",
+  "A12": "224/224",
+  "A13": "224/224",
+  "A15": "0/224",
+  "A16": "224/224"
+ },
+ "campanas_con_todas_las_reglas_esperadas": 0,
+ "campanas_con_todas_salvo_A15": 224,
+ "reglas_que_disparo_A15": [
+  [
+   "R-NET-001",
+   672
+  ],
+  [
+   "R-HL7-003",
+   672
+  ],
+  [
+   "R-TIME-002",
+   672
+  ],
+  [
+   "R-SEQ-001",
+   669
+  ],
+  [
+   "R-SEQ-002",
+   448
+  ]
+ ],
+ "R-NET-001_en_cada_campana": 224
+}

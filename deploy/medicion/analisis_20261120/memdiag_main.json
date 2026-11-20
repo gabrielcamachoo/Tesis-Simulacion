@@ -1,0 +1,146 @@
+{
+ "pcaps": [
+  "live_20261120_015249.pcap",
+  "live_20261120_025250.pcap"
+ ],
+ "paquetes": 77201,
+ "segundos_cpu": 42.8,
+ "alertas_por_ip": {
+  "192.168.5.114": 354,
+  "192.168.5.160": 58972
+ },
+ "alertas_por_regla": {
+  "R-HL7-001": 672,
+  "R-HL7-002": 672,
+  "R-HL7-003": 2016,
+  "R-ID-001": 2016,
+  "R-MLLP-001": 1344,
+  "R-NET-001": 14109,
+  "R-OBX-002": 670,
+  "R-OBX-003": 672,
+  "R-SEQ-001": 13384,
+  "R-SEQ-002": 8619,
+  "R-TIME-001": 691,
+  "R-TIME-002": 14461
+ },
+ "muestras": [
+  {
+   "paquetes": 20000,
+   "ts_utc": "02:23:16",
+   "tracemalloc_mb": 8.28,
+   "sesiones_motor": 349,
+   "ids_por_sesion": 3257,
+   "hashes_por_sesion": 1754,
+   "hashes_globales": 1490,
+   "ids_globales": 236,
+   "flujos_tcp_abiertos": 175
+  },
+  {
+   "paquetes": 40000,
+   "ts_utc": "02:47:09",
+   "tracemalloc_mb": 9.54,
+   "sesiones_motor": 698,
+   "ids_por_sesion": 6475,
+   "hashes_por_sesion": 3462,
+   "hashes_globales": 2937,
+   "ids_globales": 379,
+   "flujos_tcp_abiertos": 342
+  },
+  {
+   "paquetes": 60000,
+   "ts_utc": "03:14:45",
+   "tracemalloc_mb": 10.47,
+   "sesiones_motor": 1046,
+   "ids_por_sesion": 9713,
+   "hashes_por_sesion": 5190,
+   "hashes_globales": 4403,
+   "ids_globales": 544,
+   "flujos_tcp_abiertos": 501
+  },
+  {
+   "paquetes": 77201,
+   "ts_utc": "03:37:12",
+   "tracemalloc_mb": 11.21,
+   "sesiones_motor": 1345,
+   "ids_por_sesion": 12495,
+   "hashes_por_sesion": 6678,
+   "hashes_globales": 5624,
+   "ids_globales": 679,
+   "flujos_tcp_abiertos": 636
+  }
+ ],
+ "top_crecimiento": [
+  {
+   "archivo": "src/hl7/parser.py",
+   "linea": 151,
+   "crecimiento_kb": 613.3,
+   "bloques": 11230
+  },
+  {
+   "archivo": "src/detection/engine.py",
+   "linea": 198,
+   "crecimiento_kb": 504.9,
+   "bloques": 4924
+  },
+  {
+   "archivo": "src/detection/engine.py",
+   "linea": 194,
+   "crecimiento_kb": 439.0,
+   "bloques": 332
+  },
+  {
+   "archivo": "src/detection/engine.py",
+   "linea": 207,
+   "crecimiento_kb": 223.0,
+   "bloques": 332
+  },
+  {
+   "archivo": "<string>",
+   "linea": 8,
+   "crecimiento_kb": 210.1,
+   "bloques": 996
+  },
+  {
+   "archivo": "<string>",
+   "linea": 7,
+   "crecimiento_kb": 210.1,
+   "bloques": 996
+  },
+  {
+   "archivo": "src/detection/engine.py",
+   "linea": 133,
+   "crecimiento_kb": 176.1,
+   "bloques": 996
+  },
+  {
+   "archivo": "src/detection/engine.py",
+   "linea": 206,
+   "crecimiento_kb": 152.0,
+   "bloques": 0
+  },
+  {
+   "archivo": "src/detection/engine.py",
+   "linea": 122,
+   "crecimiento_kb": 138.2,
+   "bloques": 5897
+  },
+  {
+   "archivo": "detect_live.py",
+   "linea": 482,
+   "crecimiento_kb": 110.9,
+   "bloques": 4733
+  },
+  {
+   "archivo": "src/evidence/pcap_reader.py",
+   "linea": 199,
+   "crecimiento_kb": 76.8,
+   "bloques": 1456
+  },
+  {
+   "archivo": "detect_live.py",
+   "linea": 346,
+   "crecimiento_kb": 68.0,
+   "bloques": 996
+  }
+ ]
+}

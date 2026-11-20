@@ -1,0 +1,104 @@
+diff --git a/src/detection/engine.py b/src/detection/engine.py
+index 99b7796..3dc781c 100644
+--- a/src/detection/engine.py
++++ b/src/detection/engine.py
+@@ -217,6 +217,12 @@ class DetectionEngine:
+         if self.rules.is_enabled('R-TIME-002') and self.global_last_message_time > 0:
+             interval = now - self.global_last_message_time
+             ok, reason = validate_frequency(interval, self.baseline)
++            if not ok and self._short_interval_belongs_to_other_session(session, interval, now):
++                # Propuesta E10: el intervalo global corto lo causó un mensaje
++                # de OTRA sesión (p. ej. el atacante). Si la cadencia propia de
++                # esta sesión está dentro de la baseline, no se culpa a este
++                # mensaje; el mensaje intruso ya se evaluó al llegar.
++                ok = True
+             if not ok:
+                 alerts.append(self._make_alert('R-TIME-002', session, msg, reason, AlertSeverity.MEDIUM))
+         
+@@ -306,6 +312,22 @@ class DetectionEngine:
+         self._last_session_id = session.session_id
+         self._last_source = f"{session.source_ip}:{session.source_port}"
+ 
++    def _short_interval_belongs_to_other_session(self, session: SessionState,
++                                                 interval: float, now: float) -> bool:
++        """Propuesta E10 (R-TIME-002 atribuido por sesión).
++        Solo aplica a intervalos demasiado CORTOS. Devuelve True cuando el
++        mensaje anterior en el canal vino de otra sesión y el intervalo propio
++        de esta sesión (desde su mensaje anterior) cumple la baseline. Las
++        ráfagas dentro de una misma sesión (A12) y las conexiones nuevas sin
++        historial (A13) se siguen evaluando con el intervalo global."""
++        lower, _ = self.baseline.get_interval_bounds()
++        if interval >= lower:
++            return False
++        if session.last_message_time <= 0:
++            return False
++        own_ok, _ = validate_frequency(now - session.last_message_time, self.baseline)
++        return own_ok
++
+     def check_silence(self, now: Optional[float] = None) -> Optional[Alert]:
+         """
+         Enmienda E3 (2026-10-19) - vigilante de silencio (R-TIME-002).
+diff --git a/tests/test_propuesta_e10_rtime002.py b/tests/test_propuesta_e10_rtime002.py
+new file mode 100644
+index 0000000..99befb6
+--- /dev/null
++++ b/tests/test_propuesta_e10_rtime002.py
+@@ -0,0 +1,58 @@
++#!/usr/bin/env python3
++"""
++Propuesta E10: R-TIME-002 atribuye un intervalo corto a la sesión que lo causó.
++
++Problema (campaña H1, 7 FP; red virtual con la Pi, 2 FP): la regla medía la
++cadencia de forma global, así que un mensaje del atacante seguido del mensaje
++legítimo dejaba un intervalo corto y la alerta caía sobre el legítimo.
++Usa mensajes REALES del WATO (evidence_raw/, solo lectura).
++"""
++from tests.test_enmiendas_e2_e3 import lab_engine, _real_messages, _process, STANDBY_PCAP  # noqa: F401
++
++
++def _rtime(result):
++    return [a for a in result.alerts if a.rule_id == "R-TIME-002"]
++
++
++def test_legitimo_tras_mensaje_de_otra_sesion_no_alerta(lab_engine):
++    engine, clock = lab_engine
++    msgs = [m for m, _ in _real_messages(STANDBY_PCAP)]
++    t0 = clock["now"]
++    _process(engine, msgs[0], session="wato", port=2070)
++    clock["now"] = t0 + 8.0          # intruso desde otra sesión, intervalo normal
++    _process(engine, msgs[1], session="kali", ip="192.168.5.50", port=40000)
++    clock["now"] = t0 + 10.0         # el WATO sigue con su cadencia de 10 s
++    r = _process(engine, msgs[2], session="wato", port=2070)
++    assert _rtime(r) == []
++
++
++def test_rafaga_en_la_misma_sesion_sigue_alertando(lab_engine):
++    engine, clock = lab_engine
++    msgs = [m for m, _ in _real_messages(STANDBY_PCAP)]
++    t0 = clock["now"]
++    _process(engine, msgs[0], session="kali", ip="192.168.5.50", port=40000)
++    clock["now"] = t0 + 0.2
++    r = _process(engine, msgs[1], session="kali", ip="192.168.5.50", port=40000)
++    assert len(_rtime(r)) == 1
++
++
++def test_conexion_nueva_sin_historial_sigue_alertando(lab_engine):
++    engine, clock = lab_engine
++    msgs = [m for m, _ in _real_messages(STANDBY_PCAP)]
++    t0 = clock["now"]
++    _process(engine, msgs[0], session="wato", port=2070)
++    clock["now"] = t0 + 0.5          # A13: reconexión inmediata, sesión nueva
++    r = _process(engine, msgs[1], session="r1", ip="192.168.5.50", port=40001)
++    assert len(_rtime(r)) == 1
++
++
++def test_legitimo_con_cadencia_propia_corta_sigue_alertando(lab_engine):
++    engine, clock = lab_engine
++    msgs = [m for m, _ in _real_messages(STANDBY_PCAP)]
++    t0 = clock["now"]
++    _process(engine, msgs[0], session="wato", port=2070)
++    clock["now"] = t0 + 1.0
++    _process(engine, msgs[1], session="kali", ip="192.168.5.50", port=40000)
++    clock["now"] = t0 + 2.0          # la propia sesión del WATO va demasiado rápido
++    r = _process(engine, msgs[2], session="wato", port=2070)
++    assert len(_rtime(r)) == 1
