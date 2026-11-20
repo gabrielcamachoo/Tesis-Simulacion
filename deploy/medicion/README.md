@@ -162,6 +162,7 @@ si cumple aquí, el resultado es conservador.
 | Repetición | Fecha | Carpeta |
 |---|---|---|
 | rep1 | 19-11-2026 | [`resultados/rep1_20261119/`](resultados/rep1_20261119/README.md) |
+| H2 rep1–rep3 (30 min c/u) | 19-11-2026 | [`resultados/h2_20261119/`](resultados/h2_20261119/README.md) |
 
 Nota: si `resource_sampler.py` se lanza en segundo plano (`nohup … &`), Ctrl+C
 no le llega; se detiene con `sudo pkill -f resource_sampler.py`. Las filas ya

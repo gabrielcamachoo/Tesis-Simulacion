@@ -133,7 +133,7 @@ def h2_markdown(title, rows, summary):
         # Criterio (README, sección H2): las banderas ACTUALES (bits 0-3) en 0 en todas las muestras
         # y sin bandera nueva; las "ocurrió" (bits 16-19) heredadas del arranque se declaran.
         ok = all(int(t, 16) & 0xF == 0 for t in thr) and len(thr) == 1
-        lines += [f"- throttled: {', '.join(thr)} → " + ("válida (revisar también dmesg en la ventana)"
+        lines += [f"- throttled: {', '.join(thr)} -> " + ("válida (revisar también dmesg en la ventana)"
                                                        if ok else "**REPETIR esta repetición**"), ""]
     lines += ["| Fase | " + " | ".join(f"{c} {st} <= {lim:g}" for c, (st, lim) in UMBRALES.items())
               + " | Pendiente RAM detector (MB/min) |", "|---|" + "---|" * (len(UMBRALES) + 1)]
@@ -170,7 +170,7 @@ def to_svg(rows, col, title):
     pts = " ".join(f"{x(i):.1f},{y(v):.1f}" for i, v in enumerate(vals))
     parts += [f'<polyline points="{pts}" fill="none" stroke="#1d4ed8" stroke-width="1.5"/>',
               f'<text x="{pad}" y="20" font-size="14">{title} — {col} (máx {max(vals):.1f})</text>',
-              f'<text x="{pad}" y="{h - 12}">{rows[0]["ts_utc"]} → {rows[-1]["ts_utc"]}</text>',
+              f'<text x="{pad}" y="{h - 12}">{rows[0]["ts_utc"]} -> {rows[-1]["ts_utc"]}</text>',
               "</svg>"]
     return "\n".join(parts)
 
