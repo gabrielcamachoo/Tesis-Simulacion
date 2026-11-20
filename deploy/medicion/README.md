@@ -133,7 +133,7 @@ ajustaron a los resultados.
 | Latencia de evaluación por mensaje | p95 ≤ 500 µs | SRS RD-01 / RNF-001 (`latency_bench.py`, ≥ 1000 mensajes × ≥ 3 corridas, en la Pi) |
 | RAM de receptor + detector + tcpdump (`lab_rss_mb`) | máximo ≤ 64 MB en cada fase | SRS §2.1.6 ("el demonio analizador no debe exceder 64 MB"). Se aplica a la suma de los tres procesos, que es más estricto |
 | CPU de receptor + detector + tcpdump (`lab_cpu_pct`) | promedio ≤ 50 % de un núcleo en cada fase (≤ 12.5 % de la CPU total) | El SRS no fija umbral de CPU. Lo decidió el equipo el 19-11-2026, antes de medir |
-| Validez de la repetición | `throttled` = `0x0` en todas las muestras | Si aparece otro valor, hubo bajo voltaje o throttling y la repetición se repite |
+| Validez de la repetición | Ningún `Undervoltage detected` en `dmesg` dentro de la ventana de la repetición y banderas **actuales** de `throttled` (bits 0–3) en 0 en todas las muestras | Se repite si falla. Criterio ajustado el 19-11-2026, **antes de medir**: con la fuente disponible, la Pi registra caídas de voltaje solo durante el arranque (`dmesg` 20:51:48 y 20:52:22, luego estable), así que las banderas "ocurrió" (`0x50000`) quedan puestas desde el boot. Se declara como limitación |
 | Crecimiento de RAM | La pendiente de `detector_rss_mb` en `CARGA` no debe ser sostenidamente positiva | Se revisa la pendiente en MB/min y la gráfica `--plot detector_rss_mb` |
 
 **Repetición H2 (30 min):**
@@ -145,7 +145,7 @@ ajustaron a los resultados.
 | `REPOSO2` | 5 min | Solo el emisor WATO |
 
 Son 3 repeticiones (`h2_rep1..3`). Antes de cada una se revisa
-`vcgencmd get_throttled` (debe dar `0x0`; si no, se reinicia la Pi). Al
+`vcgencmd get_throttled` (bits 0–3 en 0) y se anota la hora para revisar `dmesg` al final. Al
 terminar cada repetición, con el medidor ya detenido, se corre en la Pi
 `LAB_AUTHORIZED=YES .venv/bin/python latency_bench.py --messages 1000 --runs 3`.
 

@@ -61,7 +61,7 @@ def test_h2_umbrales_pendiente_y_throttled(tmp_path):
     for i in range(4):  # REPOSO estable; CARGA con detector creciendo 1 MB/min y CPU 60 %
         for fase, cpu, rss in (("REPOSO", 1.0, 16.0), ("CARGA", 20.0, 16.0 + i)):
             rows.append({"ts_utc": f"2026-11-19T10:0{i}:00+00:00", "fase": fase,
-                         "throttled": "0x0" if i < 3 else "0x50000",
+                         "throttled": "0x50000" if i < 3 else "0x50005",
                          **{f"{g}_cpu_pct": cpu for g in analyze_resources.LAB},
                          **{f"{g}_rss_mb": rss for g in analyze_resources.LAB}})
     f = tmp_path / "pi_rep1.csv"

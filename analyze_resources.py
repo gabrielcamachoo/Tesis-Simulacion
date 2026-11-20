@@ -130,8 +130,11 @@ def h2_markdown(title, rows, summary):
     lines = [f"#### H2 — {title}", ""]
     thr = sorted({r.get("throttled", "") for r in rows} - {""})
     if thr:
-        ok = thr == ["0x0"]
-        lines += [f"- throttled: {', '.join(thr)} → " + ("válida" if ok else "**REPETIR esta repetición**"), ""]
+        # Criterio (README, sección H2): las banderas ACTUALES (bits 0-3) en 0 en todas las muestras
+        # y sin bandera nueva; las "ocurrió" (bits 16-19) heredadas del arranque se declaran.
+        ok = all(int(t, 16) & 0xF == 0 for t in thr) and len(thr) == 1
+        lines += [f"- throttled: {', '.join(thr)} → " + ("válida (revisar también dmesg en la ventana)"
+                                                       if ok else "**REPETIR esta repetición**"), ""]
     lines += ["| Fase | " + " | ".join(f"{c} {st} <= {lim:g}" for c, (st, lim) in UMBRALES.items())
               + " | Pendiente RAM detector (MB/min) |", "|---|" + "---|" * (len(UMBRALES) + 1)]
     for fase, s in summary.items():
