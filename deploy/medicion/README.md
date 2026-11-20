@@ -122,6 +122,41 @@ Salida:
 
 Solo la tabla resumen va a la documentación de la tesis, con aprobación del equipo. Los CSV crudos se quedan en `runs/`.
 
+## H2 en la Pi: umbrales fijados antes de medir
+
+Se fijaron el **19-11-2026, antes de la primera repetición H2**. El commit que
+agrega esta sección es anterior a todos los datos H2, así que los umbrales no se
+ajustaron a los resultados.
+
+| Métrica | Umbral | Origen |
+|---|---|---|
+| Latencia de evaluación por mensaje | p95 ≤ 500 µs | SRS RD-01 / RNF-001 (`latency_bench.py`, ≥ 1000 mensajes × ≥ 3 corridas, en la Pi) |
+| RAM de receptor + detector + tcpdump (`lab_rss_mb`) | máximo ≤ 64 MB en cada fase | SRS §2.1.6 ("el demonio analizador no debe exceder 64 MB"). Se aplica a la suma de los tres procesos, que es más estricto |
+| CPU de receptor + detector + tcpdump (`lab_cpu_pct`) | promedio ≤ 50 % de un núcleo en cada fase (≤ 12.5 % de la CPU total) | El SRS no fija umbral de CPU. Lo decidió el equipo el 19-11-2026, antes de medir |
+| Validez de la repetición | `throttled` = `0x0` en todas las muestras | Si aparece otro valor, hubo bajo voltaje o throttling y la repetición se repite |
+| Crecimiento de RAM | La pendiente de `detector_rss_mb` en `CARGA` no debe ser sostenidamente positiva | Se revisa la pendiente en MB/min y la gráfica `--plot detector_rss_mb` |
+
+**Repetición H2 (30 min):**
+
+| Fase | Duración | Qué corre |
+|---|---|---|
+| `REPOSO1` | 5 min | Solo el emisor WATO hacia la Pi (operación normal) |
+| `CARGA` | 20 min | WATO más la campaña de Kali (A01–A16 sin A14) en bucle |
+| `REPOSO2` | 5 min | Solo el emisor WATO |
+
+Son 3 repeticiones (`h2_rep1..3`). Antes de cada una se revisa
+`vcgencmd get_throttled` (debe dar `0x0`; si no, se reinicia la Pi). Al
+terminar cada repetición, con el medidor ya detenido, se corre en la Pi
+`LAB_AUTHORIZED=YES .venv/bin/python latency_bench.py --messages 1000 --runs 3`.
+
+`analyze_resources.py` calcula para cada CSV de la Pi la tabla de cumple / no
+cumple, la pendiente de la RAM y los valores de `throttled`. Con varios CSV
+agrega una tabla entre repeticiones (media ± desviación y máximo).
+
+Hardware usado: **Raspberry Pi 3 Model B (1 GB)**. El SRS pide una Pi 4, así
+que se declara como diferencia de plataforma. La Pi 3 es más lenta, de modo que
+si cumple aquí, el resultado es conservador.
+
 ## Resultados
 
 | Repetición | Fecha | Carpeta |

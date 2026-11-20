@@ -3,9 +3,16 @@
 analyze_resources.py - Resume por fase los CSV de resource_sampler.py (Pi) y
 de deploy/medicion/medir_simwato.ps1 (PC).
 
-Para cada fase (F0, F1, F2, ...) y cada columna numérica saca promedio, p95 y
-máximo. Escribe una tabla Markdown y, por cada CSV, una gráfica SVG de la
-columna --plot con el fondo coloreado por fase.
+Para cada fase (F0, F1, F2, ...) y cada columna numérica saca promedio, p95,
+máximo y desviación estándar. Escribe una tabla Markdown y, por cada CSV, una
+gráfica SVG de la columna --plot con el fondo coloreado por fase.
+
+En los CSV de la Pi agrega además (H2):
+  - lab_cpu_pct / lab_rss_mb: suma de receptor + detector + tcpdump;
+  - comparación contra los umbrales UMBRALES (cumple / NO cumple) por fase;
+  - pendiente de la RAM (MB/min) por fase, para ver si crece de forma constante;
+  - valores de `throttled` vistos (distinto de 0x0 = repetir la repetición);
+  - con varios CSV, tabla entre repeticiones (media, desviación, máximo).
 
 Uso:
   python analyze_resources.py runs/recursos/pi_rep*.csv --out runs/recursos/pi_resumen.md
@@ -14,23 +21,37 @@ Uso:
 
 import argparse
 import csv
+import statistics
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from src.evidence.baseline_builder import percentile
+
+LAB = ("receptor", "detector", "tcpdump")
+# Umbrales de H2 fijados ANTES de medir (deploy/medicion/README.md, sección H2).
+# columna -> (estadístico comparado, límite). 100 % de CPU = un núcleo.
+UMBRALES = {"lab_cpu_pct": ("promedio", 50.0),   # decisión del equipo, 19-11-2026
+            "lab_rss_mb": ("máximo", 64.0)}      # SRS §2.1.6: analizador ≤ 64 MB
+STAT = {"promedio": 0, "p95": 1, "máximo": 2}
 
 COLORS = ["#dbeafe", "#fee2e2", "#fef3c7", "#dcfce7", "#ede9fe", "#fce7f3"]
 
 
 def load(path):
     with open(path, newline="", encoding="utf-8-sig") as fh:
-        return list(csv.DictReader(fh))
+        rows = list(csv.DictReader(fh))
+    for r in rows:
+        if all(f"{g}_cpu_pct" in r for g in LAB):
+            for m in ("cpu_pct", "rss_mb"):
+                r[f"lab_{m}"] = round(sum(float(r[f"{g}_{m}"] or 0) for g in LAB), 1)
+    return rows
 
 
 def numeric_columns(rows):
     cols = []
     for c in rows[0]:
-        if c in ("ts_utc", "fase") or c.endswith("_n"):
+        if c in ("ts_utc", "fase", "throttled") or c.endswith("_n"):
             continue
         try:
             [float(r[c]) for r in rows if r[c] != ""]
@@ -41,7 +62,7 @@ def numeric_columns(rows):
 
 
 def summarize(rows):
-    """{fase: {col: (promedio, p95, max)}} respetando el orden en que aparecen las fases."""
+    """{fase: {col: (promedio, p95, max, desviación)}} en el orden en que aparecen las fases."""
     cols = numeric_columns(rows)
     out = {}
     for fase in dict.fromkeys(r["fase"] for r in rows):
@@ -50,7 +71,8 @@ def summarize(rows):
         for c in cols:
             v = sorted(float(r[c]) for r in sel if r[c] != "")
             if v:
-                out[fase][c] = (sum(v) / len(v), percentile(v, 95), v[-1])
+                sd = statistics.stdev(v) if len(v) > 1 else 0.0
+                out[fase][c] = (sum(v) / len(v), percentile(v, 95), v[-1], sd)
     return out
 
 
@@ -59,10 +81,68 @@ def to_markdown(title, summary):
     lines = [f"### {title}", "", "| Fase | Muestras | " + " | ".join(cols) + " |",
              "|---|---|" + "---|" * len(cols)]
     for fase, s in summary.items():
-        cells = [f"{s[c][0]:.1f} / {s[c][1]:.1f} / {s[c][2]:.1f}" if c in s else "" for c in cols]
+        cells = [f"{s[c][0]:.1f} / {s[c][1]:.1f} / {s[c][2]:.1f} / {s[c][3]:.1f}" if c in s else ""
+                 for c in cols]
         lines.append(f"| {fase} | {s['n']} | " + " | ".join(cells) + " |")
-    lines += ["", "Cada celda: promedio / p95 / máximo.", ""]
+    lines += ["", "Cada celda: promedio / p95 / máximo / desviación.", ""]
     return "\n".join(lines)
+
+
+def between_reps(summaries):
+    """{fase: {col: (media de los promedios, desviación entre repeticiones, máximo de máximos)}}."""
+    out = {}
+    for s in summaries:
+        for fase, cols in s.items():
+            for c, v in cols.items():
+                if c != "n":
+                    out.setdefault(fase, {}).setdefault(c, []).append(v)
+    return {f: {c: (statistics.mean(x[0] for x in v),
+                    statistics.stdev(x[0] for x in v) if len(v) > 1 else 0.0,
+                    max(x[2] for x in v)) for c, v in cols.items()}
+            for f, cols in out.items()}
+
+
+def reps_markdown(summaries):
+    b = between_reps(summaries)
+    cols = list(next(iter(b.values())))
+    lines = [f"### Entre repeticiones ({len(summaries)})", "",
+             "| Fase | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]
+    for fase, s in b.items():
+        lines.append(f"| {fase} | " + " | ".join(
+            f"{s[c][0]:.1f} +/- {s[c][1]:.1f} (máx {s[c][2]:.1f})" if c in s else "" for c in cols) + " |")
+    lines += ["", "Cada celda: media de los promedios por repetición +/- desviación entre "
+              "repeticiones (máximo de todas).", ""]
+    return "\n".join(lines)
+
+
+def slope_per_min(rows, col):
+    """Pendiente por mínimos cuadrados de `col` en MB (o la unidad de col) por minuto."""
+    t0 = datetime.fromisoformat(rows[0]["ts_utc"])
+    xs = [(datetime.fromisoformat(r["ts_utc"]) - t0).total_seconds() / 60 for r in rows]
+    ys = [float(r[col]) for r in rows]
+    mx, my = statistics.mean(xs), statistics.mean(ys)
+    den = sum((x - mx) ** 2 for x in xs)
+    return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / den if den else 0.0
+
+
+def h2_markdown(title, rows, summary):
+    """Umbrales, pendiente de la RAM y throttled de un CSV de la Pi."""
+    lines = [f"#### H2 — {title}", ""]
+    thr = sorted({r.get("throttled", "") for r in rows} - {""})
+    if thr:
+        ok = thr == ["0x0"]
+        lines += [f"- throttled: {', '.join(thr)} → " + ("válida" if ok else "**REPETIR esta repetición**"), ""]
+    lines += ["| Fase | " + " | ".join(f"{c} {st} <= {lim:g}" for c, (st, lim) in UMBRALES.items())
+              + " | Pendiente RAM detector (MB/min) |", "|---|" + "---|" * (len(UMBRALES) + 1)]
+    for fase, s in summary.items():
+        cells = []
+        for c, (st, lim) in UMBRALES.items():
+            v = s[c][STAT[st]]
+            cells.append(f"{v:.1f} {'cumple' if v <= lim else '**NO cumple**'}")
+        sel = [r for r in rows if r["fase"] == fase]
+        cells.append(f"{slope_per_min(sel, 'detector_rss_mb'):+.3f}" if len(sel) > 1 else "")
+        lines.append(f"| {fase} | " + " | ".join(cells) + " |")
+    return "\n".join(lines + [""])
 
 
 def to_svg(rows, col, title):
@@ -101,14 +181,18 @@ def main():
 
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    md, todas = [], []
+    md, todas, sums = [], [], []
     for f in a.csv:
         rows = load(f)
         if not rows:
             print(f"AVISO: {f} está vacío, se omite", file=sys.stderr)
             continue
         todas += rows
-        md.append(to_markdown(Path(f).name, summarize(rows)))
+        s = summarize(rows)
+        sums.append(s)
+        md.append(to_markdown(Path(f).name, s))
+        if "lab_cpu_pct" in rows[0]:
+            md.append(h2_markdown(Path(f).name, rows, s))
         if a.plot in rows[0]:
             svg = out.with_name(Path(f).stem + f"_{a.plot}.svg")
             svg.write_text(to_svg(rows, a.plot, Path(f).stem), encoding="utf-8")
@@ -116,6 +200,7 @@ def main():
         print("ERROR: no hay muestras", file=sys.stderr)
         return 1
     if len(a.csv) > 1:
+        md.append(reps_markdown(sums))
         md.append(to_markdown("Todas las repeticiones juntas", summarize(todas)))
     out.write_text("\n".join(md), encoding="utf-8")
     print(out.read_text(encoding="utf-8"))

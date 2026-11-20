@@ -15,6 +15,7 @@ Uso (en la Pi, fuera del contenedor):
 
 import argparse
 import csv
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -36,6 +37,16 @@ def read_temp_c():
         if entries:
             return round(entries[0].current, 1)
     return ""
+
+
+def read_throttled():
+    """Banderas de `vcgencmd get_throttled` ("0x0" = nada desde el arranque); '' sin vcgencmd."""
+    try:
+        out = subprocess.run(["vcgencmd", "get_throttled"], capture_output=True,
+                             text=True, timeout=2).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.strip().partition("=")[2]
 
 
 def read_phase(path):
@@ -75,6 +86,7 @@ def sample(tracked, phase_file):
         "mem_used_mb": round(mem.used / 2**20, 1),
         "mem_pct": mem.percent,
         "temp_c": read_temp_c(),
+        "throttled": read_throttled(),
     }
     for g in GROUPS:
         row.update({f"{g}_cpu_pct": 0.0, f"{g}_rss_mb": 0.0, f"{g}_n": 0})

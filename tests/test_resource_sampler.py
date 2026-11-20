@@ -54,3 +54,25 @@ def test_analizador_resume_por_fase_y_grafica(tmp_path, monkeypatch):
     assert analyze_resources.main() == 0
     assert "| F2 | 2 |" in out.read_text(encoding="utf-8")
     assert (tmp_path / "pc_rep1_cpu_pct.svg").read_text(encoding="utf-8").startswith("<svg")
+
+
+def test_h2_umbrales_pendiente_y_throttled(tmp_path):
+    rows = []
+    for i in range(4):  # REPOSO estable; CARGA con detector creciendo 1 MB/min y CPU 60 %
+        for fase, cpu, rss in (("REPOSO", 1.0, 16.0), ("CARGA", 20.0, 16.0 + i)):
+            rows.append({"ts_utc": f"2026-11-19T10:0{i}:00+00:00", "fase": fase,
+                         "throttled": "0x0" if i < 3 else "0x50000",
+                         **{f"{g}_cpu_pct": cpu for g in analyze_resources.LAB},
+                         **{f"{g}_rss_mb": rss for g in analyze_resources.LAB}})
+    f = tmp_path / "pi_rep1.csv"
+    with f.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    rows = analyze_resources.load(f)
+    md = analyze_resources.h2_markdown("x", rows, analyze_resources.summarize(rows))
+    assert "REPETIR" in md
+    assert "| REPOSO | 3.0 cumple | 48.0 cumple | +0.000 |" in md
+    assert "| CARGA | 60.0 **NO cumple** | 57.0 cumple | +1.000 |" in md
+    b = analyze_resources.between_reps([analyze_resources.summarize(rows)] * 2)
+    assert b["CARGA"]["lab_cpu_pct"] == (60.0, 0.0, 60.0)
