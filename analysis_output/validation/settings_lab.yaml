@@ -15,7 +15,7 @@ laboratory:
   safety:
     require_lab_authorized: true
     require_lab_marker: true
-    lab_marker_path: "C:/Users/OsoGa/OneDrive/Documentos/Tesis/Tesis-Simulacion/LAB_ONLY.marker"
+    lab_marker_path: "/home/tesis/Tesis-Simulacion/LAB_ONLY.marker"
     block_public_ips: true
     block_hospital_routes: true
     max_message_rate_per_sec: 10
