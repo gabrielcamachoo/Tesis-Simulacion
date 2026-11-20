@@ -1,0 +1,63 @@
+{
+  "tool": "latency_bench.py",
+  "timestamp_utc": "2026-11-20T02:34:03.787135+00:00",
+  "hipotesis": "H2",
+  "medicion": "time.perf_counter() interno del motor (DetectionResult.processing_time_ms); parseo HL7 excluido",
+  "entorno": {
+    "host_declarado": "PC RaspiTesis",
+    "platform": "Linux-6.18.50+rpt-rpi-v7-armv7l-with-glibc2.41",
+    "processor": "no-declarado",
+    "python": "3.13.5",
+    "cargas_paralelas": "ninguna (bench exclusivo, protocolo §2.4)",
+    "es_raspberry_pi": false
+  },
+  "carga": {
+    "mensajes_por_corrida": 1000,
+    "corridas": 3,
+    "seed_base": 20261014,
+    "camino_medido": "peor caso por mensaje: ráfaga sin sleep -> R-TIME-002 + R-SEQ-002 en cada mensaje posterior al primero (incluye hash de evidencia y construcción de Alert); sin red ni I/O"
+  },
+  "per_run": [
+    {
+      "run": 1,
+      "messages": 1000,
+      "alerts_emitidas": 1998,
+      "p50_us": 1568.86,
+      "p95_us": 1716.73,
+      "p99_us": 1920.68,
+      "max_us": 21094.39,
+      "min_us": 1400.86
+    },
+    {
+      "run": 2,
+      "messages": 1000,
+      "alerts_emitidas": 1998,
+      "p50_us": 1581.07,
+      "p95_us": 1718.89,
+      "p99_us": 1832.64,
+      "max_us": 2451.92,
+      "min_us": 1222.36
+    },
+    {
+      "run": 3,
+      "messages": 1000,
+      "alerts_emitidas": 1998,
+      "p50_us": 1578.15,
+      "p95_us": 1709.96,
+      "p99_us": 1810.46,
+      "max_us": 2212.07,
+      "min_us": 1211.48
+    }
+  ],
+  "aggregate": {
+    "n_total": 3000,
+    "p50_us": 1577.55,
+    "p95_us": 1713.97,
+    "p99_us": 1845.98,
+    "max_us": 21094.39,
+    "min_us": 1211.48
+  },
+  "threshold_us": 500.0,
+  "verdict_p95_vs_threshold": "FAIL",
+  "nota_h2": "Medido en PC: si p95 <= 500µs, H2 sigue NO VERIFICADO para la Raspberry Pi hasta ejecutar este bench allí (protocolo §3.3/§6)."
+}
