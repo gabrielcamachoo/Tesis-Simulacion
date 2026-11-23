@@ -1,0 +1,145 @@
+{
+ "pcaps": [
+  "live_20261120_015249.pcap",
+  "live_20261120_025250.pcap"
+ ],
+ "paquetes": 77201,
+ "segundos_cpu": 22.8,
+ "alertas_por_ip": {
+  "192.168.5.160": 56511
+ },
+ "alertas_por_regla": {
+  "R-HL7-001": 672,
+  "R-HL7-002": 672,
+  "R-HL7-003": 1344,
+  "R-ID-001": 2016,
+  "R-MLLP-001": 2016,
+  "R-NET-001": 13437,
+  "R-OBX-002": 670,
+  "R-OBX-003": 672,
+  "R-SEQ-001": 12715,
+  "R-SEQ-002": 8171,
+  "R-TIME-001": 691,
+  "R-TIME-002": 13435
+ },
+ "muestras": [
+  {
+   "paquetes": 20000,
+   "ts_utc": "02:23:16",
+   "tracemalloc_mb": 7.58,
+   "sesiones_motor": 1,
+   "ids_por_sesion": 183,
+   "hashes_por_sesion": 183,
+   "hashes_globales": 36,
+   "ids_globales": 233,
+   "flujos_tcp_abiertos": 26
+  },
+  {
+   "paquetes": 40000,
+   "ts_utc": "02:47:09",
+   "tracemalloc_mb": 7.8,
+   "sesiones_motor": 2,
+   "ids_por_sesion": 327,
+   "hashes_por_sesion": 328,
+   "hashes_globales": 39,
+   "ids_globales": 376,
+   "flujos_tcp_abiertos": 29
+  },
+  {
+   "paquetes": 60000,
+   "ts_utc": "03:14:45",
+   "tracemalloc_mb": 7.76,
+   "sesiones_motor": 3,
+   "ids_por_sesion": 493,
+   "hashes_por_sesion": 494,
+   "hashes_globales": 12,
+   "ids_globales": 541,
+   "flujos_tcp_abiertos": 27
+  },
+  {
+   "paquetes": 77201,
+   "ts_utc": "03:37:12",
+   "tracemalloc_mb": 7.59,
+   "sesiones_motor": 0,
+   "ids_por_sesion": 0,
+   "hashes_por_sesion": 0,
+   "hashes_globales": 1,
+   "ids_globales": 676,
+   "flujos_tcp_abiertos": 0
+  }
+ ],
+ "top_crecimiento": [
+  {
+   "archivo": "C:\\Users\\OsoGa\\.gemini\\antigravity\\brain\\30ac8df2-9608-4d99-a075-95149b5262e5\\scratch\\pi_replay\\memdiag.py",
+   "linea": 68,
+   "crecimiento_kb": -128.1,
+   "bloques": -2
+  },
+  {
+   "archivo": "src\\detection\\engine.py",
+   "linea": 128,
+   "crecimiento_kb": 126.6,
+   "bloques": 5400
+  },
+  {
+   "archivo": "detect_live.py",
+   "linea": 403,
+   "crecimiento_kb": 47.3,
+   "bloques": 0
+  },
+  {
+   "archivo": "src\\hl7\\validator.py",
+   "linea": 181,
+   "crecimiento_kb": 24.0,
+   "bloques": 0
+  },
+  {
+   "archivo": "src\\detection\\engine.py",
+   "linea": 210,
+   "crecimiento_kb": -22.0,
+   "bloques": -215
+  },
+  {
+   "archivo": "src\\hl7\\parser.py",
+   "linea": 151,
+   "crecimiento_kb": 20.2,
+   "bloques": 441
+  },
+  {
+   "archivo": "src\\detection\\engine.py",
+   "linea": 219,
+   "crecimiento_kb": -8.0,
+   "bloques": -1
+  },
+  {
+   "archivo": "src\\detection\\engine.py",
+   "linea": 206,
+   "crecimiento_kb": -8.0,
+   "bloques": -1
+  },
+  {
+   "archivo": "src\\detection\\engine.py",
+   "linea": 202,
+   "crecimiento_kb": 3.6,
+   "bloques": 7
+  },
+  {
+   "archivo": "src\\detection\\engine.py",
+   "linea": 428,
+   "crecimiento_kb": -3.0,
+   "bloques": -61
+  },
+  {
+   "archivo": "detect_live.py",
+   "linea": 233,
+   "crecimiento_kb": -2.7,
+   "bloques": -25
+  },
+  {
+   "archivo": "src\\alerting\\json_logger.py",
+   "linea": 137,
+   "crecimiento_kb": 2.7,
+   "bloques": 55
+  }
+ ]
+}
