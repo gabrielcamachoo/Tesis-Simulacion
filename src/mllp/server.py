@@ -235,6 +235,7 @@ class MLLPRequestHandler(socketserver.BaseRequestHandler):
                         f"acks_sent={self.session_info.ack_sent_count} "
                         f"errors={len(self.session_info.errors)}")
             
+            self.detection_engine.close_session(self.session_info.session_id)
             self.evidence_writer.close_session(self.session_info.session_id)
             self.server.sessions.pop(self.session_info.session_id, None)
 

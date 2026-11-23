@@ -131,7 +131,7 @@ class EvidenceWriter:
                 if os.path.exists(path):
                     hashes[name] = self._compute_hash(path)
             
-            meta = self.session_metadata.get(session_id, {})
+            meta = self.session_metadata.pop(session_id, {})
             meta['end_time'] = datetime.now(timezone.utc).isoformat()
             meta['hashes'] = hashes
             meta['bytes_written'] = sf.bytes_written

@@ -8,8 +8,9 @@ import time
 import hashlib
 import logging
 import threading
+from collections import deque
 from dataclasses import dataclass, field
-from typing import List, Dict, Set, Optional, Any
+from typing import List, Dict, Set, Optional, Any, Deque
 from datetime import datetime, timezone
 
 from ..hl7.parser import HL7Message, parse_hl7_message, normalize_hl7_for_hash
@@ -73,6 +74,8 @@ class DetectionEngine:
         # MCID, hash de contenido, timestamp y frecuencia se rastrean A TRAVÉS
         # de sesiones TCP: replay/duplicación suelen venir en una conexión nueva.
         self.global_control_ids: Set[str] = set()
+        self._global_control_id_order: Deque[str] = deque()
+        self.max_global_control_ids: int = 50000
         # hash -> último time.time() visto. Con VENTANA: la telemetría benigna
         # es periódica y su contenido se repite (STANDBY idéntico cada 10 s,
         # solo cambian MSH-7/MSH-10). Solo se considera replay si el mismo
@@ -84,6 +87,9 @@ class DetectionEngine:
         # Ventana de replay: mitad del intervalo mínimo baseline (10 s → 5 s)
         interval_min = baseline.inter_message_interval_seconds.get('min', 10.0) or 10.0
         self.replay_window_s = max(1.0, interval_min * 0.5)
+        self.session_ttl_s: float = 300.0
+        self._messages_processed: int = 0
+        self._hash_prune_interval: int = 256
 
         # Enmienda E3 (vigilante de silencio): una alerta por episodio.
         self._silence_alerted = False
@@ -187,10 +193,16 @@ class DetectionEngine:
         
         # R-SEQ-001: MCID duplicado (rastreo global: replay suele venir en sesión nueva)
         if self.rules.is_enabled('R-SEQ-001') and msg.message_control_id:
+            was_new = msg.message_control_id not in self.global_control_ids
             ok, reason = validate_message_control_id_uniqueness(
                 msg.message_control_id, self.global_control_ids)
             if not ok:
                 alerts.append(self._make_alert('R-SEQ-001', session, msg, reason, AlertSeverity.HIGH))
+            elif was_new:
+                self._global_control_id_order.append(msg.message_control_id)
+                while len(self.global_control_ids) > self.max_global_control_ids and self._global_control_id_order:
+                    oldest_id = self._global_control_id_order.popleft()
+                    self.global_control_ids.discard(oldest_id)
             session.seen_control_ids.add(msg.message_control_id)
         
         # R-SEQ-002: Replay por hash normalizado dentro de la ventana
@@ -311,6 +323,40 @@ class DetectionEngine:
         self._silence_alerted = False
         self._last_session_id = session.session_id
         self._last_source = f"{session.source_ip}:{session.source_port}"
+        self._messages_processed += 1
+        if self._messages_processed % self._hash_prune_interval == 0:
+            self._prune_global_hashes(session.last_message_time)
+
+    def close_session(self, session_id: str) -> bool:
+        """Libera el estado SessionState de una conexión cerrada (Defecto D-02)."""
+        with self._lock:
+            return self.sessions.pop(session_id, None) is not None
+
+    def _prune_global_hashes(self, now: float) -> int:
+        """Elimina hashes de contenido vencidos fuera de la ventana de replay."""
+        cutoff = now - self.replay_window_s
+        expired = [h for h, ts in self.global_content_hashes.items() if ts <= cutoff]
+        for h in expired:
+            del self.global_content_hashes[h]
+        return len(expired)
+
+    def prune_stale_state(self, now: Optional[float] = None,
+                          session_ttl_s: Optional[float] = None) -> Dict[str, int]:
+        """Poda por tiempo sesiones inactivas y hashes globales vencidos (Defecto D-02)."""
+        with self._lock:
+            ref = time.time() if now is None else now
+            ttl = self.session_ttl_s if session_ttl_s is None else session_ttl_s
+            hashes_pruned = self._prune_global_hashes(ref)
+            stale_sessions = [
+                sid for sid, st in self.sessions.items()
+                if st.last_message_time > 0 and (ref - st.last_message_time) > ttl
+            ]
+            for sid in stale_sessions:
+                del self.sessions[sid]
+            return {
+                "sessions_pruned": len(stale_sessions),
+                "hashes_pruned": hashes_pruned,
+            }
 
     def _short_interval_belongs_to_other_session(self, session: SessionState,
                                                  interval: float, now: float) -> bool:

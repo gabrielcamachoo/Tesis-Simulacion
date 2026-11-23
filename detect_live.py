@@ -71,6 +71,8 @@ TCP_FIN, TCP_SYN, TCP_RST, TCP_ACK = 0x01, 0x02, 0x04, 0x10
 MAX_PENDING_BYTES = 1 << 20     # 1 MiB fuera de orden por flujo antes de resincronizar
 GAP_TIMEOUT_S = 2.0             # hueco de secuencia sin rellenar tras 2 s -> se salta
 MAX_BUFFER_BYTES = 1 << 20      # 1 MiB sin cierre MLLP -> se descarta (basura/flood)
+DEFAULT_FLOW_TTL_S = 120.0      # TTL para flujos TCP abiertos sin cierre (Defecto D-02)
+PRUNE_INTERVAL_S = 30.0         # cadencia de poda por tiempo de flujos y hashes
 
 
 def _seq_diff(a: int, b: int) -> int:
@@ -90,7 +92,7 @@ class _Flow:
     """Estado de un flujo emisor -> :puerto MLLP."""
 
     __slots__ = ("src_ip", "src_port", "next_seq", "pending", "pending_bytes",
-                 "buf", "last_ts", "idx", "from_syn")
+                 "buf", "last_ts", "last_seen_ts", "idx", "from_syn")
 
     def __init__(self, src_ip, src_port, idx, from_syn=False):
         self.src_ip = src_ip
@@ -100,6 +102,7 @@ class _Flow:
         self.pending_bytes = 0
         self.buf = bytearray()
         self.last_ts = None
+        self.last_seen_ts = None
         self.idx = idx
         # Visto desde el SYN: el primer byte es inicio de trama. Si la
         # captura empezó a mitad de conexión, no se juzga lo previo al 0x0B.
@@ -181,6 +184,9 @@ class LiveDetector:
         self.engine = DetectionEngine(settings, self.baseline, RuleSet(str(rules_path)))
         self.alert_logger = AlertLogger(settings, evidence_writer=None)
         self._lock = threading.Lock()
+        self.max_message_size = getattr(settings.mllp, "max_message_size", 5120) or 5120
+        self.flow_ttl_s = DEFAULT_FLOW_TTL_S
+        self._last_prune_ts = None
 
         self.flows = {}
         self.n_flows = 0
@@ -216,6 +222,8 @@ class LiveDetector:
             key = (d.src_ip, d.sport, d.dst_ip, d.dport)
             fl = self.flows.get(key)
             if d.flags & TCP_SYN and not d.flags & TCP_ACK:
+                if fl is not None:
+                    self._close_flow(key, ts)
                 fl = _Flow(d.src_ip, d.sport, self.n_flows, from_syn=True)
                 self.n_flows += 1
                 fl.next_seq = (d.seq + 1) & 0xFFFFFFFF
@@ -225,21 +233,54 @@ class LiveDetector:
                 fl = _Flow(d.src_ip, d.sport, self.n_flows)
                 self.n_flows += 1
                 self.flows[key] = fl
+            fl.last_seen_ts = ts
             if d.payload:
                 self._segment(fl, d.seq, d.payload, ts)
             if d.flags & (TCP_FIN | TCP_RST):
                 self._close_flow(key, ts)
+            if self._last_prune_ts is None:
+                self._last_prune_ts = ts
+            elif (ts - self._last_prune_ts) >= PRUNE_INTERVAL_S:
+                self._prune_idle_locked(ts)
+                self._last_prune_ts = ts
 
     def _close_flow(self, key, ts: float):
-        """Al cerrarse la conexión, una trama abierta sin 0x1C 0x0D es un
-        error de framing visible desde la red (R-MLLP-001, A05)."""
+        """Al cerrarse la conexión, libera el SessionState del motor (D-02) y
+        alerta si quedó una trama abierta sin 0x1C 0x0D (R-MLLP-001, A05)."""
         fl = self.flows.pop(key, None)
-        if fl is None or not fl.buf:
+        if fl is None:
             return
-        if fl.buf[:1] == SB:
+        session_id = f"live:{fl.idx}:{fl.src_ip}:{fl.src_port}"
+        if fl.buf and fl.buf[:1] == SB:
             self._framing_alert(fl, ts, f"trama MLLP incompleta al cerrar la "
                                         f"conexión ({len(fl.buf)} B sin delimitador final)")
         fl.buf.clear()
+        fl.pending.clear()
+        self.engine.close_session(session_id)
+
+    def _prune_idle_locked(self, now: float, flow_ttl_s: float = None) -> int:
+        """Poda flujos TCP sin cierre por TTL y estado vencido del motor (D-02)."""
+        ttl = self.flow_ttl_s if flow_ttl_s is None else flow_ttl_s
+        stale_keys = [
+            key for key, fl in self.flows.items()
+            if fl.last_seen_ts is not None and (now - fl.last_seen_ts) > ttl
+        ]
+        for key in stale_keys:
+            fl = self.flows.pop(key)
+            fl.buf.clear()
+            fl.pending.clear()
+            self.engine.close_session(f"live:{fl.idx}:{fl.src_ip}:{fl.src_port}")
+        self.engine.prune_stale_state(now=now, session_ttl_s=ttl)
+        return len(stale_keys)
+
+    def prune_idle_flows(self, now: float = None, flow_ttl_s: float = None) -> int:
+        """Poda manual/programada de flujos abiertos inactivos y hashes vencidos."""
+        with self._lock:
+            if now is None:
+                if self.last_packet_ts is None:
+                    return 0
+                now = self.last_packet_ts + (time.monotonic() - self.last_packet_mono)
+            return self._prune_idle_locked(now, flow_ttl_s=flow_ttl_s)
 
     def _framing_alert(self, fl: _Flow, ts: float, error: str):
         if not self.engine.rules.is_enabled("R-MLLP-001"):
@@ -329,11 +370,22 @@ class LiveDetector:
                     self.discarded_bytes += sb
                     del fl.buf[:sb]
                 if len(fl.buf) > MAX_BUFFER_BYTES:
+                    self._framing_alert(
+                        fl, t,
+                        f"message_too_large:{len(fl.buf)}_bytes_max_{self.max_message_size}")
                     self.discarded_bytes += len(fl.buf)
                     fl.buf.clear()
                 return
             content = bytes(fl.buf[sb + 1:eom])
             del fl.buf[:eom + len(EOM)]
+            # Enmienda E9 / Defecto D-04: aplicar límite de tamaño de mensaje
+            # (5120 B por defecto) también en modo vivo para que A15 dispare R-MLLP-001.
+            if len(content) > self.max_message_size:
+                self._framing_alert(
+                    fl, t,
+                    f"message_too_large:{len(content)}_bytes_max_{self.max_message_size}")
+                self.discarded_bytes += len(content)
+                continue
             self._process(fl, content, t)
 
     def _process(self, fl: _Flow, content: bytes, ts: float):
@@ -384,6 +436,9 @@ class LiveDetector:
                 if self.last_packet_ts is None:
                     return None
                 now = self.last_packet_ts + (time.monotonic() - self.last_packet_mono)
+            if self._last_prune_ts is None or (now - self._last_prune_ts) >= PRUNE_INTERVAL_S:
+                self._prune_idle_locked(now)
+                self._last_prune_ts = now
             alert = self.engine.check_silence(now)
             if alert:
                 self.silence_alerts += 1
