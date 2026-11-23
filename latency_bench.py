@@ -44,6 +44,38 @@ THRESHOLD_US = 500.0
 SESSION_ID = "latency-bench:127.0.0.1:0"
 
 
+def detect_hardware_environment(device_tree_model_path: Path = Path("/proc/device-tree/model")) -> dict:
+    """Detecta automáticamente si el benchmark corre en ARM/Raspberry Pi (Defecto D-06)."""
+    machine = (platform.machine() or "").strip()
+    machine_l = machine.lower()
+    sys_l = (platform.system() or "").lower()
+    model = ""
+    try:
+        if device_tree_model_path.exists():
+            model = device_tree_model_path.read_text(encoding="utf-8", errors="ignore").replace("\x00", "").strip()
+    except OSError:
+        model = ""
+
+    is_arm = any(tok in machine_l for tok in ("arm", "aarch64"))
+    is_pi = ("raspberry pi" in model.lower()) or (sys_l == "linux" and is_arm)
+    if is_pi:
+        label = model if model else f"ARM Linux ({machine})"
+        host_declarado = f"Raspberry Pi ({label}) {platform.node()}"
+    else:
+        host_declarado = f"PC {platform.node()}"
+
+    return {
+        "host_declarado": host_declarado,
+        "platform": platform.platform(),
+        "machine": machine or "no-declarado",
+        "modelo_placa": model or None,
+        "processor": platform.processor() or machine or "no-declarado",
+        "python": platform.python_version(),
+        "cargas_paralelas": "ninguna (bench exclusivo, protocolo §2.4)",
+        "es_raspberry_pi": is_pi,
+    }
+
+
 def build_engine(config: Path, baseline_path: Path, rules_path: Path):
     settings = load_settings(str(config))
     baseline = load_baseline(str(baseline_path))
@@ -104,20 +136,25 @@ def run_bench(messages: int, runs: int, seed: int,
         "min_us": round(min(all_ms) * 1000, 2),
     }
     verdict_p95 = "PASS" if agg["p95_us"] <= THRESHOLD_US else "FAIL"
+    entorno = detect_hardware_environment()
+    if entorno["es_raspberry_pi"]:
+        nota_h2 = (
+            f"Medido en hardware Raspberry Pi ({entorno['modelo_placa'] or entorno['machine']}): "
+            f"p95 = {agg['p95_us']}µs vs umbral {THRESHOLD_US}µs -> {verdict_p95}."
+        )
+    else:
+        nota_h2 = (
+            "Medido en PC: si p95 <= 500µs, H2 sigue NO VERIFICADO "
+            "para la Raspberry Pi hasta ejecutar este bench allí "
+            "(protocolo §3.3/§6)."
+        )
     return {
         "tool": "latency_bench.py",
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "hipotesis": "H2",
         "medicion": "time.perf_counter() interno del motor "
                     "(DetectionResult.processing_time_ms); parseo HL7 excluido",
-        "entorno": {
-            "host_declarado": "PC " + platform.node(),
-            "platform": platform.platform(),
-            "processor": platform.processor() or "no-declarado",
-            "python": platform.python_version(),
-            "cargas_paralelas": "ninguna (bench exclusivo, protocolo §2.4)",
-            "es_raspberry_pi": False,
-        },
+        "entorno": entorno,
         "carga": {
             "mensajes_por_corrida": messages,
             "corridas": runs,
@@ -131,9 +168,7 @@ def run_bench(messages: int, runs: int, seed: int,
         "aggregate": agg,
         "threshold_us": THRESHOLD_US,
         "verdict_p95_vs_threshold": verdict_p95,
-        "nota_h2": "Medido en PC: si p95 <= 500µs, H2 sigue NO VERIFICADO "
-                   "para la Raspberry Pi hasta ejecutar este bench allí "
-                   "(protocolo §3.3/§6).",
+        "nota_h2": nota_h2,
     }
 
 
@@ -182,8 +217,7 @@ def main() -> int:
           f"p95={agg['p95_us']}µs p99={agg['p99_us']}µs "
           f"max={agg['max_us']}µs -> {report['verdict_p95_vs_threshold']}")
     print(f"Escrito: {out.relative_to(ROOT)}")
-    print("NOTA: host de medición = PC; H2 en Pi queda NO VERIFICADO hasta "
-          "repetir el bench en la Raspberry Pi.")
+    print(f"NOTA: {report['nota_h2']}")
     return 0
 
 
