@@ -484,10 +484,11 @@ class AnomalyGenerator:
 
         if scenario.id == "A04":
             # Timestamp regresivo: sembrar con ts actual (sin registrar) y
-            # luego inyectar una hora antes.
+            # luego inyectar una hora antes. Usar MCID con prefijo SEED- (D-05)
+            # para no colisionar con el MCID de la inyección ni confundirse con tráfico benigno.
             if not self._prev_timestamp:
                 seed_ts = now_hl7_timestamp()
-                if not self._send_setup(base_hl7_message(cid, seed_ts)):
+                if not self._send_setup(base_hl7_message(f"SEED-A04-{seq}", seed_ts)):
                     return None
                 self._prev_timestamp = seed_ts
                 time.sleep(0.1)

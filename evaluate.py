@@ -63,6 +63,9 @@ class AlertRecord:
     timestamp_utc: str
     label: str = "ANOMALO"
     source: str = ""
+    message_control_id: str = ""
+    experimental_state: str = ""
+    reason: str = ""
     matched_injection_id: Optional[str] = None
 
 
@@ -89,6 +92,7 @@ class EvaluationResult:
     per_rule: Dict[str, Dict] = field(default_factory=dict)
     unmatched_alerts: List[str] = field(default_factory=list)
     correlated_alerts: int = 0  # alertas extra dentro de ventana de una inyección
+    setup_alerts: int = 0       # alertas de mensajes SEED/preparación del generador (D-05)
     # E6: FP que caen dentro de la ventana de una inyección pero vienen de
     # OTRA conexión (tráfico benigno). Antes se ocultaban como correlacionadas.
     fp_other_source_in_window: int = 0
@@ -159,14 +163,36 @@ def load_alerts(path: Path) -> Tuple[List[AlertRecord], int, List[datetime]]:
                 timestamp_utc=data.get("timestamp_utc", ""),
                 label=label,
                 source=data.get("source", ""),
+                message_control_id=data.get("message_control_id", ""),
+                experimental_state=data.get("experimental_state", ""),
+                reason=data.get("reason", ""),
             ))
     return alerts, normal_count, timestamps
 
 
+def _is_silence_alert(al: AlertRecord) -> bool:
+    """Identifica alertas tempranas del vigilante de silencio (E3 / D-05)."""
+    return al.rule_id == "R-TIME-002" and (
+        al.experimental_state == "SILENCE" or "Silence:" in (al.reason or "")
+    )
+
+
+def _is_generator_setup_alert(al: AlertRecord) -> bool:
+    """Identifica alertas disparadas por mensajes de preparación (SEED) del
+    generador de anomalías (A02/A03/A04) no registrados en ground_truth (D-05)."""
+    mcid = al.message_control_id or ""
+    return mcid.startswith("SEED-") or mcid.startswith("DUP-SEED-")
+
+
 def same_source(inj: Injection, al: AlertRecord) -> bool:
-    """E6: la alerta puede venir de esta inyección solo si llegó por la misma
-    conexión. Sin dato de origen (ground truth antiguo o alerta 'N/A') se
-    conserva el comportamiento anterior (solo ventana temporal)."""
+    """E6 + D-05: la alerta puede venir de esta inyección solo si llegó por la
+    misma conexión. Excepciones válidas:
+    - Sin dato de origen (ground truth antiguo o alerta 'N/A').
+    - Alerta de silencio del vigilante E3 (experimental_state='SILENCE') para
+      A14: el silencio es propiedad global del canal y la alerta hereda la IP
+      del último emisor previo al silencio, no la conexión futura de A14."""
+    if inj.scenario_id == "A14" and _is_silence_alert(al):
+        return True
     if not inj.source or not al.source or al.source == "N/A":
         return True
     return inj.source == al.source
@@ -181,6 +207,8 @@ def match_injections(injections: List[Injection],
     - Una alerta solo puede matchear una inyección.
     - Prefiere alertas con la regla esperada; si no hay, acepta cualquier
       regla dentro de la ventana (se registra como wrong_rule en per_scenario).
+    - D-05: usa [started_utc - 0.05, timestamp_utc + window_s] para emparejar
+      alertas tempranas del vigilante de silencio durante A14.
     Devuelve (n_matches, latencias_ms, alertas_sin_match).
     """
     latencies: List[float] = []
@@ -191,6 +219,9 @@ def match_injections(injections: List[Injection],
 
     for inj in injections_sorted:
         t0 = parse_ts(inj.timestamp_utc)
+        t_start = parse_ts(inj.started_utc) if inj.started_utc else t0
+        if t_start == datetime.min or t_start > t0:
+            t_start = t0
         best: Optional[AlertRecord] = None
         best_latency = None
         best_is_expected = False
@@ -201,10 +232,10 @@ def match_injections(injections: List[Injection],
             if not same_source(inj, al):
                 continue
             t1 = parse_ts(al.timestamp_utc)
-            delta = (t1 - t0).total_seconds()
-            # La alerta debe venir después de la inyección y dentro de ventana
-            if delta < -0.05 or delta > window_s:
+            if not _in_window(inj, t1, window_s):
                 continue
+            ref = t0 if t1 >= t0 else t_start
+            delta = max(0.0, (t1 - ref).total_seconds())
             is_expected = (al.rule_id == inj.expected_rule)
             if is_expected:
                 best, best_latency, best_is_expected = al, delta * 1000.0, True
@@ -275,7 +306,8 @@ def partition_unmatched(alerts: List[AlertRecord], injections: List[Injection],
     - correlacionadas: caen dentro de la ventana de una inyección Y vienen de
       la misma conexión (alertas adicionales legítimas del mismo evento,
       p. ej. R-TIME-002 junto a la regla esperada, o el vigilante de
-      silencio durante A14) -> no cuentan como FP.
+      silencio durante A14) o provienen de mensajes de preparación SEED del
+      generador (D-05) -> no cuentan como FP sobre tráfico legítimo.
     E6: una alerta de OTRA conexión (tráfico benigno) dentro de la ventana
     es FP: antes se contaba como correlacionada y quedaba oculta.
     """
@@ -283,8 +315,10 @@ def partition_unmatched(alerts: List[AlertRecord], injections: List[Injection],
     correlated = 0
     for al in alerts:
         t1 = parse_ts(al.timestamp_utc)
-        if any(same_source(inj, al) and _in_window(inj, t1, window_s)
-               for inj in injections):
+        if _is_generator_setup_alert(al) or any(
+            same_source(inj, al) and _in_window(inj, t1, window_s)
+            for inj in injections
+        ):
             correlated += 1
         else:
             true_fp.append(al)
@@ -432,13 +466,15 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
 
     n_match, latencies, unmatched = match_injections(injections, alerts, window_s)
 
-    # Alertas dentro de ventana de una inyección: correlacionadas (no FP)
+    # Alertas dentro de ventana de una inyección o mensajes SEED de preparación: correlacionadas (no FP)
+    setup_count = sum(1 for al in unmatched if _is_generator_setup_alert(al))
     true_fp, correlated = partition_unmatched(unmatched, injections, window_s)
 
     res.tp = n_match
     res.fn = len(injections) - n_match
     res.fp = len(true_fp)
     res.correlated_alerts = correlated
+    res.setup_alerts = setup_count
     res.fp_other_source_in_window = count_other_source_in_window(
         true_fp, injections, window_s)
     res.tn = normal_count
