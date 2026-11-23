@@ -1,6 +1,6 @@
 # Actualización del Documento de Control de Calidad (DCC v5.6 — 23-11-2026)
 
-Sincronizado con el cierre del **Bloque 1 y Bloque 2** en la rama `main` (commit `0453c03`, `295` pruebas automatizadas, `336/336` archivos verificados en `analysis_output/validation/SHA256SUMS.txt`).
+Sincronizado con el cierre del **Bloque 1 y Bloque 2** en la rama `main` (commit `0453c03`, `295` pruebas automatizadas, `216/216` archivos verificados en `analysis_output/validation/SHA256SUMS.txt`).
 
 ---
 
@@ -25,7 +25,7 @@ Sincronizado con el cierre del **Bloque 1 y Bloque 2** en la rama `main` (commit
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
 | 15 escenarios (`exclude A14`) | `main_bloque1_20261123_200400/` | 30 | 1.920 / 1.920 | 100,0 % | **0** | **100,0 %** |
 | Escenario `A14` (silencio) | `a14_bloque1_20261123_200828/` | 30 | 90 / 90 | 100,0 % | **0** | **100,0 %** |
-| **Total Global H1** | `SHA256SUMS.txt` (`336/336` OK) | **60** | **2.010 / 2.010** | **100,0 %** | **0** | **100,0 %** |
+| **Total Global H1** | `SHA256SUMS.txt` (`216/216` OK) | **60** | **2.010 / 2.010** | **100,0 %** | **0** | **100,0 %** |
 
 ---
 
@@ -54,7 +54,7 @@ Evidencia guardada y sellada en `analysis_output/validation/pi_replay_bloque1_20
 | **D-05** | `evaluate.py` contaba como FP alertas tempranas de `A14` y mensajes `SEED` | **Cerrado en código (`308880d`).** Re-ejecución H1 de 60 corridas (`100001`–`100030`) arroja **0 FP oficiales** y **100,0 % de precisión**. |
 | **D-06** | `latency_bench.py` guardaba fijo `«Medido en PC»` y `es_raspberry_pi: false` | **Cerrado en código (`fc982ed`).** Detecta automáticamente `platform.machine()` y `/proc/device-tree/model`. |
 | **D-07** | Salida de `detect_live.py` fuera del repositorio por `.gitignore` | **Cerrado** (`2237e3c` en `analisis/hardware-20261120` y `pi_replay_bloque1_20261123/` sellado). |
-| **D-08** | `settings_lab.yaml` sellado modificado en rama externa | **No afecta a `main`** (`336/336` verificados en `SHA256SUMS.txt`). |
+| **D-08** | `settings_lab.yaml` sellado modificado en rama externa | **No afecta a `main`** (`216/216` verificados en `SHA256SUMS.txt`). |
 | **D-09** | H2 no cumple en Raspberry Pi 3 Model B (`p95 = 1706,3 ± 7,5 µs` vs `500 µs`) | **Abierto (resultado negativo reportado).** Pendiente medir en Raspberry Pi 4 o 5 física (Bloque 4). |
 | **D-10** | Volumen de alertas bajo ataque (~16,4 alertas/s sin agregación) | **Abierto** (agregación queda como trabajo futuro). |
 
