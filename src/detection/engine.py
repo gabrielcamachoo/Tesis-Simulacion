@@ -217,6 +217,12 @@ class DetectionEngine:
         if self.rules.is_enabled('R-TIME-002') and self.global_last_message_time > 0:
             interval = now - self.global_last_message_time
             ok, reason = validate_frequency(interval, self.baseline)
+            if not ok and self._short_interval_belongs_to_other_session(session, interval, now):
+                # Propuesta E10: el intervalo global corto lo causó un mensaje
+                # de OTRA sesión (p. ej. el atacante). Si la cadencia propia de
+                # esta sesión está dentro de la baseline, no se culpa a este
+                # mensaje; el mensaje intruso ya se evaluó al llegar.
+                ok = True
             if not ok:
                 alerts.append(self._make_alert('R-TIME-002', session, msg, reason, AlertSeverity.MEDIUM))
         
@@ -305,6 +311,22 @@ class DetectionEngine:
         self._silence_alerted = False
         self._last_session_id = session.session_id
         self._last_source = f"{session.source_ip}:{session.source_port}"
+
+    def _short_interval_belongs_to_other_session(self, session: SessionState,
+                                                 interval: float, now: float) -> bool:
+        """Propuesta E10 (R-TIME-002 atribuido por sesión).
+        Solo aplica a intervalos demasiado CORTOS. Devuelve True cuando el
+        mensaje anterior en el canal vino de otra sesión y el intervalo propio
+        de esta sesión (desde su mensaje anterior) cumple la baseline. Las
+        ráfagas dentro de una misma sesión (A12) y las conexiones nuevas sin
+        historial (A13) se siguen evaluando con el intervalo global."""
+        lower, _ = self.baseline.get_interval_bounds()
+        if interval >= lower:
+            return False
+        if session.last_message_time <= 0:
+            return False
+        own_ok, _ = validate_frequency(now - session.last_message_time, self.baseline)
+        return own_ok
 
     def check_silence(self, now: Optional[float] = None) -> Optional[Alert]:
         """
