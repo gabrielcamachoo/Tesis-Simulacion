@@ -129,7 +129,10 @@ def test_emisor_espera_al_receptor_y_entrega(tmp_path):
         th.start()
         lab.update(server=server, thread=th, alert_logger=logger)
 
-    threading.Timer(1.5, levantar_receptor).start()
+    # En Windows, connect() a puerto loopback cerrado reintenta SYN ~2 s por intento
+    # antes de devolver ConnectionRefusedError; en Linux falla en <1 ms.
+    delay = 7.5 if sys.platform == "win32" else 1.5
+    threading.Timer(delay, levantar_receptor).start()
     emu = WATOEmulator(EmulatorConfig(
         receiver_host="127.0.0.1", receiver_port=port,
         state=EmulatorState.STANDBY, interval_seconds=0.2, max_messages=3,
