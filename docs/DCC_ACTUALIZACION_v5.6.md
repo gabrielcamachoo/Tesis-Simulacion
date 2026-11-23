@@ -1,6 +1,7 @@
 # Actualización del Documento de Control de Calidad (DCC v5.6 — 23-11-2026)
 
-Sincronizado con el cierre del **Bloque 1 y Bloque 2** en la rama `main` (commit `0453c03`, `295` pruebas automatizadas, `216/216` archivos verificados en `analysis_output/validation/SHA256SUMS.txt`).
+Sincronizado con el cierre del **Bloque 1 y Bloque 2** en la rama `main` (commit `0453c03`, `295` pruebas automatizadas, `216/216` archivos verificados en `analysis_output/validation/SHA256SUMS.txt`).  
+> El documento institucional completo actualizado en versión **1.1 (v5.6)** está generado en [`documentos_tesis/Documento_Control_Calidad_G18.pdf`](../documentos_tesis/Documento_Control_Calidad_G18.pdf) (y editable `.docx`), y el protocolo de pruebas físicas pendientes en [`docs/HANDOFF_HARDWARE_PI.md`](./HANDOFF_HARDWARE_PI.md).
 
 ---
 

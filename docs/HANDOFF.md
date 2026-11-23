@@ -1,6 +1,9 @@
 # HANDOFF — Contexto y pasos siguientes
 
-> Última actualización: 2026-10-20 (cierre post-integración PR #1: baseline bimodal v1.1 + Enmiendas E2–E8, §16).
+> **Actualización v5.6 (2026-11-23):** El código en `main` cerró el Bloque 1 y 2 (`commit 0453c03`: PR #10 / E10 integrada, D-02 a D-06 cerrados, **295 pruebas**, **93,8 % cobertura del núcleo**, campaña H1 re-ejecutada con **0 FP / 100,0 % precisión**, `SHA256SUMS.txt` **216/216 OK** y documentos v5.6 sin contradicciones).  
+> 👉 **Para ejecutar las pruebas pendientes en la Raspberry Pi física y Bloque 4 (Pi 4/5, SPAN, captura HUSI) de modo que el hardware vaya de la mano con el documento v5.6, siga la guía dedicada:** **[`docs/HANDOFF_HARDWARE_PI.md`](./HANDOFF_HARDWARE_PI.md)**.
+>
+> *(Historial previo conservado abajo — última edición anterior: 2026-10-20, PR #1).*
 
 ## 1. Contexto del proyecto
 
