@@ -7,3 +7,4 @@
 # evidence_inventory.csv coincidan en Windows y en Linux (cierre 2026-11-18).
 evidence_raw/** -text
 analysis_output/** -text
+deploy/medicion/resultados/v56_pi_20261123/** -text

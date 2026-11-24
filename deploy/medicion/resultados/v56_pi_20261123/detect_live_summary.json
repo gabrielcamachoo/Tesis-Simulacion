@@ -1,0 +1,79 @@
+{
+  "tool": "detect_live.py",
+  "schema_version": "1.0",
+  "label": "pi-live",
+  "modo": "pasivo en vivo (puerto espejo); estado continuo del motor",
+  "estado": "en curso",
+  "timestamp_utc_inicio": "2026-11-23T23:35:40.360414+00:00",
+  "timestamp_utc_actual": "2026-11-24T00:11:12.347907+00:00",
+  "paquetes": 26694,
+  "flujos": 918,
+  "mensajes": 4772,
+  "mensajes_no_parseables": 0,
+  "eventos_normales": 208,
+  "anomalias": 19284,
+  "alertas_por_regla": {
+    "R-HL7-001": 249,
+    "R-HL7-002": 240,
+    "R-HL7-003": 498,
+    "R-ID-001": 735,
+    "R-MLLP-001": 684,
+    "R-NET-001": 4564,
+    "R-OBX-002": 250,
+    "R-OBX-003": 240,
+    "R-SEQ-001": 4263,
+    "R-SEQ-002": 2755,
+    "R-TIME-001": 243,
+    "R-TIME-002": 4563
+  },
+  "alertas_por_ip_origen": {
+    "192.168.5.114": 1,
+    "192.168.5.160": 19283
+  },
+  "alertas_por_ip_y_regla": {
+    "192.168.5.114": {
+      "R-TIME-002": 1
+    },
+    "192.168.5.160": {
+      "R-HL7-001": 249,
+      "R-HL7-002": 240,
+      "R-HL7-003": 498,
+      "R-ID-001": 735,
+      "R-MLLP-001": 684,
+      "R-NET-001": 4564,
+      "R-OBX-002": 250,
+      "R-OBX-003": 240,
+      "R-SEQ-001": 4263,
+      "R-SEQ-002": 2755,
+      "R-TIME-001": 243,
+      "R-TIME-002": 4562
+    }
+  },
+  "alertas_silencio_e3": 1,
+  "ips_autorizadas": [
+    "127.0.0.1",
+    "172.30.0.10",
+    "172.30.0.11",
+    "192.168.23.250",
+    "192.168.5.114",
+    "::1"
+  ],
+  "ips_autorizadas_extra_solo_esta_corrida": [],
+  "resincronizaciones_tcp": 0,
+  "bytes_descartados_sin_mllp": 7399740,
+  "latencia_proceso_ms": {
+    "p50": 3.3895,
+    "p95": 4.5214,
+    "max": 44.731
+  },
+  "pcap_evidencia": [],
+  "anonimizado": true,
+  "config_sha256": "efdd1bf74be9f876c39336330a7c8e2753396862ee231c9c2e22d001ca83d6ed",
+  "baseline_sha256": "658bc813c116aff6df807cc115e3169068f24b848ba12c3af45090b461d79948",
+  "rules_sha256": "57ba6f92d8ec1a7fb2d0dd3e227d34cee6c2c9b31a6168680a4cb6ddd7a84d39",
+  "runtime": {
+    "platform": "Linux-6.18.50+rpt-rpi-v7-armv7l-with-glibc2.41",
+    "python": "3.11.18"
+  },
+  "advertencia": "LAB ONLY — monitoreo pasivo de la red aislada del laboratorio; no abrir ni reenviar tráfico hacia dispositivos médicos, hospitales o sistemas de terceros."
+}
