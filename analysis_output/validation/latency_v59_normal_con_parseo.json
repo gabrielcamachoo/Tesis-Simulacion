@@ -1,0 +1,67 @@
+{
+  "tool": "latency_bench.py",
+  "timestamp_utc": "2026-11-24T01:57:23.784058+00:00",
+  "hipotesis": "H2",
+  "modo": "normal_path",
+  "include_parse": true,
+  "medicion": "time.perf_counter() de parse_hl7_message() + engine.process_message() (RD-01 completo)",
+  "entorno": {
+    "host_declarado": "PC Gabriel",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "machine": "AMD64",
+    "modelo_placa": null,
+    "processor": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "python": "3.14.7",
+    "cargas_paralelas": "ninguna (bench exclusivo, protocolo §2.4)",
+    "es_raspberry_pi": false
+  },
+  "carga": {
+    "mensajes_por_corrida": 1000,
+    "corridas": 3,
+    "seed_base": 20261014,
+    "camino_medido": "camino normal sin alertas: cadencia exacta de 10 s (capture_time +10 s), MSH-7 monotónico y MCID único"
+  },
+  "per_run": [
+    {
+      "run": 1,
+      "messages": 1000,
+      "alerts_emitidas": 0,
+      "p50_us": 168.5,
+      "p95_us": 259.71,
+      "p99_us": 455.62,
+      "max_us": 4014.0,
+      "min_us": 117.7
+    },
+    {
+      "run": 2,
+      "messages": 1000,
+      "alerts_emitidas": 0,
+      "p50_us": 148.2,
+      "p95_us": 245.55,
+      "p99_us": 354.83,
+      "max_us": 564.8,
+      "min_us": 112.1
+    },
+    {
+      "run": 3,
+      "messages": 1000,
+      "alerts_emitidas": 0,
+      "p50_us": 119.55,
+      "p95_us": 252.67,
+      "p99_us": 401.44,
+      "max_us": 857.2,
+      "min_us": 86.1
+    }
+  ],
+  "aggregate": {
+    "n_total": 3000,
+    "p50_us": 147.35,
+    "p95_us": 255.91,
+    "p99_us": 401.2,
+    "max_us": 4014.0,
+    "min_us": 86.1
+  },
+  "threshold_us": 500.0,
+  "verdict_p95_vs_threshold": "PASS",
+  "nota_h2": "Medido en PC: si p95 <= 500µs, H2 sigue NO VERIFICADO para la Raspberry Pi hasta ejecutar este bench allí (protocolo §3.3/§6)."
+}

@@ -1,0 +1,94 @@
+{
+  "tool": "adversarial_eval.py",
+  "timestamp_utc": "2026-11-24T01:58:34.162060+00:00",
+  "reglas_modificadas": false,
+  "baseline_modificada": false,
+  "nota_metodologica": "Pruebas adversarias de frontera diseñadas como contra-ejemplos para refutar o delimitar el motor congelado sin ajustar reglas ni baseline.yaml; complementan H1 pero no sustituyen un equipo rojo externo independiente.",
+  "resumen": {
+    "escenarios_totales": 5,
+    "evasiones_exitosas": [
+      "E01",
+      "E02"
+    ],
+    "tradeoffs_operativos_disparados": [
+      "E03",
+      "E04"
+    ],
+    "detecciones_sigilosas": [
+      "E05"
+    ]
+  },
+  "escenarios": [
+    {
+      "id": "E01",
+      "name": "clinical_mimicry_peep_alteration",
+      "categoria": "evasion_adversaria",
+      "descripcion": "Mensaje RUNNING VCV válido (IP, MSH-3, OBX, unidades y cadencia 10 s conformes) que altera PEEP de 6 a 28 cmH2O",
+      "intentos": 3,
+      "detectados": 0,
+      "evadidos": 3,
+      "reglas_disparadas": [],
+      "conclusion": "EVADIDO (0/3): confirma empíricamente que las 15 reglas de protocolo no detectan manipulación de valores fisiológicos sin umbrales clínicos."
+    },
+    {
+      "id": "E02",
+      "name": "slow_replay_outside_5s_window",
+      "categoria": "evasion_adversaria",
+      "descripcion": "Reenvío del mismo contenido normalizado a 10 s (> ventana de 5 s de R-SEQ-002) con MSH-10 nuevo y MSH-7 avanzado",
+      "intentos": 3,
+      "detectados": 0,
+      "evadidos": 3,
+      "reglas_disparadas": [],
+      "conclusion": "EVADIDO (0/3): confirma el límite temporal de R-SEQ-002 (ventana fija de 5 s para no alertar mensajes STANDBY idénticos cada 10 s)."
+    },
+    {
+      "id": "E03",
+      "name": "mcid_counter_reset_after_reboot",
+      "categoria": "tradeoff_operativo",
+      "descripcion": "Nueva sesión TCP que reinicia el contador MSH-10 (WATO-1..WATO-3), modelando reinicio de la WATO o reuso entre sesiones",
+      "intentos": 3,
+      "detectados": 3,
+      "evadidos": 0,
+      "reglas_disparadas": [
+        "R-SEQ-001"
+      ],
+      "conclusion": "ALERTA R-SEQ-001 (3/3): confirma el trade-off señalado por el jurado — detecta reuso entre sesiones, pero produciría FP tras un reinicio legítimo del contador del equipo."
+    },
+    {
+      "id": "E04",
+      "name": "legitimate_running_to_standby_transition",
+      "categoria": "tradeoff_operativo",
+      "descripcion": "Transición clínica legítima STANDBY -> RUNNING -> STANDBY (fin de procedimiento quirúrgico)",
+      "intentos": 3,
+      "detectados": 3,
+      "evadidos": 0,
+      "reglas_disparadas": [
+        "R-STATE-001"
+      ],
+      "conclusion": "ALERTA R-STATE-001 (3/3): confirma empíricamente el trade-off — al no haberse observado RUNNING->STANDBY en evidence_raw/, la política fail-safe alerta una operación clínica normal."
+    },
+    {
+      "id": "E05",
+      "name": "stealth_unauthorized_obx_in_running",
+      "categoria": "deteccion_estructural_sigilosa",
+      "descripcion": "Mensaje RUNNING SIMV-VC+PS con cadencia 10 s e identidad válida, pero con 1 segmento OBX no autorizado (999999) camuflado entre 25+ OBX legítimos",
+      "intentos": 3,
+      "detectados": 3,
+      "evadidos": 0,
+      "reglas_disparadas": [
+        "R-HL7-003",
+        "R-OBX-001"
+      ],
+      "conclusion": "DETECTADO R-OBX-001 (3/3): incluso respetando IP, MSH-3, cadencia y modo RUNNING complejo, la inyección de un código OBX fuera de línea base se detecta al 100 %."
+    }
+  ],
+  "agregacion_soc_pi_v56": {
+    "disponible": true,
+    "fuente": "deploy/medicion/resultados/v56_pi_20261123/alerts.jsonl.gz",
+    "alertas_crudas": 19284,
+    "notificaciones_agregadas_por_ip_regla_minuto": 253,
+    "factor_reduccion": 76.22,
+    "reglas_unicas_preservadas": 12,
+    "nota": "Análisis offline ilustrativo sobre v56_pi_20261123; la agregación en línea queda como trabajo futuro."
+  }
+}
