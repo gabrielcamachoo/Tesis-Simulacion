@@ -83,34 +83,68 @@ def build_engine(config: Path, baseline_path: Path, rules_path: Path):
     return DetectionEngine(settings, baseline, rules)
 
 
-def bench_run(engine, n_messages: int, run_idx: int):
-    """Procesa n_messages con el motor ya construido y colecta latencias."""
+def bench_run(engine, n_messages: int, run_idx: int,
+              mode: str = "worst_case", include_parse: bool = False):
+    """Procesa n_messages con el motor ya construido y colecta latencias (ms).
+    mode='worst_case': ráfaga sin avance temporal -> R-TIME-002 + R-SEQ-002 en cada msg.
+    mode='normal_path': avance de capture_time (+10 s) y MSH-7 monotónico -> 0 alertas.
+    include_parse=True: mide parse_hl7_message() + engine.process_message() (RD-01 completo).
+    """
+    import time
+    from datetime import timedelta
+
     lat_ms = []
     alerts_total = 0
-    ts = now_hl7_timestamp()
+    base_dt = datetime(2026, 11, 23, 12, 0, 0, tzinfo=timezone.utc)
+    base_ts_epoch = base_dt.timestamp()
+    fixed_ts = now_hl7_timestamp()
     for i in range(n_messages):
         control_id = f"LB{run_idx:02d}{i:08d}"
-        text = base_hl7_message(control_id=control_id, timestamp=ts)
-        parsed = parse_hl7_message(text)
-        if parsed is None:
-            raise RuntimeError(f"parse falló para mensaje {i}")
+        if mode == "normal_path":
+            msg_dt = base_dt + timedelta(seconds=10 * i)
+            ts_str = msg_dt.strftime("%Y%m%d%H%M%S") + "+0000"
+            cap_t = base_ts_epoch + 10.0 * i
+        else:
+            ts_str = fixed_ts
+            cap_t = None
+        text = base_hl7_message(control_id=control_id, timestamp=ts_str)
         frame = frame_hl7_message(text)
-        result = engine.process_message(
-            session_id=SESSION_ID, source_ip="127.0.0.1",
-            source_port=40000 + (i % 20000),
-            parsed_message=parsed, raw_bytes=frame[1:-2], mllp_frame=frame)
-        lat_ms.append(result.processing_time_ms)
+        raw_bytes = frame[1:-2]
+        if include_parse:
+            t0 = time.perf_counter()
+            parsed = parse_hl7_message(text)
+            if parsed is None:
+                raise RuntimeError(f"parse falló para mensaje {i}")
+            result = engine.process_message(
+                session_id=SESSION_ID, source_ip="127.0.0.1",
+                source_port=40000 + (i % 20000),
+                parsed_message=parsed, raw_bytes=raw_bytes, mllp_frame=frame,
+                capture_time=cap_t)
+            lat_ms.append((time.perf_counter() - t0) * 1000.0)
+        else:
+            parsed = parse_hl7_message(text)
+            if parsed is None:
+                raise RuntimeError(f"parse falló para mensaje {i}")
+            result = engine.process_message(
+                session_id=SESSION_ID, source_ip="127.0.0.1",
+                source_port=40000 + (i % 20000),
+                parsed_message=parsed, raw_bytes=raw_bytes, mllp_frame=frame,
+                capture_time=cap_t)
+            lat_ms.append(result.processing_time_ms)
         alerts_total += len(result.alerts)
     return lat_ms, alerts_total
 
 
 def run_bench(messages: int, runs: int, seed: int,
-              config: Path, baseline_path: Path, rules_path: Path) -> dict:
+              config: Path, baseline_path: Path, rules_path: Path,
+              mode: str = "worst_case", include_parse: bool = False) -> dict:
     per_run = []
     all_ms = []
     for r in range(runs):
         engine = build_engine(config, baseline_path, rules_path)
-        lat_ms, alerts = bench_run(engine, messages, r)
+        lat_ms, alerts = bench_run(
+            engine, messages, r, mode=mode, include_parse=include_parse
+        )
         all_ms.extend(lat_ms)
         per_run.append({
             "run": r + 1,
@@ -122,7 +156,7 @@ def run_bench(messages: int, runs: int, seed: int,
             "max_us": round(max(lat_ms) * 1000, 2),
             "min_us": round(min(lat_ms) * 1000, 2),
         })
-        print(f"corrida {r + 1}/{runs}: n={len(lat_ms)} "
+        print(f"corrida {r + 1}/{runs} [{mode}, parse={include_parse}]: n={len(lat_ms)} "
               f"p50={per_run[-1]['p50_us']}µs p95={per_run[-1]['p95_us']}µs "
               f"p99={per_run[-1]['p99_us']}µs max={per_run[-1]['max_us']}µs "
               f"alertas={alerts}", flush=True)
@@ -148,21 +182,29 @@ def run_bench(messages: int, runs: int, seed: int,
             "para la Raspberry Pi hasta ejecutar este bench allí "
             "(protocolo §3.3/§6)."
         )
+    med_desc = (
+        "time.perf_counter() de parse_hl7_message() + engine.process_message() (RD-01 completo)"
+        if include_parse else
+        "time.perf_counter() interno del motor (DetectionResult.processing_time_ms); parseo HL7 excluido"
+    )
+    camino_desc = (
+        "camino normal sin alertas: cadencia exacta de 10 s (capture_time +10 s), MSH-7 monotónico y MCID único"
+        if mode == "normal_path" else
+        "peor caso por mensaje: ráfaga sin sleep -> R-TIME-002 + R-SEQ-002 en cada mensaje posterior al primero (incluye hash de evidencia y construcción de Alert); sin red ni I/O"
+    )
     return {
         "tool": "latency_bench.py",
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "hipotesis": "H2",
-        "medicion": "time.perf_counter() interno del motor "
-                    "(DetectionResult.processing_time_ms); parseo HL7 excluido",
+        "modo": mode,
+        "include_parse": include_parse,
+        "medicion": med_desc,
         "entorno": entorno,
         "carga": {
             "mensajes_por_corrida": messages,
             "corridas": runs,
             "seed_base": seed,
-            "camino_medido": "peor caso por mensaje: ráfaga sin sleep -> "
-                             "R-TIME-002 + R-SEQ-002 en cada mensaje "
-                             "posterior al primero (incluye hash de evidencia "
-                             "y construcción de Alert); sin red ni I/O",
+            "camino_medido": camino_desc,
         },
         "per_run": per_run,
         "aggregate": agg,
@@ -180,6 +222,10 @@ def parse_args():
                    help="Corridas (protocolo: >= 3)")
     p.add_argument("--seed", type=int, default=20261014,
                    help="Semilla declarada (registro §2.3)")
+    p.add_argument("--mode", choices=["worst_case", "normal_path"], default="worst_case",
+                   help="Camino medido: worst_case (2 alertas/msg) o normal_path (0 alertas/msg)")
+    p.add_argument("--include-parse", action="store_true",
+                   help="Incluir parse_hl7_message() en la medición (RD-01 completo)")
     p.add_argument("--config", default="",
                    help="settings YAML (default: config de laboratorio "
                         "generada junto al JSON de salida)")
@@ -206,10 +252,12 @@ def main() -> int:
         from run_experiment import write_lab_config
         config = write_lab_config(out.parent)
 
-    print(f"Bench latencia H2: {args.messages} msg x {args.runs} corridas "
+    print(f"Bench latencia H2 [{args.mode}, parse={args.include_parse}]: "
+          f"{args.messages} msg x {args.runs} corridas "
           f"(threshold {THRESHOLD_US}µs p95)", flush=True)
     report = run_bench(args.messages, args.runs, args.seed,
-                       config, Path(args.baseline), Path(args.rules))
+                       config, Path(args.baseline), Path(args.rules),
+                       mode=args.mode, include_parse=args.include_parse)
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False),
                    encoding="utf-8")
     agg = report["aggregate"]
