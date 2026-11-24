@@ -76,6 +76,8 @@ class EvaluationResult:
     fp: int = 0
     tn: int = 0
     fn: int = 0
+    strict_rule_tp: int = 0       # D-14: inyecciones emparejadas exactamente con expected_rule
+    strict_rule_recall: float = 0.0
     recall: float = 0.0
     precision: float = 0.0
     f1_score: float = 0.0
@@ -402,21 +404,44 @@ def read_resource_usage(run_dir: Path) -> Optional[Dict[str, float]]:
 
 
 def compute_throughput(timestamps: List[datetime],
-                       total_msgs: int) -> Dict[str, float]:
+                       total_msgs: int,
+                       events_total: Optional[int] = None,
+                       source: str = "estimado") -> Dict[str, float]:
     """
     Throughput = mensajes procesados / ventana temporal (segundos).
     Ventana = último - primer timestamp de alerts.jsonl.
+    D-12: distingue `msgs_per_s` (mensajes HL7 reales cuando `received_messages`
+    está disponible) de `events_per_s` (filas NORMAL+ANOMALO en alerts.jsonl).
     """
+    ev_n = total_msgs if events_total is None else events_total
     if len(timestamps) < 2 or total_msgs == 0:
-        return {"msgs_per_s": 0.0, "window_s": 0.0, "total_msgs": total_msgs}
+        out: Dict[str, float] = {
+            "msgs_per_s": 0.0,
+            "window_s": 0.0,
+            "total_msgs": total_msgs,
+            "events_per_s": 0.0,
+            "events_total": ev_n,
+            "source": source,
+        }
+        return out
     t_min, t_max = min(timestamps), max(timestamps)
     span = (t_max - t_min).total_seconds()
     if span <= 0:
-        return {"msgs_per_s": 0.0, "window_s": 0.0, "total_msgs": total_msgs}
+        return {
+            "msgs_per_s": 0.0,
+            "window_s": 0.0,
+            "total_msgs": total_msgs,
+            "events_per_s": 0.0,
+            "events_total": ev_n,
+            "source": source,
+        }
     return {
         "msgs_per_s": round(total_msgs / span, 3),
         "window_s": round(span, 3),
         "total_msgs": total_msgs,
+        "events_per_s": round(ev_n / span, 3),
+        "events_total": ev_n,
+        "source": source,
     }
 
 
@@ -472,6 +497,13 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
 
     res.tp = n_match
     res.fn = len(injections) - n_match
+    res.strict_rule_tp = sum(
+        1 for i in injections
+        if i.matched_alert_id and i.matched_rule == i.expected_rule
+    )
+    res.strict_rule_recall = (
+        round(res.strict_rule_tp / len(injections), 4) if injections else 0.0
+    )
     res.fp = len(true_fp)
     res.correlated_alerts = correlated
     res.setup_alerts = setup_count
@@ -486,10 +518,14 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
     res.fpr = m["fpr"]
     res.accuracy = m["accuracy"]
 
-    # Throughput y pérdida de mensajes
-    total_msgs = normal_count + res.alerts_total
+    # Throughput y pérdida de mensajes (D-12: usar mensajes HL7 reales si existen)
+    events_total = normal_count + res.alerts_total
+    tp_msgs = received_messages if received_messages is not None else events_total
+    tp_src = "hl7" if received_messages is not None else "alert_events_fallback"
     if timestamps:
-        res.throughput = compute_throughput(timestamps, total_msgs)
+        res.throughput = compute_throughput(
+            timestamps, tp_msgs, events_total=events_total, source=tp_src
+        )
     res.message_loss = compute_message_loss(expected_counts,
                                             received_messages,
                                             normal_count, res.alerts_total)
@@ -528,15 +564,18 @@ def evaluate(injections: List[Injection], alerts: List[AlertRecord],
             "latency_p50_ms": round(percentile(lats, 50), 3) if lats else None,
         }
 
-    # Desglose por regla esperada
+    # Desglose por regla esperada (D-12: acumular cuando varios escenarios comparten regla)
     for sid, items in sorted(by_scenario.items()):
         rule = items[0].expected_rule
         ok = [i for i in items if i.matched_alert_id]
-        res.per_rule[rule] = {
-            "expected": len(items),
-            "detected": len(ok),
-            "missed": len(items) - len(ok),
-        }
+        wrong = [i for i in ok if i.matched_rule != i.expected_rule]
+        acc = res.per_rule.setdefault(
+            rule, {"expected": 0, "detected": 0, "missed": 0, "wrong_rule": 0}
+        )
+        acc["expected"] += len(items)
+        acc["detected"] += len(ok)
+        acc["missed"] += len(items) - len(ok)
+        acc["wrong_rule"] += len(wrong)
 
     res.unmatched_alerts = [a.alert_id for a in true_fp]
     res.missed_injections = [i.injection_id for i in injections if not i.matched_alert_id]
@@ -563,7 +602,9 @@ def format_report(res: EvaluationResult) -> str:
     if res.fp_other_source_in_window:
         lines.append(f"  de los FP, {res.fp_other_source_in_window} caen en la ventana de "
                      f"una inyección pero vienen de otra conexión (tráfico benigno)")
-    lines.append(f"Recall:    {res.recall:.4f}")
+    lines.append(f"Recall:    {res.recall:.4f} "
+                 f"(estricto por regla esperada: {res.strict_rule_recall:.4f}, "
+                 f"{res.strict_rule_tp}/{res.injections_total})")
     lines.append(f"Precision: {res.precision:.4f}")
     lines.append(f"F1:        {res.f1_score:.4f}")
     lines.append(f"FPR:       {res.fpr:.4f}")

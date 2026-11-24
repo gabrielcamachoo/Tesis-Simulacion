@@ -91,7 +91,10 @@ class TestLatencyBenchSmoke:
         assert run["alerts_emitidas"] >= 149
         assert rep["threshold_us"] == 500.0
         assert rep["verdict_p95_vs_threshold"] in ("PASS", "FAIL")
-        assert rep["entorno"]["es_raspberry_pi"] is False
+        # D-11: la aserción debe pasar tanto en PC x86_64 (False) como en ARM/Raspberry Pi (True)
+        from latency_bench import detect_hardware_environment
+        assert isinstance(rep["entorno"]["es_raspberry_pi"], bool)
+        assert rep["entorno"]["es_raspberry_pi"] is detect_hardware_environment()["es_raspberry_pi"]
 
 
 class TestEnmiendaE1ObxUnit:

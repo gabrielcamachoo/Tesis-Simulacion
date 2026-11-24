@@ -245,11 +245,14 @@ class LiveDetector:
                 self._last_prune_ts = ts
 
     def _close_flow(self, key, ts: float):
-        """Al cerrarse la conexión, libera el SessionState del motor (D-02) y
-        alerta si quedó una trama abierta sin 0x1C 0x0D (R-MLLP-001, A05)."""
+        """Al cerrarse la conexión, drena segmentos pendientes contiguos, libera
+        el SessionState del motor (D-02) y alerta si quedó una trama abierta
+        sin 0x1C 0x0D (R-MLLP-001, A05)."""
         fl = self.flows.pop(key, None)
         if fl is None:
             return
+        if fl.pending:
+            self._drain(fl)
         session_id = f"live:{fl.idx}:{fl.src_ip}:{fl.src_port}"
         if fl.buf and fl.buf[:1] == SB:
             self._framing_alert(fl, ts, f"trama MLLP incompleta al cerrar la "
@@ -559,6 +562,20 @@ def parse_args():
     return p.parse_args()
 
 
+def build_tcpdump_cmd(interface: str, port: int, bpf: str = "") -> list:
+    """Construye el comando tcpdump para captura en vivo (D-13).
+    -Z root: evita que tcpdump baje privilegios y falle al escribir en volúmenes root.
+    -U: packet-buffered stdout (un paquete por escritura).
+    --immediate-mode: entrega paquetes al instante desde libpcap sin esperar el
+      timeout de 1000 ms del ring-buffer TPACKET_V3 (reduce latencia E2E de ~500 ms a ~3-5 ms).
+    """
+    flt = bpf or f"tcp port {port}"
+    return [
+        "tcpdump", "-Z", "root", "-i", interface, "-nn", "-s0",
+        "-U", "--immediate-mode", "-w", "-", flt,
+    ]
+
+
 def main() -> int:
     args = parse_args()
     if os.environ.get("LAB_AUTHORIZED", "").strip().upper() != "YES":
@@ -623,11 +640,7 @@ def main() -> int:
     signal.signal(signal.SIGTERM, on_signal)
 
     if args.interface:
-        bpf = args.bpf or f"tcp port {args.port}"
-        # -Z root: sin esto tcpdump cambia al usuario 'tcpdump' y no puede
-        # escribir en volúmenes de root. -U: un paquete por escritura.
-        cmd = ["tcpdump", "-Z", "root", "-i", args.interface, "-nn", "-s0",
-               "-U", "-w", "-", bpf]
+        cmd = build_tcpdump_cmd(args.interface, args.port, args.bpf)
         print(f"[live] {' '.join(cmd)}", flush=True)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         stream = proc.stdout

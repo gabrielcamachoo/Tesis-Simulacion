@@ -613,7 +613,7 @@ def build_baseline_from_standby_documented() -> Dict[str, Any]:
             'end_block': '0x1C',
             'carriage_return': '0x0D',
             'encoding': 'UTF-8',
-            'max_message_size_bytes': 65535
+            'max_message_size_bytes': 5120
         },
         'hl7_parameters': {
             'version': '2.6',

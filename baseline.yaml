@@ -499,7 +499,8 @@ mllp_parameters:
   end_block: '0x1C'
   carriage_return: '0x0D'
   encoding: UTF-8
-  max_message_size_bytes: 65535
+  # Enmienda E9: límite operativo alineado con settings.yaml (margen +29% sobre máx. real 3945 B)
+  max_message_size_bytes: 5120
 hl7_parameters:
   version: '2.6'
   profile: IHE_PCD_001^IHE PCD^1.3.6.1.4.1.19376.1.6.1.1.1^ISO
