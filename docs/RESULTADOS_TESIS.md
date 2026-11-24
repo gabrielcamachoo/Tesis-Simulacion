@@ -1,177 +1,90 @@
-# Resultados de la Tesis — Compilado para Defensa
+# Resultados de la Tesis — Compilado para Defensa (v5.9)
 
-**Proyecto:** Detector determinista de anomalías/ataques HL7/MLLP para el monitor
-anestésico Mindray WATO EX-35 (Tesis G18 SIDRE, Pontificia Universidad Javeriana)
-**Fecha de este compilado:** 2026-10-17 · **Host de medición:** PC Windows (declarado)
-**Fuentes:** corridas selladas en `analysis_output/validation/` + `docs/RESULTS_20261014.md`
+**Proyecto:** Detección de anomalías de red compatibles con ransomware en la telemetría HL7 de una máquina de anestesia Mindray WATO EX-35 (Tesis 2026-03-G18, SIDRE, Pontificia Universidad Javeriana)  
+**Última actualización:** 23/24-11-2026 (`main` commit `c60edc0`, código de motor `0453c03` + cierres v5.8–v5.9)  
+**Fuentes selladas:** `analysis_output/validation/SHA256SUMS.txt` (`220/220` OK) y `deploy/medicion/resultados/v56_pi_20261123/SHA256SUMS.txt` (`20/20` OK) — **240 archivos verificados**
 
-> Taxonomía usada: **MEDIDO** = número de corrida sellada; **OBSERVADO** = evidencia
-> real del WATO; **NO_VERIFICADO** = pendiente de hardware o aprobación.
+> Taxonomía usada: **MEDIDO** = dato de corrida sellada con SHA-256; **OBSERVADO** = evidencia real del WATO EX-35; **NO_VERIFICADO** = pendiente de hardware externo, captura nueva o aprobación clínica.
 
-## 0. Resumen ejecutivo (para la defensa)
+---
 
-| Hipótesis | Enunciado | Estado | Evidencia |
+## 0. Resumen ejecutivo (para la sustentación)
+
+| Hipótesis / Criterio | Enunciado | Estado en v5.9 | Evidencia sellada |
 |---|---|---|---|
-| **H1 — Efectividad** | ADR ≥ 90 % sobre ataques ATT&CK ICS inyectados | **ACEPTADA (MEDIDO)** | ADR **100 %** (2010/2010 TP), IC95 Wilson [99.8, 100.0], 60 corridas selladas (2026-10-14) |
-| **H2 — Latencia** | p95 lectura→alerta ≤ 500 µs por mensaje | **PASS en PC / NO_VERIFICADO en Pi** | Bench 3×1000 msgs: p95 **177.5 µs** (PC). Requiere repetir en la Pi física |
-| **H3 — Falsos positivos** | FP sobre corpus benigno = 0 | **CUMPLE en STANDBY y RUNNING (MEDIDO)** | Evidencia real: **FP = 0** en STANDBY (43 ORU) y **FP = 0** en RUNNING (99 ORU, 6 modos) con baseline bimodal v1.1 + E1–E8 |
+| **H1 — Efectividad (catálogo propio)** | ADR ≥ 90 % sobre escenarios MITRE ATT&CK for ICS (A01–A16) | **Estimación puntual 100 % sobre catálogo propio (límite inferior Wilson `80,6 % < 90 %` por `n = 16`; evasiones verificadas en `E01–E02`)** | **60 corridas PC (`0453c03`):** `2.010/2.010` TP, `16/16` escenarios (Wilson 95 % sobre escenarios `[80,6 %, 100 %]`, se requerirían `n ≥ 35` escenarios independientes), **`0` FP oficiales**, precisión `100,0 %`. **Corrida física Pi 3B (`v56_pi_20261123`):** `4.864` inyecciones (`15/15` escenarios), Recall `1,0000` (`0,9996` exacto por regla: `4.862/4.864`), Precisión `0,9998`, F1 `0,9999`. **Pruebas adversarias `E01–E05` (`adversarial_eval_v59.json`):** `E01`/`E02` evadidos `0/3`, `E03`/`E04` trade-offs `3/3`, `E05` detectado `3/3`. |
+| **H2 — Latencia por mensaje** | p95 de evaluación determinista ≤ 500 µs | **PASS en PC (incluyendo camino normal y parseo HL7) / NO CUMPLE en Raspberry Pi 3 Model B (MEDIDO)** | **PC Windows (`v5.6`/`v5.9`, `D-06`):** peor caso motor `233,71 µs`, normal motor **`188,90 µs`**, normal + parseo HL7 **`255,91 µs`**, peor caso + parseo **`302,74 µs`** (`170,82 µs` Linux). **Raspberry Pi 3 Model B:** `1706,3 ± 7,5 µs` (3 rep., 19-11) y **`1744,41 µs`** (v5.6, 23-11) → **FAIL** vs `500 µs` (umbral NO modificado). Pi 4 del SRS: `NO_VERIFICADO`. |
+| **H3 — Falsos positivos benignos** | FP = 0 sobre corpus clínico benigno del WATO EX-35 | **Consistente con línea base (`0` alertas) / Tráfico nuevo `NO_VERIFICADO`** | `0` alertas en STANDBY (`43/43`) y RUNNING (`99/99`) con baseline bimodal v1.1 + E1–E9 (mismos datos usados para construir/ajustar la línea base; Wilson 95 % hasta `2,6 %`). En vivo en Pi 3B bajo ataque continuo (`v56_pi_20261123`, E10): **`0` alertas** sobre emisor legítimo `192.168.5.114` en `208` mensajes durante 30 min. |
 
-| Entrega operativa (2026-10-17) | Resultado |
+| Indicador de calidad y hardware (v5.9) | Resultado medido |
 |---|---|
-| Topología Raspberry Pi (docker) — A01–A16 | **recall 1.0000**, precision 0.9846 (1 FP jitter), 15/15 escenarios 100 % |
-| Campaña atacante ransomware — A01,A05,A06,A13,A14,A16 | **TP=20 FP=0 FN=0**, recall=precision=F1 **1.0000** |
-| Despliegue WATO standalone (benigno) | 8/8 ORU + 8/8 ACK `AA`, **0 alertas**, sesión 42.1 s, evidencia con SHA-256 |
-| Suite de pruebas | **251 passed** (2026-10-20, incluye enmiendas E1–E9) |
+| Suite automatizada (`pytest`) | **307 passed** (`0` fallos, `0` omitidas; portable PC y ARM tras cierre de D-11; incluye `E01–E05` y modos H2) |
+| Cobertura de código (`pytest-cov`, `0453c03`) | **93,8 % en el núcleo** (`src/mllp` `91,4 %`, `src/hl7` `93,2 %`, `src/detection` `96,9 %`, `engine.py` `97,0 %` — **CUMPLE ANF-03 > 90 %**); `78,1 %` en `src/` |
+| Recursos en Pi 3B post-parches (`v56_pi_20261123`, 30 min) | CPU promedio en CARGA: **`9,9 %`** (≤ 50 %); RAM máx. 3 procesos: **`41,0 MB`** (≤ 64 MB); pendiente RSS detector en CARGA: **`+0,009 MB/min`** (`REPOSO2 = +0,000 MB/min`, D-02 cerrado en vivo) |
+| Detección en vivo `A15 → R-MLLP-001` (D-04) | **`228/228`** en vivo sobre Pi 3B (`15/15` escenarios activos) |
+| Agregación offline de alertas SOC sobre Pi 3B (`adversarial_eval_v59.json`) | **`19.284` alertas crudas → `253` notificaciones** por `(IP, regla, minuto UTC)` (**`76,22×` menos**, `12/12` reglas preservadas) |
+| Integridad criptográfica (`RF-04`) | `analysis_output/validation/SHA256SUMS.txt`: **`220/220` OK**; `deploy/medicion/resultados/v56_pi_20261123/SHA256SUMS.txt`: **`20/20` OK** (**`240`** totales) |
 
-## 1. Metadatos de la campaña principal (Fase 9, 2026-10-14)
+---
 
-| Campo | Valor |
-|-------|-------|
-| Commit sellado | `2017af16320ddcb2faabdcc1bf71ceefc64788b5` |
-| Semillas | 100001–100030 por fase (main y A14) |
-| Python | 3.11.9 (venv) |
-| Modo fase 1 | `run_experiment.py --mode docker --exclude A14` (topología de la tesis) |
-| Modo fase 2 | `run_experiment.py --mode local` (solo A14) |
-| Integridad | SHA-256 de `settings/rules/baseline` + `SHA256SUMS.txt` (314 archivos) |
+## 1. Campaña H1 Re-ejecutada (23-11-2026, commit `0453c03`, 60 corridas)
 
-## 2. H1 — Efectividad por escenario (60 corridas, 2010 inyecciones)
+- **Subcampaña principal (15 escenarios, `--exclude A14`, 30 corridas, semillas `100001–100030`):** `1.920 / 1.920` TP, `0` FP, `0` FN (`analysis_output/validation/main_bloque1_20261123_200400/`).
+- **Subcampaña A14 (silencio, 30 corridas, semillas `100001–100030`):** `90 / 90` TP, `0` FP, `0` FN (`analysis_output/validation/a14_bloque1_20261123_200828/`).
+- **Total global H1:** `2.010 / 2.010` TP (`16 / 16` escenarios), ADR `100,0 %`, **precisión oficial `100,0 %` (`0` FP tras cierre de D-05)**, intervalo de Wilson al 95 % sobre los 16 escenarios: **`[80,6 %, 100 %]`**.
+- **Salvedad metodológica obligatoria:** Validación circular (reglas, escenarios y generador escritos por el mismo equipo); demuestra cumplimiento sobre el catálogo propio, no sobre ataques desconocidos o diseñados por terceros.
 
-| Escenario | Qué modela | Regla esperada | Inyectados | TP | ADR % |
-|-----------|------------|----------------|------------|----|-------|
-| A01 | Origen lógico desconocido (suplantación) | R-ID-001 | 90 | 90 | 100.0 |
-| A02 | Control ID duplicado | R-SEQ-001 | 90 | 90 | 100.0 |
-| A03 | Replay de mensaje | R-SEQ-002 | 90 | 90 | 100.0 |
-| A04 | Timestamp regresivo | R-TIME-001 | 90 | 90 | 100.0 |
-| A05 | Delimitador final ausente (stream cortado) | R-MLLP-001 | 90 | 90 | 100.0 |
-| A06 | Bytes basura antes del SB (stream corrompido) | R-MLLP-001 | 90 | 90 | 100.0 |
-| A07 | Segmento MSH ausente | R-HL7-001 | 90 | 90 | 100.0 |
-| A08 | Orden de segmentos inválido | R-HL7-003 | 90 | 90 | 100.0 |
-| A09 | Tipo de mensaje desconocido | R-HL7-002 | 90 | 90 | 100.0 |
-| A10 | OBX con datatype sintético | R-OBX-003 | 90 | 90 | 100.0 |
-| A11 | OBX con unidad no autorizada | R-OBX-002 | 90 | 90 | 100.0 |
-| A12 | Frecuencia fuera de baseline (tormenta) | R-TIME-002 | 600 | 600 | 100.0 |
-| A13 | Reconexiones repetidas | R-TIME-002 | 150 | 150 | 100.0 |
-| A14 | Silencio periódico (secuestro del canal) | R-TIME-002 | 90 | 90 | 100.0 |
-| A15 | Mensaje sobredimensionado (>5120 B, Enmienda E9) | R-MLLP-001 | 90 | 90 | 100.0 |
-| A16 | Cambio de identidad a mitad de sesión | R-ID-001 | 90 | 90 | 100.0 |
-| **GLOBAL** | | | **2010** | **2010** | **100.0** |
+---
 
-- IC95 (Wilson) global: **[99.8, 100.0]**; por escenario ≥ [95.9, 100.0].
-- Precisión global: **99.7 %** (7 FP benignos `R-TIME-002` por jitter de timing ≈ 0.3 %,
-  en ~20 % de corridas bajo carga concurrente; umbral NO ajustado post-hoc).
-- Fuente cruda: `analysis_output/validation/main_20261014_162606/` +
-  `a14_20261014_172034/validation_summary.json`.
+## 2. Corrida Física en Vivo en la Raspberry Pi 3 Model B (`v56_pi_20261123`, 23/24-11-2026)
 
-## 3. H2 — Latencia (bench `latency_bench.py`, peor caso sintético)
+Montaje en red aislada con UFW activo (`wlan0`, Pi `192.168.5.134` como receptor MLLP + `pi-mllp-detector`, PC Windows `192.168.5.114` emisor benigno `wato-benign` 1 msg/10 s, Kali `192.168.5.160` atacante en bucle con `--all --exclude A14 --count 3` y registro de `ground_truth.jsonl` sincronizado por NTP).
 
-| Corrida | Mensajes | p50 (µs) | p95 (µs) | p99 (µs) | máx (µs) |
-|---------|----------|----------|----------|----------|----------|
-| 1 | 1000 | 112.3 | 166.96 | 287.73 | 3628.1* |
-| 2 | 1000 | 114.3 | 195.89 | 349.61 | 591.8 |
-| 3 | 1000 | 113.55 | 178.53 | 325.26 | 737.1 |
-| **Agregado** | 3000 | 113.2 | **177.52** | 325.0 | 3628.1 |
+| Métrica física medida en placa | Valor `v56_pi_20261123` | Criterio / Observación |
+|---|---|---|
+| Fases (UTC) | `REPOSO1` (~7,5 min) · `CARGA` (~21,4 min, 76 iter.) · `REPOSO2` (~5 min) | `pi_v56_rep1_fases.csv` corrige 67 filas donde Kali aún no iniciaba |
+| Inyecciones en `ground_truth` | **4.864** (`15/15` escenarios, excl. A14) | `A01–A11, A15–A16`: 228 c/u; `A12`: 1.520; `A13`: 380 |
+| Recall / Precisión / F1 (`evaluate.py`) | **1,0000 / 0,9998 / 0,9999** (TP `4.864`, FP `1`, FN `0`) | Recall estricto por regla esperada: **`0,9996`** (`4.862/4.864`; `A11` tuvo `2` emparejamientos por respaldo) |
+| Alertas sobre emisor legítimo (`192.168.5.114`) en ventana | **0** de 208 mensajes benignos | **Confirma E10 en vivo** (antes `354/366`). El único FP ocurrió a las `00:11:11` (`R-TIME-002` silencio) tras apagar el emisor |
+| `A15 → R-MLLP-001` en vivo | **228 / 228** | **Confirma D-04 en vivo** (`5120 B` en `detect_live.py`) |
+| CPU promedio / p95 / máx. en CARGA (`lab_cpu_pct`) | **9,9 % / 15,4 % / 20,6 %** | ≤ 50 %: **CUMPLE** |
+| RAM máxima 3 procesos (`lab_rss_mb`) | **41,0 MB** (detector `17,1 MB`, receptor `18,8 MB`, tcpdump `5,1 MB`) | ≤ 64 MB: **CUMPLE** |
+| Pendiente RAM detector (`CARGA` / `REPOSO2`) | **`+0,009 MB/min` / `+0,000 MB/min`** | **Confirma D-02 en vivo** (antes `+0,045` a `+0,055 MB/min`) |
+| Latencia de procesamiento en vivo (`detect_live_summary.json`) | p50 **`3,39 ms`**, p95 **`4,52 ms`**, máx. `44,73 ms` | Procesamiento interno paquete→alerta en Pi 3B |
+| Latencia extremo a extremo (`evaluate.py` Kali→Pi) | p50 **`473,8 ms`**, p95 **`1013,9 ms`** | Dominada por buffer de `1 s` de `libpcap` (`tcpdump -U` sin `--immediate-mode`) |
+| Bench H2 (`latency_pi_v56.json`, 3×1000, peor caso) | p50 `1610,42 µs`, **p95 `1744,41 µs`**, p99 `1850,84 µs` | **`FAIL`** vs `500 µs`. **`es_raspberry_pi: true`** (**confirma D-06 en vivo**) |
+| Throttling / temperatura | `0x50000` antes y después; `dmesg` sin eventos nuevos; máx. `47,2 °C` | Corrida **VÁLIDA** |
 
-\* outlier de calentamiento (corridas 2-3: máx ≤ 737 µs). Umbral: 500 µs → **PASS en PC**.
-Crudo: `analysis_output/validation/latency_20261014_140421.json`.
-**Declaración obligatoria en defensa:** H2 es NO_VERIFICADO para Raspberry Pi hasta
-correr `latency_bench.py --messages 1000 --runs 5` en la placa física.
+---
 
-## 4. H3 — Falsos positivos sobre evidencia real (replay)
+## 3. H2 — Comparativa histórica de latencia (`latency_bench.py`)
 
-| Corpus | Mensajes | FP (Fase 9 unimodal) | FP (v1.1 bimodal + E2–E8) | Interpretación |
-|--------|----------|----------------------|---------------------------|----------------|
-| STANDBY (`LECTURACONACK25AGOSTO.pcapng`) | 43 ORU | **0** | **0** (43/43 `NORMAL`) | Cumple protocolo §3.2 (×5 reproducciones idénticas) |
-| RUNNING (`LECTURAACK27AGOSTO.pcapng`) | 99 ORU (13 STANDBY + 86 RUNNING) | 256 (`R-OBX-001/002/003` pre-bimodal) | **0** (99/99 `NORMAL`, 1 transición `STANDBY->RUNNING`) | Con `baseline.yaml` v1.1 (33 códigos OBX, 9 unidades MDC, 6 modos ventilatorios) + E2–E5 se logra **FP = 0** sobre las 2 capturas clínicas reales |
+| Plataforma / Corrida | Fecha | Mensajes | p50 (µs) | p95 (µs) | p99 (µs) | Veredicto vs 500 µs |
+|---|---|---:|---:|---:|---:|---|
+| PC desarrollo (Fase 9) | 14-10-2026 | 3.000 | 113,20 | 177,52 | 325,00 | PASS (referencia PC) |
+| PC Linux (`main` 1a8ff5d) | 19-11-2026 | 3.000 | 127,27 | 170,82 | 232,23 | PASS (referencia PC) |
+| PC Windows (`main` v5.6, D-06, peor caso motor) | 23-11-2026 | 3.000 | 133,10 | 233,71 | 348,23 | PASS (referencia PC) |
+| PC Windows (v5.9, **camino normal motor**, 0 alertas) | 23-11-2026 | 3.000 | 65,40 | **188,90** | 288,26 | PASS (referencia PC) |
+| PC Windows (v5.9, **normal + parseo HL7**, RD-01 completo) | 23-11-2026 | 3.000 | 147,35 | **255,91** | 401,20 | PASS (referencia PC) |
+| PC Windows (v5.9, **peor caso + parseo HL7**, 2 alertas/msg) | 23-11-2026 | 3.000 | 117,50 | **302,74** | 453,31 | PASS (referencia PC) |
+| **Raspberry Pi 3 Model B** (3 rep. pre-parche, peor caso motor) | 19-11-2026 | 9.000 | 1570,8–1577,6 | **1706,3 ± 7,5** | 1801,1–1846,0 | **FAIL** |
+| **Raspberry Pi 3 Model B** (`v56_pi_20261123`, D-06, peor caso motor) | 24-11-2026 | 3.000 | 1610,42 | **1744,41** | 1850,84 | **FAIL** |
 
-## 5. Campaña de ransomware en tiempo real (simulación compuesta)
+---
 
-Modelo: un ransomware que secuestra el canal de telemetría (sin malware real;
-`docs/SIMULACION_RANSOMWARE.md`). Escenarios: A01 (suplantación), A05/A06
-(corrupción del stream), A13 (reconexiones), A14 (silencio/hostage), A16 (cambio de identidad).
+## 4. H3 — Consistencia sobre evidencia clínica real (`evidence_raw/`)
 
-| Corrida | Modo | TP / FP / FN | Recall / Precision | Latencia p50 / p95 | Duración |
-|---|---|---|---|---|---|
-| `20261014_175952` (sellada) | local, seed 2026101401 | 20 / 0 / 0 | 1.0000 / 1.0000 | 2.0 / 8.8 ms | 201 s |
-| **`20261017_110410` (hoy)** | local, seed 2026101401 | **20 / 0 / 0** | **1.0000 / 1.0000** | 1.59 / 7.23 ms | 201 s |
+- **STANDBY (`LECTURACONACK25AGOSTO.pcapng`):** `43/43` ORU^R01 clasificados `NORMAL` (`0` alertas).
+- **RUNNING (`LECTURAACK27AGOSTO.pcapng`):** `99/99` ORU^R01 (`13` STANDBY + `86` RUNNING en 6 modos ventilatorios) clasificados `NORMAL` (`0` alertas) con baseline bimodal v1.1 + E1–E9 (`detect_pcap.py` y `detect_live.py` idénticos).
+- **Salvedad:** son las mismas capturas usadas para construir y afinar la línea base (enmiendas E1–E9). No constituyen una medición de tasa de falsos positivos en tráfico clínico nuevo no visto.
 
-Evidencia cualitativa (idéntica en ambas corridas):
+---
 
-- `FRAMING_ERROR ... garbage_before_sb:9_bytes` ×3 → A06 (payload corrompido).
-- Sesión de 136.8 s con 9 mensajes → ventana A14 (silencio forzado de 45 s ×3).
-- 5 sesiones cortas de reconexión → A13.
-- `R-ID-001 Unauthorized sending application: MALICIOUS_APP^hacker^L` → A01;
-  `MINDRAY_WATOPRO-SERIES^…` → A16.
+## 5. Limitaciones obligatorias para la defensa
 
-Selladas: `analysis_output/validation/ransomware_sim_20261014_175952/` y
-`ransomware_sim_20261017_110410/`.
-
-## 6. Topología Raspberry Pi (simulación docker)
-
-Mismo `docker-compose.yml` que usará la Pi física: red interna `172.30.0.0/24`
-(sin egress), IPs fijas (emulador .10, generador .11, receptor .20), código idéntico.
-
-| Corrida | TP / FP / FN | Recall | Precision | Latencia p50 / p95 | Escenarios |
-|---|---|---|---|---|---|
-| `20261014_175742` (sellada) | 64 / 1 / 0 | 1.0000 | 0.9846 | 0.95 / 1.78 ms | 15/15 = 100 % |
-| **`20261017_110211` (hoy)** | **64 / 1 / 0** | **1.0000** | 0.9846 | 0.93 / 1.93 ms | 15/15 = 100 % |
-
-- FP único: 1 × `R-TIME-002` benigno (jitter; comportamiento documentado Fase 9).
-- **NO simulado:** CPU ARM, consumo/térmico y **H2 (latencia ≤ 500 µs)** — requiere Pi física.
-- Selladas: `analysis_output/validation/pi_sim_20261014_175742/` y `pi_sim_20261017_110211/`.
-
-## 7. Despliegue WATO standalone (2026-10-17, tráfico benigno)
-
-Receptor-detector (`deploy/receptor/receptor.ps1`) + emulador WATO
-(`deploy/wato/wato.ps1`, STANDBY, 8 msg / 6 s):
-
-| Métrica | Valor |
-|---|---|
-| Mensajes ORU^R01 enviados / recibidos | 8 / 8 (100 %) |
-| ACK validados `AA` | 8/8 (0 timeouts) |
-| Sesión | 42.1 s, 5720 bytes, 0 errores |
-| **Alertas de seguridad** | **0** (8 eventos `NORMAL` INFO) |
-| Evidencia | `raw`+`hl7`+`logs` con SHA-256 por sesión |
-
-## 8. Cómo leer las métricas (glosario de defensa)
-
-- **TP / FP / TN / FN**: inyección detectada en su ventana / alerta fuera de ventana /
-  mensaje benigno sin alerta / inyección no detectada (evaluate.py).
-- **ADR (recall)** = TP / (TP+FN): mide detección; **Precision** = TP / (TP+FP): mide ruido.
-- **IC95 Wilson**: intervalo del ADR por muestreo de corridas (protocolo §3.1).
-- **Latencia inyección→alerta**: delta entre ground truth y alerta correlacionada (ms).
-- **Throughput / pérdida**: msg/s del receptor y msgs perdidos vs. esperado (seed.txt).
-- **`manifest.json`** por corrida: commit, hashes de insumos/salidas, semilla, runtime —
-  reproducibilidad total.
-
-Ejemplo de alerta real (`runs/20261017_110410/alerts/alerts.jsonl`):
-
-```json
-{"alert_id": "ALERT-000001-1792253082197", "rule_id": "R-ID-001",
- "timestamp_utc": "2026-10-17T16:04:42.197749+00:00", "severity": "HIGH",
- "reason": "R-ID-001: Unauthorized sending application: MALICIOUS_APP^hacker^L",
- "evidence_hash": "667bb690718b0117cfa1c1a07fc80597df85e72b7c8b92563e300ffafddcc919",
- "label": "ANOMALO", "synthetic": false}
-```
-
-## 9. Mapa de la evidencia (rutas para el jurado)
-
-| Qué | Dónde |
-|---|---|
-| Resumen de esta tesis | `docs/RESULTADOS_TESIS.md` (este archivo) |
-| Resultados Fase 9 crudos + decisiones | `docs/RESULTS_20261014.md` |
-| Corridas completas (regenerables) | `runs/<timestamp>/` (gitignored) |
-| Evidencia sellada + SHA-256 | `analysis_output/validation/` (+ `SHA256SUMS.txt`) |
-| Manifiestos de campaña | `analysis_output/validation/{main,a14}_20261014_*/validation_summary.json` |
-| Bench latencia H2 | `analysis_output/validation/latency_20261014_140421.json` |
-| Evidencia original WATO (solo lectura) | `evidence_raw/` (+ `evidence_inventory.csv` SHA-256) |
-| Matriz requisito→escenario→regla→métrica | `docs/TRACEABILITY_MATRIX.csv` |
-| Protocolo de medición | `docs/VALIDATION_PROTOCOL.md` |
-
-## 10. Limitaciones que SÍ deben citarse en la defensa
-
-1. H2 sin verificar en Pi física (p95 177.5 µs es de PC x86, no extrapolable).
-2. Baseline bimodal `STANDBY` + `RUNNING` (6 modos): logra 0 FP en ambas capturas reales; las alarmas fisiológicas activas y la transición `RUNNING -> STANDBY` permanecen como `NO_VERIFICADO` por no figurar en `evidence_raw/`.
-3. Jitter de timing benigno genera ~0.3 % FP bajo carga (umbral no tunneado).
-4. Aprobación clínica PENDING: ninguna regla clínica activa.
-5. Sin malware real ni equipo clínico: simulación de comportamientos de ataque en
-   laboratorio aislado (alcance declarado en `docs/ETHICS_AND_SAFETY.md`).
+1. **H2 no se cumple en Raspberry Pi 3 Model B** (`1706,3 ± 7,5 µs` y `1744,41 µs` vs. `500 µs`). La **Raspberry Pi 4** especificada en el SRS no fue medida.
+2. **Sin SPAN físico ni TAP de red:** el modo pasivo y *fail-open* solo se validaron en red virtual Linux; en la Pi 3B se operó en modo de captura directa por Wi-Fi (`wlan0`) con UFW.
+3. **Validación circular en H1 y mismos datos en H3:** faltan escenarios de terceros y una captura clínica nueva (hold-out) en el HUSI.
+4. **Sin umbrales clínicos ni defensa contra mimetismo:** un mensaje bien formado con cadencia, identidad y códigos válidos que altere solo un valor fisiológico (ej. PEEP) no dispara alerta.
+5. **Volumen de alertas sin agregación:** ~15–16 alertas/s bajo ataque continuo (requiere agregación por regla/sesión/ventana antes de producción SIEM).
+6. **Aprobación clínica `PENDING` y trámite administrativo `CC-01`** pendiente de visto bueno escrito del director.

@@ -5,28 +5,13 @@ host comprometido en la red de monitores multiparámetro Mindray WATO EX-35.
 No existe contacto con equipo clínico real: todo se ejecuta contra evidencia
 capturada previamente y un emulador en red aislada.
 
-> **Versión final de código (18-11-2026).** La Raspberry Pi ya corrió en hardware real
-> y el código queda cerrado. Hay dos formas de usar la Pi:
+> **Versión v5.9 (23/24-11-2026 — edición final de entrega y sustentación).** El código en `main` integra la Enmienda E10 (PR #10), los cierres D-02 a D-06 **confirmados en vivo en la Raspberry Pi 3 Model B** (`deploy/medicion/resultados/v56_pi_20261123/`), los cierres de auditoría **D-11 a D-14**, alineación de `baseline.yaml` (`5120 B`), la suite adversaria de frontera **E01–E05** (`adversarial_eval.py`) y el desglose completo de latencia H2 en PC (camino normal + parseo HL7):
 >
-> - **Receptor** (`deploy/pi/`): la Pi física recibe el tráfico MLLP del emisor WATO
->   remoto (`192.168.5.114 → 192.168.5.134:1550`). Probado en la Pi el 22-10-2026:
->   10 mensajes STANDBY, 10 ACK `AA`, 0 errores (registrado en el PR #3; los logs de
->   esa corrida todavía no están en el repositorio).
-> - **Receptor + detector en vivo** (`deploy/docker/`, `detect_live.py`): el PC `.114`
->   (emisor benigno WATO) y Kali (VM en adaptador puente, IP propia) le mandan a la
->   Pi `192.168.5.134:1550`; `detect_live.py` captura en la Pi (`wlan0`) lo que le
->   llega. El switch del lab no tiene port mirroring, así que la Pi **no es un tap
->   pasivo** en hardware real: el modo pasivo por espejo solo está validado en una
->   red virtual y queda como trabajo futuro con un switch administrable.
->   Falta correrlo en la Pi física y medir allí la latencia (H2).
->
-> **Estado del detector.** Las capturas reales dan 0 falsos positivos en STANDBY
-> (43/43 NORMAL, `LECTURACONACK25AGOSTO.pcapng`) y en RUNNING (99/99 NORMAL,
-> `LECTURAACK27AGOSTO.pcapng`), también con el detector en vivo. Pasan las 273
-> pruebas automatizadas y el sello `analysis_output/validation/SHA256SUMS.txt`
-> verifica 210/210 desde un clon limpio (`sha256sum -c SHA256SUMS.txt`).
->
-> El código no cambia más: solo se documenta y se ejecutan las corridas oficiales.
+> - **Corrida física de 30 min en Pi 3B con ground truth NTP de Kali (`v56_pi_20261123`):** `4.864` inyecciones (`15/15` escenarios, excl. A14), **Recall `1,0000`** (`0,9996` exacto por regla: `4.862/4.864`), **Precisión `0,9998`**, **F1 `0,9999`**; **`0` alertas sobre el emisor legítimo** (`192.168.5.114`) durante la ventana de 30 min (E10 confirmado en vivo); pendiente RSS del detector **`+0,009 MB/min`** en CARGA (`+0,000 MB/min` en REPOSO2) y pico **`41,0 MB ≤ 64 MB`** (D-02 confirmado en vivo); CPU promedio **`9,9 % ≤ 50 %`**; **`228/228` `A15 → R-MLLP-001`** (D-04 confirmado en vivo); `es_raspberry_pi: true` (D-06 confirmado en vivo); agregación SOC offline sobre las `19.284` alertas reales: **`253` notificaciones** por `(IP, regla, minuto UTC)` (**`76,22×` menos**, `12/12` reglas).
+> - **Latencia H2 (`latency_bench.py`, umbral `500 µs`):** PASS en PC — peor caso solo motor `233,71 µs` (Windows) / `170,82 µs` (Linux), camino normal solo motor **`188,90 µs`**, normal con parseo HL7 (`RD-01` completo) **`255,91 µs`**, peor caso con parseo **`302,74 µs`**; **FAIL en Raspberry Pi 3 Model B** (`1706,3 ± 7,5 µs` el 19-11 y **`1744,41 µs`** el 24-11). La Raspberry Pi 4 del SRS y el modo pasivo en switch SPAN físico siguen como trabajo futuro / Bloque 4.
+> - **Calidad, contra-ejemplos y sellos:** **307 pruebas** (`307 passed`, `0` fallos, portable PC y ARM), **93,8 % cobertura del núcleo** (`ANF-03 > 90 %` cumplido), campaña H1 re-ejecutada **`2.010/2.010` TP y `0` FP** (`100,0 %` precisión puntual; IC 95 % Wilson `[80,6 %, 100 %]`, límite inferior `< 90 %` por `n = 16`), pruebas adversarias `E01–E05` (`adversarial_eval_v59.json`: `E01`/`E02` evadidos `0/3`, `E03`/`E04` trade-offs `3/3`, `E05` detectado `3/3`), sellos SHA-256 verificados (**`220/220`** en `analysis_output/validation/SHA256SUMS.txt` y **`20/20`** en `deploy/medicion/resultados/v56_pi_20261123/SHA256SUMS.txt` — **240 archivos**).
+> - **Consistencia sobre capturas clínicas reales (`evidence_raw/`):** `0` alertas en STANDBY (`43/43`) y RUNNING (`99/99`) con baseline bimodal v1.1 (mismos datos usados para construir la línea base; tráfico clínico nuevo pendiente en HUSI).
+> - **Documentación oficial v5.9 (8 DOCX + 8 PDF):** `documentos_tesis/` (Memoria, SRS, SDD, PMP, DCC v1.4, Anexo 1, Anexo 2 y Anexo 3 sincronizados en `Entregable_Final_TG_2026_03_G18/`), `docs/CONCEPTO_JURADO_Y_DIRECTOR_v5.7.md`, `docs/GUION_SUSTENTACION_Y_CC01.md` y gráfica comparativa D-02 en `docs/figures/fig_d02_antes_despues_pi3b.png`.
 
 ## Estructura
 

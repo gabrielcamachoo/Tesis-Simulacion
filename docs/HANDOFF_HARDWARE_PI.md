@@ -1,8 +1,10 @@
 # HANDOFF DE HARDWARE — Sincronización Raspberry Pi y Validación Física (v5.6 → v5.7)
 
-> **Fecha:** 23 de noviembre de 2026  
-> **Rama de referencia en código:** `main` (commit `0453c03` + cierre documental v5.6)  
-> **Propósito:** Guía ejecutable paso a paso para alinear la Raspberry Pi física (y el laboratorio PUJ/HUSI) con el código y los documentos v5.6, producir la evidencia física pendiente y llevar la evaluación del trabajo de grado de **4.3 → 4.6 / 5.0**.
+> **Actualización 23/24-11-2026 (`commit c60edc0`):** **Pasos 0, 1, 2 y 4 (actualización documental v5.7) COMPLETADOS** en `deploy/medicion/resultados/v56_pi_20261123/` (`20/20` SHA-256 OK). En la Raspberry Pi 3 Model B quedaron confirmados en vivo **E10** (`0` FP en `192.168.5.114` durante la ventana de 30 min), **D-02** (`+0,009 MB/min` en CARGA, `+0,000` en REPOSO2, máx. `41,0 MB`), **D-04** (`228/228 A15 → R-MLLP-001`), **D-06** (`es_raspberry_pi: true`) y **Recall/Precisión/F1 en hardware** (`1,0000 / 0,9998 / 0,9999` sobre `4.864` inyecciones; `0,9996` regla exacta). **Permanecen pendientes únicamente el Paso 3 (Bloque 4: Pi 4/5, switch SPAN y/o captura nueva HUSI) y el Paso 5 (aprobación escrita de `CC-01`).**
+
+> **Fecha base:** 23 de noviembre de 2026  
+> **Rama de referencia en código:** `main` (`0453c03` + `c60edc0` + cierre documental v5.7)  
+> **Propósito:** Guía ejecutable paso a paso para alinear la Raspberry Pi física (y el laboratorio PUJ/HUSI) con el código y los documentos, producir la evidencia física pendiente y elevar la evaluación del trabajo de grado.
 
 ---
 

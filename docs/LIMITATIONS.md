@@ -1,103 +1,54 @@
-# Limitaciones y Amenazas a la Validez
+# Limitaciones y Amenazas a la Validez (v5.9)
 
-**Fecha:** 2026-10-13 · **Regla:** todo lo marcado NO VERIFICADO no se afirma en el texto de la
-tesis como resultado; se declara como limitación. Complementa `docs/THREAT_MODEL.md` §6.
+**Última actualización:** 23/24-11-2026 (`main` commit `c60edc0` + cierres v5.8–v5.9) · **Regla:** todo lo marcado `NO_VERIFICADO` no se afirma como resultado; se declara como limitación explícita. Complementa `docs/THREAT_MODEL.md` §6 y Memoria Capítulo VII §7.
 
-## 1. Evidencia disponible
+## 1. Evidencia clínica disponible
 
-- **2 de 5 capturas contienen HL7** (43 y 99 ORU+ACK); las otras 3 son tráfico no HL7
-  (ARP/otro). Las cifras del baseline provienen de **una sola sesión STANDBY** (25-ago) y una
-  RUNNING (27-ago) — muestra pequeña.
-- La **FSM de sesión** (SIN_GATEWAY→HANDSHAKE→ESTABLECIDA) está inferida de 1 captura;
-  transiciones de RUNNING/ALARM: NO_VERIFICADO.
-- Resolución temporal de captura limita la medición de latencias ACK (µs de pcapng, no del
-  dispositivo).
+- **2 de 5 capturas contienen HL7** (`43` y `99` ORU+ACK; `142` mensajes totales de una sola máquina Mindray WATO EX-35 y una sola versión de firmware en el Centro de Simulación del HUSI). Las otras 3 capturas son tráfico no HL7 (ARP/otro).
+- La transición **`RUNNING → STANDBY`** y las **alarmas fisiológicas activas** no aparecen en `evidence_raw/`. Por decisión explícita de la Enmienda E2 (`baseline.yaml`), `RUNNING → STANDBY` no figura en `state_transitions_observed` y genera alerta `R-STATE-001` hasta que se capture y verifique clínicamente.
+- El supuesto de que el formato HL7 del WATO no cambia entre versiones de firmware es `NO_VERIFICADO`: tras cada actualización de firmware debe revalidarse la línea base.
 
-## 2. Fidelidad del laboratorio
+## 2. Fidelidad del laboratorio y topología física
 
-- **No hay WATO real en el loop:** el emulador reproduce estructura y periodicidad observadas,
-  pero no su pila de red, ni su reloj (offset documentado +17 min 10 s), ni su comportamiento
-  de error → validez externa parcial.
-- ACK del receptor basado en `ackdummy`: valida correlación MSA-2↔MSH-10, no la semántica
-  clínica del WATO.
-- Docker Desktop 29.8.2 + WSL2 en el host: topología `docker-compose` validada E2E
-  (2026-10-14). Dos particularidades del entorno: (a) con redes `internal: true` el
-  publish de puertos no se materializa en Docker Desktop (la salud del receptor se
-  consulta desde el contenedor, no desde el host); (b) escribir evidencia sobre el
-  bind del repo (OneDrive) desde un contenedor estancó el I/O (archivos de 0 bytes,
-  2026-10-13) → la evidencia vive en el named volume `lab_output` y se copia al host.
+- **No hay WATO real en el lazo experimental:** el emulador reproduce estructura, modos y periodicidad observados, pero no la pila TCP/IP ni el reloj del equipo real (desfase observado `+17 min 10 s`).
+- **Sin switch administrable con SPAN ni TAP físico:** el switch disponible (Linksys SE3005 v2) no soporta *port mirroring* y no se compró hardware del presupuesto (`810.000 COP` no ejecutados). El modo pasivo y *fail-open* se validaron únicamente en red virtual Linux; en la Raspberry Pi 3B se operó en **modo de captura directa** (la Pi recibe el tráfico como receptor MLLP y lo captura en `wlan0` con UFW).
+- **Interfaz Wi-Fi en laboratorio:** el SRS prohíbe interfaces inalámbricas en el despliegue objetivo; en el laboratorio la Pi usó `wlan0`, mitigado con reglas estrictas de UFW (solo TCP `1550` desde emisor/Kali y SSH desde administración).
 
-## 3. Baseline y falsos positivos
+## 3. Baseline, falsos positivos y evasión
 
-- Baseline bimodal v1.1 (`STANDBY` + `RUNNING`): incorpora los 4 códigos CWE de `STANDBY` y los 29 códigos adicionales NM/SN/CWE de los 6 modos ventilatorios de `RUNNING` (33 códigos OBX y 9 unidades MDC en total), logrando 0 FP en ambas capturas reales (`LECTURACONACK25AGOSTO.pcapng` y `LECTURAACK27AGOSTO.pcapng`). En la Fase 9 inicial (con baseline unimodal `STANDBY`) se cuantificaron 256 alertas `R-OBX-*` sobre `RUNNING`. Segmentos de alarma fisiológica activa y la transición `RUNNING -> STANDBY` siguen `NO_VERIFICADOS`.
-- MSH-4 frecuentemente vacío en WATO → R-ID-002 con baja discriminación.
-- Límites `p95*1.5` de frecuencia calibrados sobre intervalos de ~10 s de STANDBY.
+- **Mismos datos para construir y evaluar H3:** los `0` FP sobre los `142` mensajes reales (`43` STANDBY + `99` RUNNING) muestran consistencia con la línea base bimodal v1.1 (tras las enmiendas E1–E9), pero **no miden la tasa de falsos positivos en tráfico clínico nuevo no visto** (con `n = 142`, el IC95 de Wilson llega hasta `2,6 %`).
+- **Evasión por mimetismo y ausencia de umbrales clínicos (`clinical_approval_status: PENDING`):** un atacante informado que copie `MSH-3`, utilice códigos OBX/unidades autorizados, respete la cadencia de `10 s` y altere únicamente un valor numérico (ej. PEEP) evade las 15 reglas actuales (confirmado empíricamente en `E01` y `E02` de `analysis_output/validation/adversarial_eval_v59.json`: `0/3` detecciones cada uno).
+- **Compromisos de diseño de reglas:** `R-STATE-001` alerta la transición clínica normal `RUNNING → STANDBY` (confirmado en `E04`: `3/3`, política *fail-safe* por no figurar en `evidence_raw/`); `R-SEQ-001` alertaría si un reinicio legítimo de la WATO reinicia el contador `MSH-10` (confirmado en `E03`: `3/3`); `R-NET-001` es evadible por suplantación de IP en capa 2 sin controles de switch (`DAI`/`802.1X`); `R-TIME-001` no depende del desfase de `+17 min` frente al servidor porque compara `MSH-7` solo contra el `MSH-7` previo de la propia WATO (pero sería sensible a retrocesos manuales del reloj de la máquina).
+- **MSH-4 vacío:** en la WATO EX-35 `MSH-4` llega vacío, limitando la capacidad discriminativa de `R-ID-002`.
 
-## 4. Alcance del detector
+## 4. Validación circular y evaluación estadística
 
-- **Offline/no inline:** el detector no bloquea ni mitiga; su rol es analítico (detección y
-  evidencia), no prevención.
-- Detección por **baseline y reglas estructurales**, no criptográfica: HL7/MLLP no autentica
-  remitentes; un atacante que respeta la baseline evadirá las reglas actuales (limitación
-  inherente al protocolo, no al implementador).
-- Sin capacidad de atribución de atacante (solo de origen de sesión).
+- **Validación circular en H1:** el mismo equipo escribió las 15 reglas, los 16 escenarios y el generador `anomaly_generator.py`. Un ADR de `100 %` (`2.010/2.010` en PC y `4.864/4.864` en Pi) valida cobertura del catálogo propio, no generalización frente a ataques diseñados por terceros. La suite de contra-ejemplos `E01–E05` (`adversarial_eval.py`) delimita empíricamente fallos y compromisos sin modificar reglas, pero no sustituye un equipo rojo independiente.
+- **No independencia entre inyecciones e intervalo de Wilson:** el intervalo de Wilson al 95 % honesto sobre los 16 escenarios es **`[80,6 %, 100 %]`**, cuyo límite inferior (`80,6 %`) es menor al `90 %` exigido (se requerirían `n ≥ 35` escenarios independientes con `100 %` de acierto para que el límite inferior supere `90 %`).
+- **Detalles del evaluador cerrados en v5.8:**
+  - En `v56_pi_20261123`, `2` de `228` inyecciones `A11` (`00:00:05.391/.593 UTC`) fueron emparejadas por respaldo de `evaluate.py` (`wrong_rule: 2`) con alertas secundarias `R-NET-001`/`R-SEQ-001`; `evaluate.py` reporta ahora explícitamente `strict_rule_recall` (`0,9996`, `4.862/4.864`) junto al recall global (`1,0000`, cierre `D-14`).
+  - `D-12` (`per_rule` acumulado con `+=` y separación de `msgs_per_s` vs. `events_per_s`) y `D-13` (`--immediate-mode` en `tcpdump`) quedaron cerrados en código.
 
-## 5. Hipótesis pendientes
+## 5. Plataforma hardware y rendimiento (H2)
 
-- **H1 (ADR ≥ 90 %): VERIFICADA** en Fase 9 (2026-10-14): 16/16 escenarios, ADR 100 %,
-  60 corridas selladas (`docs/RESULTS_20261014.md` §2). Queda pendiente solo el reporte a
-  texto de tesis.
-- **H2 (latencia ≤ 500 µs): NO VERIFICADO para la Raspberry Pi** — PASS de referencia
-  en PC (p95 177.5 µs agregado, peor caso sintético). Repetir el bench en la Pi antes
-  de afirmar H2 (`docs/RESULTS_20261014.md` §3, `docs/RASPBERRY_PI_SETUP.md`).
-- FP en evidencia real (H3): **STANDBY FP = 0** (43/43 NORMAL) y **RUNNING FP = 0**
-  (99/99 NORMAL) tras la actualización a baseline bimodal v1.1 + enmiendas E2–E5
-  (en Fase 9 inicial con baseline unimodal STANDBY se cuantificaron 256 alertas
-  R-OBX-001/002/003 sobre los 86 ORU en RUNNING).
+- **Hardware inferior al especificado:** el SRS especifica **Raspberry Pi 4 (Cortex-A72, ARM64)**, pero se midió en **Raspberry Pi 3 Model B (Cortex-A53 a 1,2 GHz, 1 GB RAM, Linux 32 bits `armv7l`)**.
+- **H2 NO CUMPLE en Raspberry Pi 3 Model B:** con el umbral de `500 µs` fijado antes de medir, el p95 fue **`1706,3 ± 7,5 µs`** (3 repeticiones, 19-11-2026) y **`1744,41 µs`** (corrida v5.6, 24-11-2026). En PC (v5.9) se añadió el desglose completo con `latency_bench.py`: camino normal solo motor `188,90 µs`, normal con parseo HL7 (`RD-01` completo) `255,91 µs`, peor caso con parseo `302,74 µs` (todos PASS en PC; pendiente repetir en placa embebida). El desempeño en Pi 4/5 queda `NO_VERIFICADO`.
+- **Latencia de captura vs. latencia del motor en vivo:** en la corrida física `v56_pi_20261123`, el motor procesó cada mensaje en `p50 = 3,39 ms` / `p95 = 4,52 ms`, pero la latencia extremo a extremo medida por `evaluate.py` fue `p50 = 473,8 ms` / `p95 = 1013,9 ms` debido al buffering de `1 s` de `libpcap` (`tcpdump -U` sin `--immediate-mode`, cerrado en código en `D-13`, pendiente re-medición física).
+- **Fuente de alimentación:** avisos de bajo voltaje únicamente en el arranque (`0x50000` histórico); sin throttling activo durante las mediciones (bits 0–3 en `0`, `dmesg` limpio en la ventana).
+- **Volumen de alertas sin agregación:** ~15–16 alertas/s bajo ataque continuo (defecto D-10 abierto; la agregación offline por `(IP, regla, minuto UTC)` sobre las `19.284` alertas de la Pi 3B reduce el volumen a `253` notificaciones —`76,22×` menos— preservando las `12/12` reglas).
 
-## 6. Mapeo MITRE ATT&CK
+## 6. Estado de cierres en hardware (`v56_pi_20261123`)
 
-- Matriz **ICS v20 publicada 2026-10-13**, recién verificada; técnicas nuevas (T1692/T1693)
-  pueden cambiar en versiones futuras → `docs/THREAT_MODEL.md` §7 obliga a reverificar.
-- El SRS/SPMP citan **T0855** (heredado de versiones previas): hoy redirige a T1692.001;
-  la equivalencia queda documentada, pero los documentos fuente no la actualizan.
-- **No existe técnica ICS dedicada a malformación de framing/mensajes:** se usa T1692 como
-  categoría paraguas con justificación explícita (posible objector: sobre-asignación).
-- T0831 (Manipulation of Control) queda **sin reclamar** a propósito: exige efecto sobre
-  control físico, cosa que el lab no produce.
+- **Cerrados y confirmados en vivo sobre Pi 3B (23/24-11-2026):**
+  - **E10 / D-03:** `0` alertas sobre el emisor legítimo `192.168.5.114` en la ventana de 30 min (`208` mensajes `NORMAL`).
+  - **D-02:** pendiente de memoria `detector_rss_mb` reducida a `+0,009 MB/min` en CARGA (`+0,000 MB/min` en REPOSO2) y `lab_rss_mb` máx. `41,0 MB ≤ 64 MB`.
+  - **D-04:** `A15 → R-MLLP-001` disparado `228/228` en vivo (`15/15` escenarios).
+  - **D-06:** `latency_bench.py` detecta automáticamente `es_raspberry_pi: true` y `Raspberry Pi 3 Model B Rev 1.2`.
+  - **Ground truth NTP en hardware:** Recall `1,0000` (`0,9996` exacto por regla), Precisión `0,9998`, F1 `0,9999`.
+- **Pendiente administrativo y Bloque 4:** visto bueno escrito de `CC-01` (director), bench en Pi 4/5, prueba corta en switch con SPAN y captura nueva independiente en el HUSI.
 
-## 7. Ética, privacidad y gobernanza
+## 7. Mapeo MITRE ATT&CK, ética y gobernanza
 
-- Anonimización con token SHA-256 truncado a **8 hex**: colisión teórica no excluida (2^32) y
-  re-identificación interna posible por diseño (necesaria para auditoría); fuera del lab, los
-  PCAP crudos son sensibles.
-- Marco de protección de datos (Ley 1581/2012 y Decreto 1377/2013): **NO VERIFICADO** por
-  revisión institucional (`docs/ETHICS_AND_SAFETY.md` §7).
-- Gate clínico: sin revisor clínico no hay reglas de umbrales clínicos → la tesis solo evalúa
-  detección de anomalías de **comunicación**, no de contenido médico.
-
-## 8. Reproducibilidad
-
-- Windows (OneDrive) como entorno de desarrollo; ejecución en Raspberry Pi **pendiente** →
-  métricas de rendimiento no transferibles hasta medir allí.
-- La otra sesión de desarrollo modifica `src/mllp|hl7|detection` en paralelo: toda corrida de
-  validación exige árbol limpio y commit congelado (VALIDATION §6).
-
-
-## 9. Hallazgos de Fase 9 (2026-10-14)
-
-- **FP benigno por jitter de timing (R-TIME-002)**: bajo carga concurrente del
-  emulador+generador, intervalos benignos nominales de 6.0 s bajan esporadicamente a
-  ~4.94 s (< umbral pre-fijado 5.0 s) → 7 FP / 2017 mensajes benignos (0.3 %) en la
-  campaña H1. El umbral NO se ajustó tras medir (protocolo §6); se documenta como
-  fuente de ruido esperable en el despliegue real.
-- **Enmienda E1 (commit 70025c4)**: el corpus STANDBY real trae OBX-6 =
-  `262656^MDC_DIM_DIMLESS^MDC` en los 4 OBX CWE (43/43 mensajes); la premisa
-  "STANDBY CWE sin unidades" del baseline inicial era falsa y producía 43 FP
-  (R-OBX-002) en replay. Corregido y congelado antes de la campaña.
-- **Conteo NORMAL vs anomalía**: `alerts.jsonl` contiene un evento NORMAL (INFO)
-  por mensaje benigno; solo los eventos `rule_id != NORMAL` son alertas. El fix
-  (commit 2017af1) alinea el replay con `evaluate.py`.
-- Coordinación multi-sesión: la campaña piloto pre-E1 quedó contaminada por el
-  bind-mount vivo de `./` en docker (código cambiando a mitad de corrida); la
-  campaña oficial corrió sobre commit congelado y con ambas fases exit=0.
+- Matriz **MITRE ATT&CK for ICS v20** (`13-10-2026`): 14 reglas en `T1692.002` y `R-TIME-002` en `T0814`; `T0831` no se reclama por no existir efecto sobre control físico.
+- Anonimización con SHA-256 truncado a 8 hex; revisión formal de cumplimiento de Ley 1581/2012 y Decreto 1377/2013: `NO_VERIFICADO`.
+- Suite `pytest` en ARM: el defecto `D-11` (`test_bench_smoke`) quedó **cerrado en código en v5.8–v5.9** (`307 passed`, portable x86_64 y ARM), al igual que `D-12` (`per_rule`/`throughput`), `D-13` (`--immediate-mode` en `tcpdump`) y `D-14` (`strict_rule_recall`).
