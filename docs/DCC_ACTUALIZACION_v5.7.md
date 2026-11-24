@@ -1,8 +1,8 @@
-# Actualización del Documento de Control de Calidad (DCC v5.9 — 23/24-11-2026)
+# Actualización del Documento de Control de Calidad (DCC v1.5 — Edición Final, 23/24-11-2026)
 
-Sincronizado con el cierre de **Bloque 1–2** (`commit 0453c03`), **la corrida física de confirmación en hardware** sobre la Raspberry Pi 3 Model B (`commit c60edc0`, `deploy/medicion/resultados/v56_pi_20261123/`, `20/20` archivos verificados en su `SHA256SUMS.txt` local) y el **cierre v5.9** (`307 passed`, `adversarial_eval_v59.json`, `latency_v59_*.json`, **`220/220` en `analysis_output/validation/SHA256SUMS.txt` — 240 archivos verificados**).
+Sincronizado con el cierre de **Bloque 1–2** (`commit 0453c03`), **la corrida física de confirmación en hardware** sobre la Raspberry Pi 3 Model B (`commit c60edc0`, `deploy/medicion/resultados/v56_pi_20261123/`, `20/20` archivos verificados en su `SHA256SUMS.txt` local) y la **Edición Final** (`309 passed`, `adversarial_eval_v59.json`, `literature_boundary_v60.json`, `latency_v59_*.json`, **`221/221` en `analysis_output/validation/SHA256SUMS.txt` — 241 archivos verificados**).
 
-> El documento institucional completo actualizado en versión **1.4 (v5.9)** se encuentra en [`documentos_tesis/Documento_Control_Calidad_G18.pdf`](../documentos_tesis/Documento_Control_Calidad_G18.pdf) (y editable `.docx`).
+> El documento institucional completo actualizado en versión **1.5 (Edición Final)** se encuentra en [`documentos_tesis/Documento_Control_Calidad_G18.pdf`](../documentos_tesis/Documento_Control_Calidad_G18.pdf) (y editable `.docx`). Concentra la trazabilidad granular de versiones internas (`v5.0–v5.9`), commits y defectos (`D-01` a `D-14`) para mantener limpia la Memoria de Grado.
 
 ---
 

@@ -1,8 +1,8 @@
-# Resultados de la Tesis — Compilado para Defensa (v5.9)
+# Resultados de la Tesis — Compilado para Defensa (Edición Final)
 
 **Proyecto:** Detección de anomalías de red compatibles con ransomware en la telemetría HL7 de una máquina de anestesia Mindray WATO EX-35 (Tesis 2026-03-G18, SIDRE, Pontificia Universidad Javeriana)  
-**Última actualización:** 23/24-11-2026 (`main` commit `c60edc0`, código de motor `0453c03` + cierres v5.8–v5.9)  
-**Fuentes selladas:** `analysis_output/validation/SHA256SUMS.txt` (`220/220` OK) y `deploy/medicion/resultados/v56_pi_20261123/SHA256SUMS.txt` (`20/20` OK) — **240 archivos verificados**
+**Última actualización:** 23/24-11-2026 (`main` Edición Final)  
+**Fuentes selladas:** `analysis_output/validation/SHA256SUMS.txt` (`221/221` OK) y `deploy/medicion/resultados/v56_pi_20261123/SHA256SUMS.txt` (`20/20` OK) — **241 archivos verificados**
 
 > Taxonomía usada: **MEDIDO** = dato de corrida sellada con SHA-256; **OBSERVADO** = evidencia real del WATO EX-35; **NO_VERIFICADO** = pendiente de hardware externo, captura nueva o aprobación clínica.
 
@@ -10,20 +10,20 @@
 
 ## 0. Resumen ejecutivo (para la sustentación)
 
-| Hipótesis / Criterio | Enunciado | Estado en v5.9 | Evidencia sellada |
+| Hipótesis / Criterio | Enunciado | Estado (Edición Final) | Evidencia sellada |
 |---|---|---|---|
-| **H1 — Efectividad (catálogo propio)** | ADR ≥ 90 % sobre escenarios MITRE ATT&CK for ICS (A01–A16) | **Estimación puntual 100 % sobre catálogo propio (límite inferior Wilson `80,6 % < 90 %` por `n = 16`; evasiones verificadas en `E01–E02`)** | **60 corridas PC (`0453c03`):** `2.010/2.010` TP, `16/16` escenarios (Wilson 95 % sobre escenarios `[80,6 %, 100 %]`, se requerirían `n ≥ 35` escenarios independientes), **`0` FP oficiales**, precisión `100,0 %`. **Corrida física Pi 3B (`v56_pi_20261123`):** `4.864` inyecciones (`15/15` escenarios), Recall `1,0000` (`0,9996` exacto por regla: `4.862/4.864`), Precisión `0,9998`, F1 `0,9999`. **Pruebas adversarias `E01–E05` (`adversarial_eval_v59.json`):** `E01`/`E02` evadidos `0/3`, `E03`/`E04` trade-offs `3/3`, `E05` detectado `3/3`. |
-| **H2 — Latencia por mensaje** | p95 de evaluación determinista ≤ 500 µs | **PASS en PC (incluyendo camino normal y parseo HL7) / NO CUMPLE en Raspberry Pi 3 Model B (MEDIDO)** | **PC Windows (`v5.6`/`v5.9`, `D-06`):** peor caso motor `233,71 µs`, normal motor **`188,90 µs`**, normal + parseo HL7 **`255,91 µs`**, peor caso + parseo **`302,74 µs`** (`170,82 µs` Linux). **Raspberry Pi 3 Model B:** `1706,3 ± 7,5 µs` (3 rep., 19-11) y **`1744,41 µs`** (v5.6, 23-11) → **FAIL** vs `500 µs` (umbral NO modificado). Pi 4 del SRS: `NO_VERIFICADO`. |
-| **H3 — Falsos positivos benignos** | FP = 0 sobre corpus clínico benigno del WATO EX-35 | **Consistente con línea base (`0` alertas) / Tráfico nuevo `NO_VERIFICADO`** | `0` alertas en STANDBY (`43/43`) y RUNNING (`99/99`) con baseline bimodal v1.1 + E1–E9 (mismos datos usados para construir/ajustar la línea base; Wilson 95 % hasta `2,6 %`). En vivo en Pi 3B bajo ataque continuo (`v56_pi_20261123`, E10): **`0` alertas** sobre emisor legítimo `192.168.5.114` en `208` mensajes durante 30 min. |
+| **H1 — Efectividad (catálogo propio)** | ADR ≥ 90 % sobre escenarios MITRE ATT&CK for ICS (A01–A16) | **16/16 en catálogo propio; límite inferior Wilson `80,6 % < 90 %` (`n = 16`, no se afirma generalización); evasiones documentadas en `E01–E02` y `L01–L03`** | **60 corridas PC:** `16/16` escenarios (Wilson 95 % `[80,6 %, 100 %]`), `2.010/2.010` inyecciones (`0` FP, precisión `100,0 %`). **Pi 3B (`v56_pi_20261123`):** `4.864` inyecciones (`15/15`), Recall `1,0000` (`0,9996` estricto), Precisión `0,9998`, F1 `0,9999`. **Frontera y literatura (`E01–E05`, `L01–L06`):** `adversarial_eval_v59.json` y `literature_boundary_v60.json`. Especificación ciega de 1 pág. para tercero: `docs/ESPECIFICACION_TERCERO_REDTEAM.md`. |
+| **H2 — Latencia por mensaje** | p95 de evaluación determinista ≤ 500 µs (fijado antes de medir) | **PASS en PC (normal + parseo HL7) / NO CUMPLE en el hardware más limitado posible (Pi 3B)** | **PC Windows:** normal motor `188,90 µs`, normal + parseo `255,91 µs`, peor caso motor `233,71 µs` (`170,82 µs` Linux), peor caso + parseo `302,74 µs`. **Raspberry Pi 3 Model B (peor caso HW económico):** `1706,3 ± 7,5 µs` y **`1744,41 µs`** → **NO CUMPLE** (umbral intacto). Pi 4 del SRS: `NO_VERIFICADO`. |
+| **H3 — Consistencia con la línea base** | Consistencia sin alertas sobre las capturas reales del WATO EX-35 | **Consistente con línea base (`0/142`, IC 95 % Wilson `≤ 2,6 %`) / Tráfico nuevo `NO_VERIFICADO`** | `0/43` STANDBY (`≤ 8,2 %`) y `0/99` RUNNING (`≤ 3,7 %`) sobre las capturas de ajuste de baseline bimodal v1.1 + E1–E9. En vivo en Pi 3B bajo ataque continuo (`v56_pi_20261123`, E10): **`0/208` alertas** sobre emisor legítimo (IC 95 % Wilson **`≤ 1,8 %`**). |
 
-| Indicador de calidad y hardware (v5.9) | Resultado medido |
+| Indicador de calidad y hardware (Edición Final) | Resultado medido |
 |---|---|
-| Suite automatizada (`pytest`) | **307 passed** (`0` fallos, `0` omitidas; portable PC y ARM tras cierre de D-11; incluye `E01–E05` y modos H2) |
-| Cobertura de código (`pytest-cov`, `0453c03`) | **93,8 % en el núcleo** (`src/mllp` `91,4 %`, `src/hl7` `93,2 %`, `src/detection` `96,9 %`, `engine.py` `97,0 %` — **CUMPLE ANF-03 > 90 %**); `78,1 %` en `src/` |
-| Recursos en Pi 3B post-parches (`v56_pi_20261123`, 30 min) | CPU promedio en CARGA: **`9,9 %`** (≤ 50 %); RAM máx. 3 procesos: **`41,0 MB`** (≤ 64 MB); pendiente RSS detector en CARGA: **`+0,009 MB/min`** (`REPOSO2 = +0,000 MB/min`, D-02 cerrado en vivo) |
-| Detección en vivo `A15 → R-MLLP-001` (D-04) | **`228/228`** en vivo sobre Pi 3B (`15/15` escenarios activos) |
-| Agregación offline de alertas SOC sobre Pi 3B (`adversarial_eval_v59.json`) | **`19.284` alertas crudas → `253` notificaciones** por `(IP, regla, minuto UTC)` (**`76,22×` menos**, `12/12` reglas preservadas) |
-| Integridad criptográfica (`RF-04`) | `analysis_output/validation/SHA256SUMS.txt`: **`220/220` OK**; `deploy/medicion/resultados/v56_pi_20261123/SHA256SUMS.txt`: **`20/20` OK** (**`240`** totales) |
+| Suite automatizada (`pytest`) | **309 passed** (`0` fallos, `0` omitidas; portable PC y ARM; incluye `E01–E05`, `L01–L06` e IC Wilson) |
+| Cobertura de código (`pytest-cov`) | **93,8 % en el núcleo** (`src/mllp` `91,4 %`, `src/hl7` `93,2 %`, `src/detection` `96,9 %`, `engine.py` `97,0 %` — **CUMPLE ANF-03 > 90 %**); `78,1 %` en `src/` |
+| Recursos en Pi 3B post-parches (`v56_pi_20261123`, 30 min) | CPU promedio en CARGA: **`9,9 %`** (≤ 50 %); RAM máx. 3 procesos: **`41,0 MB`** (≤ 64 MB); pendiente RSS detector en CARGA: **`+0,009 MB/min`** (`REPOSO2 = +0,000 MB/min`) |
+| Detección en vivo `A15 → R-MLLP-001` | **`228/228`** en vivo sobre Pi 3B (`15/15` escenarios activos) |
+| Agregación offline de alertas SOC sobre Pi 3B | **`19.284` alertas crudas → `253` notificaciones** por `(IP, regla, minuto UTC)` (**`76,22×` menos**, `12/12` reglas preservadas) |
+| Integridad criptográfica (`RF-04`) | `analysis_output/validation/SHA256SUMS.txt`: **`221/221` OK**; `deploy/medicion/resultados/v56_pi_20261123/SHA256SUMS.txt`: **`20/20` OK** (**`241`** totales) |
 
 ---
 

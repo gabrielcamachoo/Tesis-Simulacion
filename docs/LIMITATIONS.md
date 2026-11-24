@@ -1,6 +1,6 @@
-# Limitaciones y Amenazas a la Validez (v5.9)
+# Limitaciones y Amenazas a la Validez (Edición Final)
 
-**Última actualización:** 23/24-11-2026 (`main` commit `c60edc0` + cierres v5.8–v5.9) · **Regla:** todo lo marcado `NO_VERIFICADO` no se afirma como resultado; se declara como limitación explícita. Complementa `docs/THREAT_MODEL.md` §6 y Memoria Capítulo VII §7.
+**Última actualización:** 23/24-11-2026 (`main` Edición Final) · **Regla:** todo lo marcado `NO_VERIFICADO` no se afirma como resultado; se declara como decisión de diseño o limitación explícita. Complementa `docs/THREAT_MODEL.md` §6 y Memoria Capítulo VII §7.
 
 ## 1. Evidencia clínica disponible
 
@@ -23,8 +23,8 @@
 
 ## 4. Validación circular y evaluación estadística
 
-- **Validación circular en H1:** el mismo equipo escribió las 15 reglas, los 16 escenarios y el generador `anomaly_generator.py`. Un ADR de `100 %` (`2.010/2.010` en PC y `4.864/4.864` en Pi) valida cobertura del catálogo propio, no generalización frente a ataques diseñados por terceros. La suite de contra-ejemplos `E01–E05` (`adversarial_eval.py`) delimita empíricamente fallos y compromisos sin modificar reglas, pero no sustituye un equipo rojo independiente.
-- **No independencia entre inyecciones e intervalo de Wilson:** el intervalo de Wilson al 95 % honesto sobre los 16 escenarios es **`[80,6 %, 100 %]`**, cuyo límite inferior (`80,6 %`) es menor al `90 %` exigido (se requerirían `n ≥ 35` escenarios independientes con `100 %` de acierto para que el límite inferior supere `90 %`).
+- **Validación circular en H1:** el mismo equipo escribió las 15 reglas, los 16 escenarios y el generador `anomaly_generator.py`. Un ADR de `100 %` (`16/16` en PC, límite inferior Wilson **`80,6 % < 90 %`** por `n = 16`, `2.010/2.010` inyecciones; y `4.864/4.864` en Pi 3B) valida cobertura del catálogo propio, no generalización frente a ataques diseñados por terceros. Las pruebas de frontera `E01–E05` (`adversarial_eval_v59.json`) y los vectores de literatura `L01–L06` (`literature_boundary_v60.json`) delimitan empíricamente evasiones reales (`E01`, `E02`, `L01 < 15 s`, `L02 < 5120 B`, `L03` RST entre tramas), pero no sustituyen una evaluación ciega por terceros (especificación de 1 página lista en `docs/ESPECIFICACION_TERCERO_REDTEAM.md`).
+- **Intervalos de confianza de Wilson al 95 %:** sobre `16/16` escenarios `[80,6 %, 100,0 %]` (se requerirían `n ≥ 35` escenarios independientes); sobre `0/208` mensajes legítimos bajo ataque en Pi 3B **`[0,0 %, 1,8 %]`**; sobre `0/142` mensajes de consistencia con la línea base en `evidence_raw/` **`[0,0 %, 2,6 %]`** (`0/43` STANDBY `≤ 8,2 %`, `0/99` RUNNING `≤ 3,7 %`).
 - **Detalles del evaluador cerrados en v5.8:**
   - En `v56_pi_20261123`, `2` de `228` inyecciones `A11` (`00:00:05.391/.593 UTC`) fueron emparejadas por respaldo de `evaluate.py` (`wrong_rule: 2`) con alertas secundarias `R-NET-001`/`R-SEQ-001`; `evaluate.py` reporta ahora explícitamente `strict_rule_recall` (`0,9996`, `4.862/4.864`) junto al recall global (`1,0000`, cierre `D-14`).
   - `D-12` (`per_rule` acumulado con `+=` y separación de `msgs_per_s` vs. `events_per_s`) y `D-13` (`--immediate-mode` en `tcpdump`) quedaron cerrados en código.
@@ -51,4 +51,4 @@
 
 - Matriz **MITRE ATT&CK for ICS v20** (`13-10-2026`): 14 reglas en `T1692.002` y `R-TIME-002` en `T0814`; `T0831` no se reclama por no existir efecto sobre control físico.
 - Anonimización con SHA-256 truncado a 8 hex; revisión formal de cumplimiento de Ley 1581/2012 y Decreto 1377/2013: `NO_VERIFICADO`.
-- Suite `pytest` en ARM: el defecto `D-11` (`test_bench_smoke`) quedó **cerrado en código en v5.8–v5.9** (`307 passed`, portable x86_64 y ARM), al igual que `D-12` (`per_rule`/`throughput`), `D-13` (`--immediate-mode` en `tcpdump`) y `D-14` (`strict_rule_recall`).
+- Suite `pytest` en ARM: el defecto `D-11` (`test_bench_smoke`) quedó **cerrado en código** (**`309 passed`**, portable x86_64 y ARM), al igual que `D-12` (`per_rule`/`throughput`), `D-13` (`--immediate-mode` en `tcpdump`) y `D-14` (`strict_rule_recall`).
