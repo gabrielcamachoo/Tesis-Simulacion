@@ -250,3 +250,37 @@ class TestV59LatencyModesAndAdversarial:
         assert ag["notificaciones_agregadas_por_ip_regla_minuto"] == 253
         assert ag["factor_reduccion"] > 70.0
 
+
+class TestLiteratureBoundaryAndWilson:
+    """Pruebas exploratorias de frontera de literatura L01-L06 e intervalos Wilson."""
+
+    def test_wilson_95_exact_bounds(self):
+        import literature_boundary_eval as lbe
+
+        h1 = lbe.wilson_ci(16, 16)
+        assert 80.5 < h1["lower_pct"] < 80.8 and h1["upper_pct"] == 100.0
+        fp_pi = lbe.wilson_ci(0, 208)
+        assert fp_pi["lower_pct"] == 0.0 and 1.75 < fp_pi["upper_pct"] < 1.86
+        h3 = lbe.wilson_ci(0, 142)
+        assert h3["lower_pct"] == 0.0 and 2.55 < h3["upper_pct"] < 2.70
+
+    def test_literature_boundary_suite_l01_to_l06(self, tmp_path, monkeypatch):
+        import literature_boundary_eval as lbe
+        from run_experiment import write_lab_config
+
+        monkeypatch.setenv("LAB_AUTHORIZED", "YES")
+        cfg = write_lab_config(tmp_path)
+        rep = lbe.run_literature_boundary_suite(cfg)
+        by_id = {s["id"]: s for s in rep["escenarios_literatura"]}
+        assert by_id["L01"]["reglas_12s"] == []
+        assert "R-TIME-002" in by_id["L01"]["reglas_60s"]
+        assert by_id["L02"]["parser_sin_fallos"] is True
+        assert by_id["L02"]["reglas_under"] == []
+        assert "R-MLLP-001" in by_id["L02"]["reglas_over"]
+        assert by_id["L03"]["reglas_entre_tramas"] == []
+        assert "R-MLLP-001" in by_id["L03"]["reglas_media_trama"]
+        assert by_id["L04"]["benigno_fp"] == 0 and "R-ID-001" in by_id["L04"]["ataque_reglas"]
+        assert by_id["L05"]["reglas"] == []
+        assert "R-HL7-002" in by_id["L06"]["reglas"]
+
+
