@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Raspberry Pi - detector PASIVO en vivo (puerto espejo/SPAN).
+# Raspberry Pi - detector en vivo con tcpdump sobre la interfaz del lab.
+# Topologia actual (opcion A): la Pi es el receptor MLLP (mllp-receiver.service)
+# y este proceso captura lo que le llega. Con un switch con mirror/SPAN el
+# mismo script sirve para el modo pasivo real (CAPTURE_INTERFACE=eth0).
 #
 # Un solo proceso (detect_live.py) lanza tcpdump y mantiene el motor de
 # detección con estado continuo: no se pierden silencios entre archivos y el
@@ -8,7 +11,7 @@
 # SHA256SUMS.txt. Resumen por regla y por IP en detect_live_summary.json.
 set -euo pipefail
 
-INTERFACE="${CAPTURE_INTERFACE:-eth0}"
+INTERFACE="${CAPTURE_INTERFACE:-wlan0}"
 PORT="${MLLP_PORT:-1550}"
 OUT="${CAPTURE_OUTDIR:-/lab_output}"
 FILTER="${CAPTURE_FILTER:-tcp port ${PORT}}"
@@ -20,7 +23,7 @@ mkdir -p "$RUN_DIR"
 export LAB_AUTHORIZED=YES
 cd /app
 
-echo "Captura pasiva: interfaz=$INTERFACE filtro='$FILTER' salida=$RUN_DIR"
+echo "Captura en vivo: interfaz=$INTERFACE filtro='$FILTER' salida=$RUN_DIR"
 [[ -n "$EXTRA" ]] && echo "IPs autorizadas extra (solo esta corrida): $EXTRA"
 
 exec python /app/detect_live.py \

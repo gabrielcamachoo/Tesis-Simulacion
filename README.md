@@ -12,11 +12,13 @@ capturada previamente y un emulador en red aislada.
 >   remoto (`192.168.5.114 → 192.168.5.134:1550`). Probado en la Pi el 22-10-2026:
 >   10 mensajes STANDBY, 10 ACK `AA`, 0 errores (registrado en el PR #3; los logs de
 >   esa corrida todavía no están en el repositorio).
-> - **Pasivo en vivo** (`deploy/docker/`, `detect_live.py`): la Pi escucha un puerto
->   espejo del switch sin abrir conexiones. La topología final usa el WATO `.114`
->   como receptor y emisor benigno en la misma máquina; Kali ataca al puerto
->   `1550/tcp` de esa máquina y la Pi observa el tráfico por el puerto espejo.
->   Falta repetirlo en la Pi física y medir allí la latencia (H2).
+> - **Receptor + detector en vivo** (`deploy/docker/`, `detect_live.py`): el PC `.114`
+>   (emisor benigno WATO) y Kali (VM en adaptador puente, IP propia) le mandan a la
+>   Pi `192.168.5.134:1550`; `detect_live.py` captura en la Pi (`wlan0`) lo que le
+>   llega. El switch del lab no tiene port mirroring, así que la Pi **no es un tap
+>   pasivo** en hardware real: el modo pasivo por espejo solo está validado en una
+>   red virtual y queda como trabajo futuro con un switch administrable.
+>   Falta correrlo en la Pi física y medir allí la latencia (H2).
 >
 > **Estado del detector.** Las capturas reales dan 0 falsos positivos en STANDBY
 > (43/43 NORMAL, `LECTURACONACK25AGOSTO.pcapng`) y en RUNNING (99/99 NORMAL,
